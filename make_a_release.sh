@@ -57,10 +57,42 @@ git archive --format=tar --prefix="$release_name/" "$tag_name" | \
 echo "Signing the tarball"
 gpg -o "$outdir/$release_name.tar.bz2.asc" --detach-sign -a "$outdir/$release_name.tar.bz2"
 
-cat <<EOF
+scp_url="casper.infradead.org:/var/ftp/pub/mtd-utils"
+ftp_url="ftp://ftp.infradead.org/pub/mtd-utils"
+git_url="git://git.infradead.org/mtd-utils.git"
+
+cat <<EOF1
 Created $outdir/$release_name.tar.bz2
 Please, verify, then push the tag and upload the tarball and the signature
 You can use these commands:
+
+------------------------------------------------------------------------------
 git push origin master $tag_name
-scp $outdir/$release_name.tar.bz2 $outdir/$release_name.tar.bz2.asc casper.infradead.org:/var/ftp/pub/mtd-utils
+scp $outdir/$release_name.tar.bz2 $outdir/$release_name.tar.bz2.asc $scp_url
+------------------------------------------------------------------------------
+
+Please, send an announcement, below is the command you may run in your
+run. Substitute "me" with your e-mail address if needed, although it is
+cleaner to configure 'git send-email' to interpret 'me' as an alias for
+your name/email, see 'sendemail.aliasesfile' git configuration option.
+
+------------------------------------------------------------------------------
+mtd_tmpfile=\$(mktemp)
+
+cat > \$mtd_tmpfile <<EOF
+Subject: [ANNOUNCE] $release_name is released
+
+Hi,
+
+$release_name is released.
+
+Tarball:               $ftp_url/$release_name.tar.bz2
+Tarball gpg signature: $ftp_url/$release_name.tar.bz2.asc
+Signed git tag:        $git_url $tag_name
 EOF
+
+git send-email --from me --to 'MTL Mailing List <linux-mtd@lists.infradead.org>' --cc 'Peter Korsgaard (buildroot) <jacmet@sunsite.dk>' --cc 'Josh Boyer (Fedora) <jwboyer@gmail.com>' --cc 'Riku Voipio (Debian) <riku.voipio@linaro.org>' \$mtd_tmpfile
+
+rm \$mtd_tmpfile
+------------------------------------------------------------------------------
+EOF1
