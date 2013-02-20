@@ -19,7 +19,8 @@ TESTS = tests
 MTD_BINS = \
 	ftl_format flash_erase nanddump doc_loadbios \
 	ftl_check mkfs.jffs2 flash_lock flash_unlock \
-	flash_otp_info flash_otp_dump mtd_debug flashcp nandwrite nandtest \
+	flash_otp_info flash_otp_dump flash_otp_lock flash_otp_write \
+	mtd_debug flashcp nandwrite nandtest \
 	jffs2dump \
 	nftldump nftl_format docfdisk \
 	rfddump rfdformat \
