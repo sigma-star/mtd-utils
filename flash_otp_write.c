@@ -83,6 +83,12 @@ int main(int argc,char *argv[])
 	else
 		len = 256;
 
+	if (len > sizeof(buf)) {
+		printf("huh, writesize (%d) bigger than buffer (%zu)\n",
+				len, sizeof(buf));
+		return ENOMEM;
+	}
+
 	wrote = 0;
 	while ((size = xread(0, buf, len))) {
 		if (size < 0) {
