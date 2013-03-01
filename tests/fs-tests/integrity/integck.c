@@ -1502,7 +1502,8 @@ static void file_check_data(struct file_info *file, int fd,
 {
 	size_t remains, block, i;
 	off_t r;
-	char buf[IO_BUFFER_SIZE];
+	unsigned char read_buf[IO_BUFFER_SIZE];
+	unsigned char check_buf[IO_BUFFER_SIZE];
 	unsigned int seed = w->random_seed;
 
 	if (args.power_cut_mode && !file->clean)
@@ -1517,17 +1518,28 @@ static void file_check_data(struct file_info *file, int fd,
 			block = IO_BUFFER_SIZE;
 		else
 			block = remains;
-		CHECK(read(fd, buf, block) == block);
-		for (i = 0; i < block; ++i) {
-			char c = (char)rand_r(&seed);
-			if (buf[i] != c) {
-				errmsg("file_check_data failed at %zu checking "
-				       "data at %llu size %zu", w->size - remains + i,
-					(unsigned long long)w->offset, w->size);
-				file_info_display(file);
-				save_file(fd, file);
-			}
-			CHECK(buf[i] == c);
+		CHECK(read(fd, read_buf, block) == block);
+		for (i = 0; i < block; ++i)
+			check_buf[i] = (char)rand_r(&seed);
+
+		if (memcmp(check_buf, read_buf, block) != 0) {
+			errmsg("file_check_data failed, dumping "
+				"data at offset %llu size %zu",
+				(unsigned long long)w->offset, w->size);
+
+			fprintf (stderr, "Read data:\n");
+			for (r = 0; r < block; ++r)
+				fprintf(stderr, "%02x%c",
+					read_buf[r], ((r+1)%16)?' ':'\n');
+			fprintf(stderr, "\nExpected data:\n");
+			for (r = 0; r < block; ++r)
+				fprintf(stderr, "%02x%c",
+					check_buf[r], ((r+1)%16)?' ':'\n');
+			fprintf(stderr, " \n");
+
+			file_info_display(file);
+			save_file(fd, file);
+			CHECK(0);
 		}
 		remains -= block;
 	}
