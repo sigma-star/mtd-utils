@@ -32,11 +32,11 @@
 #include <assert.h>
 #include <mntent.h>
 #include <execinfo.h>
+#include <bits/stdio_lim.h>
 #include <sys/mman.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
 #include <sys/statvfs.h>
-#include <linux/fs.h>
 
 #define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME "integck"
@@ -1433,12 +1433,17 @@ static void save_file(int fd, struct file_info *file)
 	int w_fd;
 	struct write_info *w;
 	char buf[IO_BUFFER_SIZE];
-	char name[256];
+	char name[FILENAME_MAX];
+        const char * read_suffix = ".integ.sav.read";
+        const char * write_suffix = ".integ.sav.written";
+        size_t fname_len = strlen(get_file_name(file));
 
 	/* Open file to save contents to */
 	strcpy(name, "/tmp/");
-	strcat(name, get_file_name(file));
-	strcat(name, ".integ.sav.read");
+	if (fname_len + strlen(read_suffix) > fsinfo.max_name_len)
+		fname_len = fsinfo.max_name_len - strlen(read_suffix);
+	strncat(name, get_file_name(file), fname_len);
+	strcat(name, read_suffix);
 	normsg("Saving %sn", name);
 	w_fd = open(name, O_CREAT | O_WRONLY, 0777);
 	CHECK(w_fd != -1);
@@ -1457,8 +1462,10 @@ static void save_file(int fd, struct file_info *file)
 
 	/* Open file to save contents to */
 	strcpy(name, "/tmp/");
-	strcat(name, get_file_name(file));
-	strcat(name, ".integ.sav.written");
+	if (fname_len + strlen(write_suffix) > fsinfo.max_name_len)
+		fname_len = fsinfo.max_name_len - strlen(write_suffix);
+	strncat(name, get_file_name(file), fname_len);
+	strcat(name, write_suffix);
 	normsg("Saving %s", name);
 	w_fd = open(name, O_CREAT | O_WRONLY, 0777);
 	CHECK(w_fd != -1);
