@@ -960,9 +960,6 @@ static void file_write_info(struct file_info *file, int fd, off_t offset,
 	w->random_seed = seed;
 	file->raw_writes = w;
 
-	if (args.verify_ops && !args.power_cut_mode)
-		file_check_data(file, fd, new_write);
-
 	/* Insert it into file->writes */
 	inserted = 0;
 	end = offset + size;
@@ -1028,6 +1025,9 @@ static void file_write_info(struct file_info *file, int fd, off_t offset,
 	/* Update file length */
 	if (end > file->length)
 		file->length = end;
+
+	if (args.verify_ops && !args.power_cut_mode)
+		file_check_data(file, fd, new_write);
 }
 
 /* Randomly select offset and and size to write in a file */
