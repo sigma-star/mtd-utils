@@ -1434,9 +1434,9 @@ static void save_file(int fd, struct file_info *file)
 	struct write_info *w;
 	char buf[IO_BUFFER_SIZE];
 	char name[FILENAME_MAX];
-        const char * read_suffix = ".integ.sav.read";
-        const char * write_suffix = ".integ.sav.written";
-        size_t fname_len = strlen(get_file_name(file));
+	const char * read_suffix = ".integ.sav.read";
+	const char * write_suffix = ".integ.sav.written";
+	size_t fname_len = strlen(get_file_name(file));
 
 	/* Open file to save contents to */
 	strcpy(name, "/tmp/");
@@ -2917,20 +2917,20 @@ static struct mntent *get_tested_fs_mntent(void)
 {
 	const char *mp;
 	struct mntent *mntent;
-        FILE *f;
+	FILE *f;
 
 	mp = "/proc/mounts";
-        f = fopen(mp, "rb");
-        if (!f) {
+	f = fopen(mp, "rb");
+	if (!f) {
 		mp = "/etc/mtab";
-                f = fopen(mp, "rb");
+		f = fopen(mp, "rb");
 	}
 	CHECK(f != NULL);
 
-        while ((mntent = getmntent(f)) != NULL)
+	while ((mntent = getmntent(f)) != NULL)
 		if (!strcmp(mntent->mnt_dir, fsinfo.mount_point))
 			break;
-        CHECK(fclose(f) == 0);
+	CHECK(fclose(f) == 0);
 	return mntent;
 }
 
