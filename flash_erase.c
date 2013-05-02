@@ -277,11 +277,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 		} else {
-			if (lseek(fd, offset, SEEK_SET) < 0) {
-				sys_errmsg("%s: MTD lseek failure", mtd_device);
-				continue;
-			}
-			if (write(fd, &cleanmarker, sizeof(cleanmarker)) != sizeof(cleanmarker)) {
+			if (pwrite(fd, &cleanmarker, sizeof(cleanmarker), (loff_t)offset) != sizeof(cleanmarker)) {
 				sys_errmsg("%s: MTD write failure", mtd_device);
 				continue;
 			}
