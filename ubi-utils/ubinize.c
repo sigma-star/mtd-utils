@@ -42,11 +42,11 @@
 static const char doc[] = PROGRAM_NAME " version " VERSION
 " - a tool to generate UBI images. An UBI image may contain one or more UBI "
 "volumes which have to be defined in the input configuration ini-file. The "
-"ini file defines all the UBI volumes - their characteristics and the and the "
+"ini file defines all the UBI volumes - their characteristics and the "
 "contents, but it does not define the characteristics of the flash the UBI "
 "image is generated for. Instead, the flash characteristics are defined via "
 "the command-line options. Note, if not sure about some of the command-line "
-"parameters, do not specify them and let the utility to use default values.";
+"parameters, do not specify them and let the utility use default values.";
 
 static const char optionsstr[] =
 "-o, --output=<file name>     output file name\n"
