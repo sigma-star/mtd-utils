@@ -534,7 +534,7 @@ static int get_options(int argc, char**argv)
 				return err_msg("bad maximum LEB count");
 			break;
 		case 'o':
-			output = strdup(optarg);
+			output = xstrdup(optarg);
 			break;
 		case 'D':
 			tbl_file = optarg;
@@ -627,7 +627,7 @@ static int get_options(int argc, char**argv)
 	}
 
 	if (optind != argc && !output)
-		output = strdup(argv[optind]);
+		output = xstrdup(argv[optind]);
 
 	if (!output)
 		return err_msg("not output device or file specified");

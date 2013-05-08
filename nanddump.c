@@ -159,10 +159,7 @@ static void process_options(int argc, char * const argv[])
 				start_addr = simple_strtoll(optarg, &error);
 				break;
 			case 'f':
-				if (!(dumpfile = strdup(optarg))) {
-					perror("stddup");
-					exit(EXIT_FAILURE);
-				}
+				dumpfile = xstrdup(optarg);
 				break;
 			case 'l':
 				length = simple_strtoll(optarg, &error);

@@ -469,7 +469,7 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 	} else {
 		/* If parent is NULL (happens with device table entries),
 		 * try and find our parent now) */
-		tmp = strdup(name);
+		tmp = xstrdup(name);
 		dir = dirname(tmp);
 		parent = find_filesystem_entry(root, dir, S_IFDIR);
 		free(tmp);
