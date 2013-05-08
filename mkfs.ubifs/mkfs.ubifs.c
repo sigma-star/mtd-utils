@@ -103,6 +103,7 @@ static libubi_t ubi;
 /* Debug levels are: 0 (none), 1 (statistics), 2 (files) ,3 (more details) */
 int debug_level;
 int verbose;
+int yes;
 
 static char *root;
 static int root_len;
@@ -133,7 +134,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:h?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQq";
+static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQq";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
@@ -142,6 +143,7 @@ static const struct option longopts[] = {
 	{"max-leb-cnt",        1, NULL, 'c'},
 	{"output",             1, NULL, 'o'},
 	{"devtable",           1, NULL, 'D'},
+	{"yes",                0, NULL, 'y'},
 	{"help",               0, NULL, 'h'},
 	{"verbose",            0, NULL, 'v'},
 	{"version",            0, NULL, 'V'},
@@ -191,6 +193,7 @@ static const char *helptext =
 "-U, --squash-uids        squash owners making all files owned by root\n"
 "-l, --log-lebs=COUNT     count of erase blocks for the log (used only for\n"
 "                         debugging)\n"
+"-y, --yes                assume the answer is \"yes\" for all questions\n"
 "-v, --verbose            verbose operation\n"
 "-V, --version            display version information\n"
 "-g, --debug=LEVEL        display debug information (0 - none, 1 - statistics,\n"
@@ -538,6 +541,9 @@ static int get_options(int argc, char**argv)
 			if (stat(tbl_file, &st) < 0)
 				return sys_err_msg("bad device table file '%s'",
 						   tbl_file);
+			break;
+		case 'y':
+			yes = 1;
 			break;
 		case 'h':
 		case '?':
@@ -2098,8 +2104,10 @@ static int open_target(void)
 		if (ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 1))
 			return sys_err_msg("ubi_set_property failed");
 
-		if (check_volume_empty())
-			return err_msg("UBI volume is not empty");
+		if (!yes && check_volume_empty()) {
+			if (!prompt("UBI volume is not empty.  Format anyways?", false))
+				return err_msg("UBI volume is not empty");
+		}
 	} else {
 		out_fd = open(output, O_CREAT | O_RDWR | O_TRUNC,
 			      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
