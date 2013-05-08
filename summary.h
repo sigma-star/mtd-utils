@@ -12,7 +12,6 @@
 #ifndef JFFS2_SUMMARY_H
 #define JFFS2_SUMMARY_H
 
-#include <linux/uio.h>
 #include <linux/jffs2.h>
 
 #define DIRTY_SPACE(x) do { typeof(x) _x = (x); \
