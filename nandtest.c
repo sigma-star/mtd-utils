@@ -1,6 +1,5 @@
 #define PROGRAM_NAME "nandtest"
 
-#define _GNU_SOURCE
 #include <ctype.h>
 #include <errno.h>
 #include <fcntl.h>

@@ -49,7 +49,6 @@
 
 #define PROGRAM_NAME "mkfs.jffs2"
 
-#define _GNU_SOURCE
 #include <sys/types.h>
 #include <stdio.h>
 #include <sys/stat.h>

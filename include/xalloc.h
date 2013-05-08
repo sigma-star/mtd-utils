@@ -27,6 +27,7 @@
 #ifndef __MTD_UTILS_XALLOC_H__
 #define __MTD_UTILS_XALLOC_H__
 
+#include <stdarg.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -84,7 +85,6 @@ static char *xstrdup(const char *s)
 }
 
 #ifdef _GNU_SOURCE
-#include <stdarg.h>
 
 __attribute__((unused))
 static int xasprintf(char **strp, const char *fmt, ...)

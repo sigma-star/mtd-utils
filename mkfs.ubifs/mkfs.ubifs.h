@@ -23,8 +23,6 @@
 #ifndef __MKFS_UBIFS_H__
 #define __MKFS_UBIFS_H__
 
-#define _GNU_SOURCE
-#define _LARGEFILE64_SOURCE
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
