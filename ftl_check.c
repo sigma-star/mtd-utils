@@ -50,23 +50,9 @@
 
 #include <mtd/mtd-user.h>
 #include <mtd/ftl-user.h>
+#include <mtd_swab.h>
 
-#include <byteswap.h>
-#include <endian.h>
 #include "common.h"
-
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-# define TO_LE32(x) (x)
-# define TO_LE16(x) (x)
-#elif __BYTE_ORDER == __BIG_ENDIAN
-# define TO_LE32(x) (bswap_32(x))
-# define TO_LE16(x) (bswap_16(x))
-#else
-# error cannot detect endianess
-#endif
-
-#define FROM_LE32(x) TO_LE32(x)
-#define FROM_LE16(x) TO_LE16(x)
 
 /*====================================================================*/
 
@@ -109,10 +95,10 @@ static void check_partition(int fd)
 			break;
 		}
 		read(fd, &hdr, sizeof(hdr));
-		if ((FROM_LE32(hdr.FormattedSize) > 0) &&
-				(FROM_LE32(hdr.FormattedSize) <= mtd.size) &&
-				(FROM_LE16(hdr.NumEraseUnits) > 0) &&
-				(FROM_LE16(hdr.NumEraseUnits) <= mtd.size/mtd.erasesize))
+		if ((le32_to_cpu(hdr.FormattedSize) > 0) &&
+				(le32_to_cpu(hdr.FormattedSize) <= mtd.size) &&
+				(le16_to_cpu(hdr.NumEraseUnits) > 0) &&
+				(le16_to_cpu(hdr.NumEraseUnits) <= mtd.size/mtd.erasesize))
 			break;
 	}
 	if (i == mtd.size/mtd.erasesize) {
@@ -122,9 +108,9 @@ static void check_partition(int fd)
 
 	printf("Partition header:\n");
 	printf("  Formatted size = ");
-	print_size(FROM_LE32(hdr.FormattedSize));
+	print_size(le32_to_cpu(hdr.FormattedSize));
 	printf(", erase units = %d, transfer units = %d\n",
-			FROM_LE16(hdr.NumEraseUnits), hdr.NumTransferUnits);
+			le16_to_cpu(hdr.NumEraseUnits), hdr.NumTransferUnits);
 	printf("  Erase unit size = ");
 	print_size(1 << hdr.EraseUnitSize);
 	printf(", virtual block size = ");
@@ -135,7 +121,7 @@ static void check_partition(int fd)
 	nbam = (mtd.erasesize >> hdr.BlockSize);
 	bam = malloc(nbam * sizeof(u_int));
 
-	for (i = 0; i < FROM_LE16(hdr.NumEraseUnits); i++) {
+	for (i = 0; i < le16_to_cpu(hdr.NumEraseUnits); i++) {
 		if (lseek(fd, (i << hdr.EraseUnitSize), SEEK_SET) == -1) {
 			perror("seek failed");
 			break;
@@ -149,12 +135,12 @@ static void check_partition(int fd)
 				(hdr2.NumEraseUnits != hdr.NumEraseUnits) ||
 				(hdr2.SerialNumber != hdr.SerialNumber))
 			printf("  Erase unit header is corrupt.\n");
-		else if (FROM_LE16(hdr2.LogicalEUN) == 0xffff)
-			printf("  Transfer unit, erase count = %d\n", FROM_LE32(hdr2.EraseCount));
+		else if (le16_to_cpu(hdr2.LogicalEUN) == 0xffff)
+			printf("  Transfer unit, erase count = %d\n", le32_to_cpu(hdr2.EraseCount));
 		else {
 			printf("  Logical unit %d, erase count = %d\n",
-					FROM_LE16(hdr2.LogicalEUN), FROM_LE32(hdr2.EraseCount));
-			if (lseek(fd, (i << hdr.EraseUnitSize)+FROM_LE32(hdr.BAMOffset),
+					le16_to_cpu(hdr2.LogicalEUN), le32_to_cpu(hdr2.EraseCount));
+			if (lseek(fd, (i << hdr.EraseUnitSize)+le32_to_cpu(hdr.BAMOffset),
 						SEEK_SET) == -1) {
 				perror("seek failed");
 				break;
@@ -165,11 +151,11 @@ static void check_partition(int fd)
 			}
 			free = deleted = control = data = 0;
 			for (j = 0; j < nbam; j++) {
-				if (BLOCK_FREE(FROM_LE32(bam[j])))
+				if (BLOCK_FREE(le32_to_cpu(bam[j])))
 					free++;
-				else if (BLOCK_DELETED(FROM_LE32(bam[j])))
+				else if (BLOCK_DELETED(le32_to_cpu(bam[j])))
 					deleted++;
-				else switch (BLOCK_TYPE(FROM_LE32(bam[j]))) {
+				else switch (BLOCK_TYPE(le32_to_cpu(bam[j]))) {
 					case BLOCK_CONTROL: control++; break;
 					case BLOCK_DATA: data++; break;
 					default: break;

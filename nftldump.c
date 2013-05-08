@@ -50,13 +50,8 @@ static int NumMedHeads;
 
 static unsigned char BadUnitTable[MAX_ERASE_ZONES];
 
-#if __BYTE_ORDER == __LITTLE_ENDIAN
-#define SWAP16(x) do { ; } while(0)
-#define SWAP32(x) do { ; } while(0)
-#else
-#define SWAP16(x) do { x = swab16(x); } while(0)
-#define SWAP32(x) do { x = swab32(x); } while(0)
-#endif
+#define SWAP16(x) do { x = le16_to_cpu(x); } while(0)
+#define SWAP32(x) do { x = le32_to_cpu(x); } while(0)
 
 /* VUCtable, store the Erase Unit Number of the first Erase Unit in the chain */
 static unsigned short *VUCtable;
