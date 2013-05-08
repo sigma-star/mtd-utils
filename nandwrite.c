@@ -42,9 +42,9 @@
 #include "common.h"
 #include <libmtd.h>
 
-static void display_help(void)
+static void display_help(int status)
 {
-	printf(
+	fprintf(status == EXIT_SUCCESS ? stdout : stderr,
 "Usage: nandwrite [OPTION] MTD_DEVICE [INPUTFILE|-]\n"
 "Writes to the specified MTD device.\n"
 "\n"
@@ -58,10 +58,10 @@ static void display_help(void)
 "  -p, --pad               Pad to page size\n"
 "  -b, --blockalign=1|2|4  Set multiple of eraseblocks to align to\n"
 "  -q, --quiet             Don't display progress messages\n"
-"      --help              Display this help and exit\n"
+"  -h, --help              Display this help and exit\n"
 "      --version           Output version information and exit\n"
 	);
-	exit(EXIT_SUCCESS);
+	exit(status);
 }
 
 static void display_version(void)
@@ -99,10 +99,10 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "b:mnNoOpqs:a";
+		static const char short_options[] = "hb:mnNoOpqs:a";
 		static const struct option long_options[] = {
-			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
+			{"help", no_argument, 0, 'h'},
 			{"blockalign", required_argument, 0, 'b'},
 			{"markbad", no_argument, 0, 'm'},
 			{"noecc", no_argument, 0, 'n'},
@@ -124,12 +124,9 @@ static void process_options(int argc, char * const argv[])
 		switch (c) {
 		case 0:
 			switch (option_index) {
-				case 0:
-					display_help();
-					break;
-				case 1:
-					display_version();
-					break;
+			case 0: /* --version */
+				display_version();
+				break;
 			}
 			break;
 		case 'q':
@@ -163,6 +160,9 @@ static void process_options(int argc, char * const argv[])
 		case 'a':
 			autoplace = true;
 			break;
+		case 'h':
+			display_help(EXIT_SUCCESS);
+			break;
 		case '?':
 			error++;
 			break;
@@ -192,7 +192,7 @@ static void process_options(int argc, char * const argv[])
 	 */
 
 	if (argc < 1 || argc > 2 || error)
-		display_help();
+		display_help(EXIT_FAILURE);
 
 	mtd_device = argv[0];
 

@@ -16,9 +16,10 @@
 #include <asm/types.h>
 #include "mtd/mtd-user.h"
 
-void usage(void)
+void usage(int status)
 {
-	fprintf(stderr, "usage: %s [OPTIONS] <device>\n\n"
+	fprintf(status ? stderr : stdout,
+		"usage: %s [OPTIONS] <device>\n\n"
 		"  -h, --help           Display this help output\n"
 		"  -m, --markbad        Mark blocks bad if they appear so\n"
 		"  -s, --seed           Supply random seed\n"
@@ -27,7 +28,7 @@ void usage(void)
 		"  -l, --length         Length of flash to test\n"
 		"  -k, --keep           Restore existing contents after test\n",
 		PROGRAM_NAME);
-	exit(1);
+	exit(status);
 }
 
 struct mtd_info_user meminfo;
@@ -142,7 +143,7 @@ int main(int argc, char **argv)
 	seed = time(NULL);
 
 	for (;;) {
-		static const char *short_options="hkl:mo:p:s:";
+		static const char short_options[] = "hkl:mo:p:s:";
 		static const struct option long_options[] = {
 			{ "help", no_argument, 0, 'h' },
 			{ "markbad", no_argument, 0, 'm' },
@@ -160,8 +161,11 @@ int main(int argc, char **argv)
 
 		switch (c) {
 		case 'h':
+			usage(0);
+			break;
+
 		case '?':
-			usage();
+			usage(1);
 			break;
 
 		case 'm':
@@ -191,7 +195,7 @@ int main(int argc, char **argv)
 		}
 	}
 	if (argc - optind != 1)
-		usage();
+		usage(1);
 
 	fd = open(argv[optind], O_RDWR);
 	if (fd < 0) {

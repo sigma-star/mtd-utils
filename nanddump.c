@@ -33,13 +33,13 @@
 #include "common.h"
 #include <libmtd.h>
 
-static void display_help(void)
+static void display_help(int status)
 {
-	printf(
+	fprintf(status == EXIT_SUCCESS ? stdout : stderr,
 "Usage: %s [OPTIONS] MTD-device\n"
 "Dumps the contents of a nand mtd partition.\n"
 "\n"
-"           --help               Display this help and exit\n"
+"-h         --help               Display this help and exit\n"
 "           --version            Output version information and exit\n"
 "           --bb=METHOD          Choose bad block handling method (see below).\n"
 "-a         --forcebinary        Force printing of binary data to tty\n"
@@ -58,7 +58,7 @@ static void display_help(void)
 "    dumpbad: dump flash data, including any bad blocks\n"
 "    skipbad: dump good data, completely skipping any bad blocks (default)\n",
 	PROGRAM_NAME);
-	exit(EXIT_SUCCESS);
+	exit(status);
 }
 
 static void display_version(void)
@@ -101,12 +101,12 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "s:f:l:opqnca";
+		static const char short_options[] = "hs:f:l:opqnca";
 		static const struct option long_options[] = {
-			{"help", no_argument, 0, 0},
 			{"version", no_argument, 0, 0},
 			{"bb", required_argument, 0, 0},
 			{"omitoob", no_argument, 0, 0},
+			{"help", no_argument, 0, 'h'},
 			{"forcebinary", no_argument, 0, 'a'},
 			{"canonicalprint", no_argument, 0, 'c'},
 			{"file", required_argument, 0, 'f'},
@@ -129,12 +129,9 @@ static void process_options(int argc, char * const argv[])
 			case 0:
 				switch (option_index) {
 					case 0:
-						display_help();
-						break;
-					case 1:
 						display_version();
 						break;
-					case 2:
+					case 1:
 						/* Handle --bb=METHOD */
 						if (!strcmp(optarg, "padbad"))
 							bb_method = padbad;
@@ -145,7 +142,7 @@ static void process_options(int argc, char * const argv[])
 						else
 							error++;
 						break;
-					case 3: /* --omitoob */
+					case 2: /* --omitoob */
 						if (oob_default) {
 							oob_default = false;
 							omitoob = true;
@@ -186,6 +183,9 @@ static void process_options(int argc, char * const argv[])
 			case 'n':
 				noecc = true;
 				break;
+			case 'h':
+				display_help(EXIT_SUCCESS);
+				break;
 			case '?':
 				error++;
 				break;
@@ -213,7 +213,7 @@ static void process_options(int argc, char * const argv[])
 	}
 
 	if ((argc - optind) != 1 || error)
-		display_help();
+		display_help(EXIT_FAILURE);
 
 	mtddev = argv[optind];
 }
