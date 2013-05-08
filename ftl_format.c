@@ -51,6 +51,7 @@
 #include <mtd/mtd-user.h>
 #include <mtd/ftl-user.h>
 #include <mtd_swab.h>
+#include "common.h"
 
 /*====================================================================*/
 
@@ -164,15 +165,9 @@ static int format_partition(int fd, int quiet, int interrogate,
 		fflush(stdout);
 	}
 
-	if (interrogate) {
-		char str[3];
-		printf("This will destroy all data on the target device.  "
-				"Confirm (y/n): ");
-		if (fgets(str, 3, stdin) == NULL)
+	if (interrogate)
+		if (!prompt("This will destroy all data on the target device. Confirm?", false))
 			return -1;
-		if ((strcmp(str, "y\n") != 0) && (strcmp(str, "Y\n") != 0))
-			return -1;
-	}
 
 	/* Create basic block allocation table for control blocks */
 	nbam = ((mtd.erasesize >> hdr.BlockSize) * sizeof(u_int)

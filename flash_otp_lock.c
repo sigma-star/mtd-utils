@@ -13,11 +13,12 @@
 #include <sys/ioctl.h>
 
 #include <mtd/mtd-user.h>
+#include "common.h"
 
 int main(int argc,char *argv[])
 {
 	int fd, val, ret, offset, size;
-	char *p, buf[8];
+	char *p;
 
 	if (argc != 5 || strcmp(argv[1], "-u")) {
 		fprintf(stderr, "Usage: %s -u <device> <offset> <size>\n", PROGRAM_NAME);
@@ -53,8 +54,7 @@ int main(int argc,char *argv[])
 
 	printf("About to lock OTP user data on %s from 0x%x to 0x%x\n",
 			argv[2], offset, offset + size);
-	printf("Are you sure (yes|no)? ");
-	if (fgets(buf, sizeof(buf), stdin) && strcmp(buf, "yes\n") == 0) {
+	if (prompt("Are you sure?", false)) {
 		struct otp_info info;
 		info.start = offset;
 		info.length = size;

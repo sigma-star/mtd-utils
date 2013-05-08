@@ -243,35 +243,12 @@ static int parse_opt(int argc, char * const argv[])
 
 static int want_exit(void)
 {
-	char buf[4];
-
-	while (1) {
-		normsg_cont("continue? (yes/no)  ");
-		if (scanf("%3s", buf) == EOF) {
-			sys_errmsg("scanf returned unexpected EOF, assume \"yes\"");
-			return 1;
-		}
-		if (!strncmp(buf, "yes", 3) || !strncmp(buf, "y", 1))
-			return 0;
-		if (!strncmp(buf, "no", 2) || !strncmp(buf, "n", 1))
-			return 1;
-	}
+	return prompt("continue?", false) == true ? 0 : 1;
 }
 
-static int answer_is_yes(void)
+static int answer_is_yes(const char *msg)
 {
-	char buf[4];
-
-	while (1) {
-		if (scanf("%3s", buf) == EOF) {
-			sys_errmsg("scanf returned unexpected EOF, assume \"no\"");
-			return 0;
-		}
-		if (!strncmp(buf, "yes", 3) || !strncmp(buf, "y", 1))
-			return 1;
-		if (!strncmp(buf, "no", 2) || !strncmp(buf, "n", 1))
-			return 0;
-	}
+	return prompt(msg ? : "continue?", false);
 }
 
 static void print_bad_eraseblocks(const struct mtd_dev_info *mtd,
@@ -412,11 +389,9 @@ static int mark_bad(const struct mtd_dev_info *mtd, struct ubi_scan_info *si, in
 {
 	int err;
 
-	if (!args.yes) {
-		normsg_cont("mark it as bad? Continue (yes/no) ");
-		if (!answer_is_yes())
+	if (!args.yes)
+		if (!answer_is_yes("mark it as bad?"))
 			return -1;
-	}
 
 	if (!args.quiet)
 		normsg_cont("marking block %d bad", eb);
@@ -922,10 +897,10 @@ int main(int argc, char * const argv[])
 				"which is different to requested offsets %d and %d",
 				si->vid_hdr_offs, si->data_offs, ui.vid_hdr_offs,
 				ui.data_offs);
-			normsg_cont("use new offsets %d and %d? (yes/no)  ",
+			normsg_cont("use new offsets %d and %d? ",
 				    ui.vid_hdr_offs, ui.data_offs);
 		}
-		if (args.yes || answer_is_yes()) {
+		if (args.yes || answer_is_yes(NULL)) {
 			if (args.yes && !args.quiet)
 				printf("yes\n");
 		} else
