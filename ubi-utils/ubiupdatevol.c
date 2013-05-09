@@ -45,7 +45,8 @@ struct args {
 	const char *img;
 	/* For deprecated -d and -B options handling */
 	char dev_name[256];
-	int size;
+	long long size;
+	long long skip;
 	int use_stdin;
 };
 
@@ -56,7 +57,8 @@ static const char doc[] = PROGRAM_NAME " version " VERSION
 
 static const char optionsstr[] =
 "-t, --truncate             truncate volume (wipe it out)\n"
-"-s, --size=<bytes>         bytes in input, if not reading from file\n"
+"-s, --size=<bytes>         bytes to read from input\n"
+"    --skip=<bytes>         leading bytes to skip from input\n"
 "-h, --help                 print help message\n"
 "-V, --version              print program version";
 
@@ -67,6 +69,8 @@ static const char usage[] =
 "Example 2: " PROGRAM_NAME " /dev/ubi0_1 -t - wipe out UBI volume /dev/ubi0_1";
 
 static const struct option long_options[] = {
+	/* Order matters for opts w/val=0; see option_index below. */
+	{ .name = "skip",     .has_arg = 1, .flag = NULL, .val = 0 },
 	{ .name = "truncate", .has_arg = 0, .flag = NULL, .val = 't' },
 	{ .name = "help",     .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",  .has_arg = 0, .flag = NULL, .val = 'V' },
@@ -77,19 +81,29 @@ static const struct option long_options[] = {
 static int parse_opt(int argc, char * const argv[])
 {
 	while (1) {
-		int key, error = 0;
+		int option_index, key, error = 0;
 
-		key = getopt_long(argc, argv, "ts:h?V", long_options, NULL);
+		key = getopt_long(argc, argv, "ts:h?V", long_options, &option_index);
 		if (key == -1)
 			break;
 
 		switch (key) {
+		case 0:
+			switch (option_index) {
+			case 0: /* --skip */
+				args.skip = simple_strtoull(optarg, &error);
+				if (error || args.skip < 0)
+					return errmsg("bad skip: " "\"%s\"", optarg);
+				break;
+			}
+			break;
+
 		case 't':
 			args.truncate = 1;
 			break;
 
 		case 's':
-			args.size = simple_strtoul(optarg, &error);
+			args.size = simple_strtoull(optarg, &error);
 			if (error || args.size < 0)
 				return errmsg("bad size: " "\"%s\"", optarg);
 			break;
@@ -198,7 +212,7 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 			goto out_free;
 		}
 
-		bytes = st.st_size;
+		bytes = st.st_size - args.skip;
 	} else
 		bytes = args.size;
 
@@ -214,13 +228,22 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 		goto out_free;
 	}
 
-	if (args.use_stdin)
+	if (args.use_stdin) {
 		ifd = STDIN_FILENO;
-	else {
+		if (args.skip) {
+			errmsg("seeking stdin not supported");
+			goto out_close1;
+		}
+	} else {
 		ifd = open(args.img, O_RDONLY);
 		if (ifd == -1) {
 			sys_errmsg("cannot open \"%s\"", args.img);
 			goto out_close1;
+		}
+
+		if (args.skip && lseek(ifd, args.skip, SEEK_CUR) == -1) {
+			sys_errmsg("lseek input by %lld failed", args.skip);
+			goto out_close;
 		}
 	}
 
@@ -231,10 +254,8 @@ static int update_volume(libubi_t libubi, struct ubi_vol_info *vol_info)
 	}
 
 	while (bytes) {
-		int ret, to_copy = vol_info->leb_size;
-
-		if (to_copy > bytes)
-			to_copy = bytes;
+		ssize_t ret;
+		int to_copy = min(vol_info->leb_size, bytes);
 
 		ret = read(ifd, buf, to_copy);
 		if (ret <= 0) {
