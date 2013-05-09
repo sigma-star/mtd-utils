@@ -52,11 +52,13 @@ static void display_help(int status)
 "  -m, --markbad           Mark blocks bad if write fails\n"
 "  -n, --noecc             Write without ecc\n"
 "  -N, --noskipbad         Write without bad block skipping\n"
-"  -o, --oob               Image contains oob data\n"
-"  -O, --onlyoob           Image contains oob data and only write the oob part\n"
-"  -s addr, --start=addr   Set start address (default is 0)\n"
-"  -p, --pad               Pad to page size\n"
+"  -o, --oob               Input contains oob data\n"
+"  -O, --onlyoob           Input contains oob data and only write the oob part\n"
+"  -s addr, --start=addr   Set output start address (default is 0)\n"
+"  -p, --pad               Pad writes to page size\n"
 "  -b, --blockalign=1|2|4  Set multiple of eraseblocks to align to\n"
+"      --input-skip=length Skip |length| bytes of the input file\n"
+"      --input-size=length Only read |length| bytes of the input file\n"
 "  -q, --quiet             Don't display progress messages\n"
 "  -h, --help              Display this help and exit\n"
 "      --version           Output version information and exit\n"
@@ -83,6 +85,8 @@ static void display_version(void)
 static const char	*standard_input = "-";
 static const char	*mtd_device, *img;
 static long long	mtdoffset = 0;
+static long long	inputskip = 0;
+static long long	inputsize = 0;
 static bool		quiet = false;
 static bool		writeoob = false;
 static bool		onlyoob = false;
@@ -101,7 +105,10 @@ static void process_options(int argc, char * const argv[])
 		int option_index = 0;
 		static const char short_options[] = "hb:mnNoOpqs:a";
 		static const struct option long_options[] = {
+			/* Order of these args with val==0 matters; see option_index. */
 			{"version", no_argument, 0, 0},
+			{"input-skip", required_argument, 0, 0},
+			{"input-size", required_argument, 0, 0},
 			{"help", no_argument, 0, 'h'},
 			{"blockalign", required_argument, 0, 'b'},
 			{"markbad", no_argument, 0, 'm'},
@@ -126,6 +133,12 @@ static void process_options(int argc, char * const argv[])
 			switch (option_index) {
 			case 0: /* --version */
 				display_version();
+				break;
+			case 1: /* --input-skip */
+				inputskip = simple_strtoll(optarg, &error);
+				break;
+			case 2: /* --input-size */
+				inputsize = simple_strtoll(optarg, &error);
 				break;
 			}
 			break;
@@ -299,26 +312,27 @@ int main(int argc, char * const argv[])
 
 	pagelen = mtd.min_io_size + ((writeoob) ? mtd.oob_size : 0);
 
-	/*
-	 * For the standard input case, the input size is merely an
-	 * invariant placeholder and is set to the write page
-	 * size. Otherwise, just use the input file size.
-	 *
-	 * TODO: Add support for the -l,--length=length option (see
-	 * previous discussion by Tommi Airikka <tommi.airikka@ericsson.com> at
-	 * <http://lists.infradead.org/pipermail/linux-mtd/2008-September/
-	 * 022913.html>
-	 */
-
 	if (ifd == STDIN_FILENO) {
-	    imglen = pagelen;
-	} else {
-		struct stat st;
-		if (fstat(ifd, &st)) {
-			sys_errmsg("unable to stat input image");
+		imglen = inputsize ? : pagelen;
+		if (inputskip) {
+			errmsg("seeking stdin does not work");
 			goto closeall;
 		}
-	    imglen = st.st_size;
+	} else {
+		if (!inputsize) {
+			struct stat st;
+			if (fstat(ifd, &st)) {
+				sys_errmsg("unable to stat input image");
+				goto closeall;
+			}
+			imglen = st.st_size;
+		} else
+			imglen = inputsize;
+
+		if (inputskip && lseek(ifd, inputskip, SEEK_CUR) == -1) {
+			sys_errmsg("lseek input by %lld failed", inputskip);
+			goto closeall;
+		}
 	}
 
 	/* Check, if file is page-aligned */
