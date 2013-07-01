@@ -315,7 +315,7 @@ int main(int argc, char * const argv[])
 	if (ifd == STDIN_FILENO) {
 		imglen = inputsize ? : pagelen;
 		if (inputskip) {
-			errmsg("seeking stdin does not work");
+			errmsg("seeking stdin not supported");
 			goto closeall;
 		}
 	} else {
@@ -325,7 +325,7 @@ int main(int argc, char * const argv[])
 				sys_errmsg("unable to stat input image");
 				goto closeall;
 			}
-			imglen = st.st_size;
+			imglen = st.st_size - inputskip;
 		} else
 			imglen = inputsize;
 
