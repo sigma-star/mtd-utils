@@ -322,6 +322,9 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	case MTD_NANDFLASH:
 		strcpy((char *)mtd->type_str, "nand");
 		break;
+	case MTD_MLCNANDFLASH:
+		strcpy((char *)mtd->type_str, "mlc-nand");
+		break;
 	case MTD_DATAFLASH:
 		strcpy((char *)mtd->type_str, "dataflash");
 		break;

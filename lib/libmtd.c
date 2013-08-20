@@ -403,6 +403,8 @@ static int type_str2int(const char *str)
 {
 	if (!strcmp(str, "nand"))
 		return MTD_NANDFLASH;
+	if (!strcmp(str, "mlc-nand"))
+		return MTD_MLCNANDFLASH;
 	if (!strcmp(str, "nor"))
 		return MTD_NORFLASH;
 	if (!strcmp(str, "rom"))

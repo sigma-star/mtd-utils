@@ -260,6 +260,9 @@ int showinfo(int fd)
 		case MTD_NANDFLASH:
 			printf("MTD_NANDFLASH");
 			break;
+		case MTD_MLCNANDFLASH:
+			printf("MTD_MLCNANDFLASH");
+			break;
 		case MTD_DATAFLASH:
 			printf("MTD_DATAFLASH");
 			break;
