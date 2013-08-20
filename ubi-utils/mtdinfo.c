@@ -315,7 +315,7 @@ static int print_dev_info(libmtd_t libmtd, const struct mtd_info *mtd_info, int 
 		printf("Sub-page size:                  %d %s\n",
 		       mtd.subpage_size,
 		       mtd.subpage_size > 1 ? "bytes" : "byte");
-	else if (mtd.type == MTD_NANDFLASH)
+	else if (mtd.type == MTD_NANDFLASH || mtd.type == MTD_MLCNANDFLASH)
 		printf("Sub-page size:                  unknown\n");
 
 	if (mtd.oob_size > 0)
