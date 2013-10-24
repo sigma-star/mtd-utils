@@ -21,6 +21,7 @@
 #define PROGRAM_NAME "flash_erase"
 
 #include <inttypes.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <fcntl.h>
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
 	int fd, clmpos = 0, clmlen = 8;
 	unsigned long long start;
 	unsigned int eb, eb_start, eb_cnt;
-	int isNAND;
+	bool isNAND;
 	int error = 0;
 	off_t offset = 0;
 
@@ -182,9 +183,12 @@ int main(int argc, char *argv[])
 	if (mtd_get_dev_info(mtd_desc, mtd_device, &mtd) < 0)
 		return errmsg("mtd_get_dev_info failed");
 
+	if (jffs2 && mtd.type == MTD_MLCNANDFLASH)
+		return errmsg("JFFS2 cannot support MLC NAND.");
+
 	eb_start = start / mtd.eb_size;
 
-	isNAND = mtd.type == MTD_NANDFLASH ? 1 : 0;
+	isNAND = mtd.type == MTD_NANDFLASH || mtd.type == MTD_MLCNANDFLASH;
 
 	if (jffs2) {
 		cleanmarker.magic = cpu_to_je16 (JFFS2_MAGIC_BITMASK);
