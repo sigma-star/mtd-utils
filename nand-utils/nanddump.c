@@ -445,8 +445,14 @@ int main(int argc, char * const argv[])
 						pretty_buf, PRETTY_BUF_LEN, true, canonical, ofs + i);
 				write(ofd, pretty_buf, strlen(pretty_buf));
 			}
-		} else
-			write(ofd, readbuf, bs);
+		} else {
+			/* Write requested length if oob is omitted */
+			size_t size_left = end_addr - ofs;
+			if (omitoob && (size_left < bs))
+				write(ofd, readbuf, size_left);
+			else
+				write(ofd, readbuf, bs);
+		}
 
 		if (omitoob)
 			continue;
