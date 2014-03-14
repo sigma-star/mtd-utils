@@ -400,6 +400,22 @@ int ubi_get_vol_info1_nm(libubi_t desc, int dev_num, const char *name,
 			 struct ubi_vol_info *info);
 
 /**
+ * ubi_vol_block_create - create a block device on top of an UBI volume.
+ * @fd: volume character device file descriptor
+ *
+ * Returns %0 in case of success and %-1 in case of failure.
+ */
+int ubi_vol_block_create(int fd);
+
+/**
+ * ubi_vol_block_remove - remove a block device from an UBI volume.
+ * @fd: volume character device file descriptor
+ *
+ * Returns %0 in case of success and %-1 in case of failure.
+ */
+int ubi_vol_block_remove(int fd);
+
+/**
  * ubi_update_start - start UBI volume update.
  * @desc: UBI library descriptor
  * @fd: volume character device file descriptor

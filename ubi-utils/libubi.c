@@ -1109,6 +1109,16 @@ int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes)
 	return ret;
 }
 
+int ubi_vol_block_create(int fd)
+{
+	return ioctl(fd, UBI_IOCVOLCRBLK);
+}
+
+int ubi_vol_block_remove(int fd)
+{
+	return ioctl(fd, UBI_IOCVOLRMBLK);
+}
+
 int ubi_update_start(libubi_t desc, int fd, long long bytes)
 {
 	desc = desc;

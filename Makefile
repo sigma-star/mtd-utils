@@ -28,7 +28,7 @@ MTD_BINS = \
 	sumtool jffs2reader
 UBI_BINS = \
 	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
-	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol
+	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock
 
 BINS = $(MTD_BINS)
 BINS += mkfs.ubifs/mkfs.ubifs
