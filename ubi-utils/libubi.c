@@ -188,10 +188,8 @@ static int read_data(const char *file, void *buf, int buf_len)
 		goto out_error;
 	}
 
-	if (close(fd)) {
-		sys_errmsg("close failed on \"%s\"", file);
-		return -1;
-	}
+	if (close(fd))
+		return sys_errmsg("close failed on \"%s\"", file);
 
 	return rd;
 
@@ -419,6 +417,9 @@ static int vol_node2nums(struct libubi *lib, const char *node, int *dev_num,
 		errno = ENODEV;
 		return -1;
 	}
+
+	if (close(fd))
+		return sys_errmsg("close failed on \"%s\"", file);
 
 	*dev_num = i;
 	*vol_id = minor - 1;
@@ -910,6 +911,9 @@ int ubi_probe_node(libubi_t desc, const char *node)
 	fd = open(file, O_RDONLY);
 	if (fd == -1)
 		goto out_not_ubi;
+
+        if (close(fd))
+		sys_errmsg("close failed on \"%s\"", file);
 
 	return 2;
 
