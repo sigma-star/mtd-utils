@@ -834,7 +834,7 @@ int main(int argc, char * const argv[])
 
 	if (si->alien_cnt) {
 		if (!args.yes || !args.quiet)
-			warnmsg("%d of %d eraseblocks contain non-ubifs data",
+			warnmsg("%d of %d eraseblocks contain non-UBI data",
 				si->alien_cnt, si->good_cnt);
 		if (!args.yes && want_exit()) {
 			if (args.yes && !args.quiet)
