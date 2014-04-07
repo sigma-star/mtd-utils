@@ -1,7 +1,7 @@
 
 # -*- sh -*-
 
-VERSION = 1.5.0
+VERSION = 1.5.1
 
 CPPFLAGS += -D_GNU_SOURCE -I./include -I$(BUILDDIR)/include -I./ubi-utils/include $(ZLIBCPPFLAGS) $(LZOCPPFLAGS) $(UUIDCPPFLAGS)
 
