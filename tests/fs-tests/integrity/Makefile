@@ -18,14 +18,14 @@ all: $(TARGETS)
 # Compile ubilib
 libubi.a:
 	$(CC) $(CFLAGS) -c $(LIBUBI_PATH)/libubi.c -o libubi.o
-	ar cr libubi.a libubi.o
+	$(AR) cr libubi.a libubi.o
 
 $(TARGETS): libubi.a
 
 # Disable optimizations to make it possible to use gdb comfortably
 # Use -rdynamic to have stack backtraces
 debug: libubi.a
-	gcc $(CFLAGS) -O0 -D INTEGCK_DEBUG -rdynamic integck.c libubi.a -o integck
+	$(CC) $(CFLAGS) -O0 -D INTEGCK_DEBUG -rdynamic integck.c libubi.a -o integck
 
 clean:
 	rm -f *.o $(TARGETS) libubi.a
