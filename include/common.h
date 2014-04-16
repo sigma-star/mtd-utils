@@ -107,7 +107,9 @@ extern "C" {
 #if __UCLIBC_MAJOR__ == 0 && \
 		(__UCLIBC_MINOR__ < 9 || \
 		(__UCLIBC_MINOR__ == 9 && __UCLIBC_SUBLEVEL__ < 34))
-static inline int rpmatch(const char *resp)
+#undef rpmatch
+#define rpmatch __rpmatch
+static inline int __rpmatch(const char *resp)
 {
     return (resp[0] == 'y' || resp[0] == 'Y') ? 1 :
 	(resp[0] == 'n' || resp[0] == 'N') ? 0 : -1;
