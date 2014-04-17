@@ -26,6 +26,7 @@ The files are opened in the current dir.
 */
 #include <sys/types.h>
 #include <sys/stat.h>
+#include <endian.h>
 #include <fcntl.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -170,6 +171,7 @@ void checksum(char *filename){
     printf("Error! Cannot open filename to update checksum: %s\n",filename);
     exit(1);
   }
+  crc = htole16(crc);
   if(fwrite(&crc, sizeof(crc), 1, fp) != 1){
     printf("error! unable to update the file for checksum.\n");
     fclose(fp);
