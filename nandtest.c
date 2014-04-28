@@ -37,45 +37,10 @@ int fd;
 int markbad=0;
 int seed;
 
-int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
+void read_and_compare(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 {
-	struct erase_info_user er;
 	ssize_t len;
 	int i;
-
-	printf("\r%08x: erasing... ", (unsigned)ofs);
-	fflush(stdout);
-
-	er.start = ofs;
-	er.length = meminfo.erasesize;
-
-	if (ioctl(fd, MEMERASE, &er)) {
-		perror("MEMERASE");
-		if (markbad) {
-			printf("Mark block bad at %08lx\n", (long)ofs);
-			ioctl(fd, MEMSETBADBLOCK, &ofs);
-		}
-		return 1;
-	}
-
-	printf("\r%08x: writing...", (unsigned)ofs);
-	fflush(stdout);
-
-	len = pwrite(fd, data, meminfo.erasesize, ofs);
-	if (len < 0) {
-		printf("\n");
-		perror("write");
-		if (markbad) {
-			printf("Mark block bad at %08lx\n", (long)ofs);
-			ioctl(fd, MEMSETBADBLOCK, &ofs);
-		}
-		return 1;
-	}
-	if (len < meminfo.erasesize) {
-		printf("\n");
-		fprintf(stderr, "Short write (%zd bytes)\n", len);
-		exit(1);
-	}
 
 	printf("\r%08x: reading...", (unsigned)ofs);
 	fflush(stdout);
@@ -121,6 +86,48 @@ int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 		}
 		exit(1);
 	}
+}
+
+int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
+{
+	struct erase_info_user er;
+	ssize_t len;
+
+	printf("\r%08x: erasing... ", (unsigned)ofs);
+	fflush(stdout);
+
+	er.start = ofs;
+	er.length = meminfo.erasesize;
+
+	if (ioctl(fd, MEMERASE, &er)) {
+		perror("MEMERASE");
+		if (markbad) {
+			printf("Mark block bad at %08lx\n", (long)ofs);
+			ioctl(fd, MEMSETBADBLOCK, &ofs);
+		}
+		return 1;
+	}
+
+	printf("\r%08x: writing...", (unsigned)ofs);
+	fflush(stdout);
+
+	len = pwrite(fd, data, meminfo.erasesize, ofs);
+	if (len < 0) {
+		printf("\n");
+		perror("write");
+		if (markbad) {
+			printf("Mark block bad at %08lx\n", (long)ofs);
+			ioctl(fd, MEMSETBADBLOCK, &ofs);
+		}
+		return 1;
+	}
+	if (len < meminfo.erasesize) {
+		printf("\n");
+		fprintf(stderr, "Short write (%zd bytes)\n", len);
+		exit(1);
+	}
+
+	read_and_compare(ofs, data, rbuf);
 	return 0;
 }
 
