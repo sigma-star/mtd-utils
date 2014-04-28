@@ -107,8 +107,6 @@ int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 		printf("\nECC failed at %08x\n", (unsigned) ofs);
 		oldstats.failed = newstats.failed;
 	}
-	if (len < meminfo.erasesize)
-		exit(1);
 
 	printf("\r%08x: checking...", (unsigned)ofs);
 	fflush(stdout);
