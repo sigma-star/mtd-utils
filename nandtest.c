@@ -24,6 +24,7 @@ void usage(int status)
 		"  -m, --markbad        Mark blocks bad if they appear so\n"
 		"  -s, --seed           Supply random seed\n"
 		"  -p, --passes         Number of passes\n"
+		"  -r, --reads          Read & check iterations per pass (default=4)\n"
 		"  -o, --offset         Start offset on flash\n"
 		"  -l, --length         Length of flash to test\n"
 		"  -k, --keep           Restore existing contents after test\n",
@@ -37,13 +38,10 @@ int fd;
 int markbad=0;
 int seed;
 
-void read_and_compare(loff_t ofs, unsigned char *data, unsigned char *rbuf)
+int read_and_compare(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 {
 	ssize_t len;
 	int i;
-
-	printf("\r%08x: reading...", (unsigned)ofs);
-	fflush(stdout);
 
 	len = pread(fd, rbuf, meminfo.erasesize, ofs);
 	if (len < meminfo.erasesize) {
@@ -84,14 +82,16 @@ void read_and_compare(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 				printf("Byte 0x%x is %02x should be %02x\n",
 				       i, rbuf[i], data[i]);
 		}
-		exit(1);
+		return 1;
 	}
+	return 0;
 }
 
-int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
+int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf, int nr_reads)
 {
 	struct erase_info_user er;
 	ssize_t len;
+	int i, read_errs = 0;
 
 	printf("\r%08x: erasing... ", (unsigned)ofs);
 	fflush(stdout);
@@ -127,7 +127,16 @@ int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 		exit(1);
 	}
 
-	read_and_compare(ofs, data, rbuf);
+	for (i=1; i<=nr_reads; i++) {
+		printf("\r%08x: reading (%d of %d)...", (unsigned)ofs, i, nr_reads);
+		fflush(stdout);
+		if (read_and_compare(ofs, data, rbuf))
+			read_errs++;
+	}
+	if (read_errs) {
+		fprintf(stderr, "read/check %d of %d failed. seed %d\n", read_errs, nr_reads, seed);
+		return 1;
+	}
 	return 0;
 }
 
@@ -141,6 +150,7 @@ int main(int argc, char **argv)
 	unsigned char *wbuf, *rbuf, *kbuf;
 	int pass;
 	int nr_passes = 1;
+	int nr_reads = 4;
 	int keep_contents = 0;
 	uint32_t offset = 0;
 	uint32_t length = -1;
@@ -148,7 +158,7 @@ int main(int argc, char **argv)
 	seed = time(NULL);
 
 	for (;;) {
-		static const char short_options[] = "hkl:mo:p:s:";
+		static const char short_options[] = "hkl:mo:p:r:s:";
 		static const struct option long_options[] = {
 			{ "help", no_argument, 0, 'h' },
 			{ "markbad", no_argument, 0, 'm' },
@@ -156,6 +166,7 @@ int main(int argc, char **argv)
 			{ "passes", required_argument, 0, 'p' },
 			{ "offset", required_argument, 0, 'o' },
 			{ "length", required_argument, 0, 'l' },
+			{ "reads", optional_argument, 0, 'r' },
 			{ "keep", no_argument, 0, 'k' },
 			{0, 0, 0, 0},
 		};
@@ -187,6 +198,10 @@ int main(int argc, char **argv)
 
 		case 'p':
 			nr_passes = atol(optarg);
+			break;
+
+		case 'r':
+			nr_reads = atol(optarg);
 			break;
 
 		case 'o':
@@ -286,10 +301,10 @@ int main(int argc, char **argv)
 					exit(1);
 				}
 			}
-			if (erase_and_write(test_ofs, wbuf, rbuf))
+			if (erase_and_write(test_ofs, wbuf, rbuf, nr_reads))
 				continue;
 			if (keep_contents)
-				erase_and_write(test_ofs, kbuf, rbuf);
+				erase_and_write(test_ofs, kbuf, rbuf, 1);
 		}
 		printf("\nFinished pass %d successfully\n", pass+1);
 	}
