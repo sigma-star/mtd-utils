@@ -687,7 +687,7 @@ void libubi_close(libubi_t desc)
  * success and %-1 in case of failure. @r->ubi_num contains newly created UBI
  * device number.
  */
-static int do_attach(const char *node, const struct ubi_attach_req *r)
+static int do_attach(const char *node, struct ubi_attach_req *r)
 {
 	int fd, ret;
 
@@ -1086,12 +1086,12 @@ int ubi_rsvol(libubi_t desc, const char *node, int vol_id, long long bytes)
 
 int ubi_vol_block_create(int fd)
 {
-	return ioctl(fd, UBI_IOCVOLCRBLK);
+	return ioctl(fd, UBI_IOCVOLCRBLK, NULL);
 }
 
 int ubi_vol_block_remove(int fd)
 {
-	return ioctl(fd, UBI_IOCVOLRMBLK);
+	return ioctl(fd, UBI_IOCVOLRMBLK, NULL);
 }
 
 int ubi_update_start(libubi_t desc, int fd, long long bytes)
