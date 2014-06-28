@@ -158,21 +158,6 @@ int iniparser_getint(dictionary * d, const char * key, int notfound);
 
 /*-------------------------------------------------------------------------*/
 /**
-  @brief    Get the string associated to a key, convert to a double
-  @param    d Dictionary to search
-  @param    key Key string to look for
-  @param    notfound Value to return in case of error
-  @return   double
-
-  This function queries a dictionary for a key. A key as read from an
-  ini file is given as "section:key". If the key cannot be found,
-  the notfound value is returned.
- */
-/*--------------------------------------------------------------------------*/
-double iniparser_getdouble(dictionary * d, char * key, double notfound);
-
-/*-------------------------------------------------------------------------*/
-/**
   @brief    Get the string associated to a key, convert to a boolean
   @param    d Dictionary to search
   @param    key Key string to look for
