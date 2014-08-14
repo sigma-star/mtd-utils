@@ -24,7 +24,7 @@ void usage(int status)
 		"  -m, --markbad        Mark blocks bad if they appear so\n"
 		"  -s, --seed           Supply random seed\n"
 		"  -p, --passes         Number of passes\n"
-		"  -r, --reads          Read & check iterations per pass (default=4)\n"
+		"  -r <n>, --reads=<n>  Read & check <n> times per pass\n"
 		"  -o, --offset         Start offset on flash\n"
 		"  -l, --length         Length of flash to test\n"
 		"  -k, --keep           Restore existing contents after test\n",
@@ -166,7 +166,7 @@ int main(int argc, char **argv)
 			{ "passes", required_argument, 0, 'p' },
 			{ "offset", required_argument, 0, 'o' },
 			{ "length", required_argument, 0, 'l' },
-			{ "reads", optional_argument, 0, 'r' },
+			{ "reads", required_argument, 0, 'r' },
 			{ "keep", no_argument, 0, 'k' },
 			{0, 0, 0, 0},
 		};
