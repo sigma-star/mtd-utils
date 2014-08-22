@@ -1742,7 +1742,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 
 		memcpy(&fake_st, &root_st, sizeof(struct stat));
 		fake_st.st_uid  = nh_elt->uid;
-		fake_st.st_uid  = nh_elt->uid;
+		fake_st.st_gid  = nh_elt->gid;
 		fake_st.st_mode = nh_elt->mode;
 		fake_st.st_rdev = nh_elt->dev;
 		fake_st.st_nlink = 1;
