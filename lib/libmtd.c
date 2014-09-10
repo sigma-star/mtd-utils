@@ -647,9 +647,9 @@ int mtd_dev_present(libmtd_t desc, int mtd_num) {
 	struct stat st;
 	struct libmtd *lib = (struct libmtd *)desc;
 
-	if (!lib->sysfs_supported)
-		return legacy_dev_present(mtd_num);
-	else {
+	if (!lib->sysfs_supported) {
+		return legacy_dev_present(mtd_num) == 1;
+	} else {
 		char file[strlen(lib->mtd) + 10];
 
 		sprintf(file, lib->mtd, mtd_num);
