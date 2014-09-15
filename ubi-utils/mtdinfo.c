@@ -253,6 +253,8 @@ static void print_region_info(const struct mtd_dev_info *mtd)
 	if (!args.node || (!args.map && mtd->region_cnt == 0))
 		return;
 
+	memset(&reginfo, 0, sizeof(reginfo));
+
 	/* First open the device so we can query it */
 	fd = open(args.node, O_RDONLY | O_CLOEXEC);
 	if (fd == -1) {

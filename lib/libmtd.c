@@ -901,6 +901,8 @@ int mtd_regioninfo(int fd, int regidx, struct region_info_user *reginfo)
 		return -1;
 	}
 
+	reginfo->regionindex = regidx;
+
 	ret = ioctl(fd, MEMGETREGIONINFO, reginfo);
 	if (ret < 0)
 		return sys_errmsg("%s ioctl failed for erase region %d",
