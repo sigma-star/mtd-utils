@@ -285,6 +285,47 @@ void do_dumpcontent (void)
 				p += PAD(je32_to_cpu (node->d.totlen));
 				break;
 
+			case JFFS2_NODETYPE_XATTR:
+				memcpy(name, node->x.data, node->x.name_len);
+				name[node->x.name_len] = '\x00';
+				printf ("%8s Xattr      node at 0x%08zx, totlen 0x%08x, xid   %5d, version %5d, name_len   %3d, name %s\n",
+						obsolete ? "Obsolete" : "",
+						p - data,
+						je32_to_cpu (node->x.totlen),
+						je32_to_cpu (node->x.xid),
+						je32_to_cpu (node->x.version),
+						node->x.name_len,
+						name);
+
+				crc = mtd_crc32 (0, node, sizeof (struct jffs2_raw_xattr) - sizeof (node->x.node_crc));
+				if (crc != je32_to_cpu (node->x.node_crc)) {
+					printf ("Wrong node_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - data, je32_to_cpu (node->x.node_crc), crc);
+					p += PAD(je32_to_cpu (node->x.totlen));
+					dirty += PAD(je32_to_cpu (node->x.totlen));
+					continue;
+				}
+
+				crc = mtd_crc32 (0, p + sizeof (struct jffs2_raw_xattr), node->x.name_len + je16_to_cpu (node->x.value_len) + 1);
+				if (crc != je32_to_cpu (node->x.data_crc)) {
+					printf ("Wrong data_crc at  0x%08zx, 0x%08x instead of 0x%08x\n", p - data, je32_to_cpu (node->x.data_crc), crc);
+					p += PAD(je32_to_cpu (node->x.totlen));
+					dirty += PAD(je32_to_cpu (node->x.totlen));
+					continue;
+				}
+				p += PAD(je32_to_cpu (node->x.totlen));
+				break;
+
+			case JFFS2_NODETYPE_XREF:
+				printf ("%8s Xref       node at 0x%08zx, totlen 0x%08x, xid   %5d, xseqno  %5d, #ino  %8d\n",
+						obsolete ? "Obsolete" : "",
+						p - data,
+						je32_to_cpu (node->r.totlen),
+						je32_to_cpu (node->r.xid),
+						je32_to_cpu (node->r.xseqno),
+						je32_to_cpu (node->r.ino));
+				p += PAD(je32_to_cpu (node->r.totlen));
+				break;
+
 			case JFFS2_NODETYPE_SUMMARY: {
 
 											 int i;
@@ -356,6 +397,29 @@ void do_dumpcontent (void)
 																								  name);
 
 																						  sp += JFFS2_SUMMARY_DIRENT_SIZE(spd->nsize);
+																						  break;
+																					  }
+
+														 case JFFS2_NODETYPE_XATTR : {
+																						  struct jffs2_sum_xattr_flash *spx;
+																						  spx = sp;
+																						  printf ("%14s Xattr  offset 0x%08x, totlen 0x%08x, version %5d, #xid %8d\n",
+																								  "",
+																								  je32_to_cpu (spx->offset),
+																								  je32_to_cpu (spx->totlen),
+																								  je32_to_cpu (spx->version),
+																								  je32_to_cpu (spx->xid));
+																						  sp += JFFS2_SUMMARY_XATTR_SIZE;
+																						  break;
+																					  }
+
+														 case JFFS2_NODETYPE_XREF : {
+																						  struct jffs2_sum_xref_flash *spr;
+																						  spr = sp;
+																						  printf ("%14s Xref   offset 0x%08x\n",
+																								  "",
+																								  je32_to_cpu (spr->offset));
+																						  sp += JFFS2_SUMMARY_XREF_SIZE;
 																						  break;
 																					  }
 
