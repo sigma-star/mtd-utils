@@ -46,6 +46,10 @@
 #include <uuid/uuid.h>
 #include <sys/file.h>
 
+/* common.h requires the PROGRAM_NAME macro */
+#define PROGRAM_NAME "mkfs.ubifs"
+#include "common.h"
+
 #include "libubi.h"
 #include "defs.h"
 #include "crc16.h"

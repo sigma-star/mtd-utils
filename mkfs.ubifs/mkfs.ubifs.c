@@ -21,7 +21,6 @@
  */
 
 #define _XOPEN_SOURCE 500 /* For realpath() */
-#define PROGRAM_NAME "mkfs.ubifs"
 
 #include "mkfs.ubifs.h"
 #include <crc32.h>

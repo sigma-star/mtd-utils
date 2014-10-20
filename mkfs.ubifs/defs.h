@@ -29,21 +29,6 @@
 #define le32_to_cpu(x) (t32((x)))
 #define le64_to_cpu(x) (t64((x)))
 
-#define ALIGN(x,a) __ALIGN_MASK(x,(typeof(x))(a)-1)
-#define __ALIGN_MASK(x,mask) (((x)+(mask))&~(mask))
-
-#define min_t(t,x,y) ({ \
-	typeof((x)) _x = (x); \
-	typeof((y)) _y = (y); \
-	(_x < _y) ? _x : _y; \
-})
-
-#define max_t(t,x,y) ({ \
-	typeof((x)) _x = (x); \
-	typeof((y)) _y = (y); \
-	(_x > _y) ? _x : _y; \
-})
-
 #define unlikely(x) (x)
 
 #define ubifs_assert(x) ({})
