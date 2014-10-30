@@ -32,7 +32,6 @@
 #undef crc32
 
 #include "compr.h"
-#include "ubifs-media.h"
 #include "mkfs.ubifs.h"
 
 static void *lzo_mem;

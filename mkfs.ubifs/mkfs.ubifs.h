@@ -46,6 +46,8 @@
 #include <uuid/uuid.h>
 #include <sys/file.h>
 
+#include <mtd/ubifs-media.h>
+
 /* common.h requires the PROGRAM_NAME macro */
 #define PROGRAM_NAME "mkfs.ubifs"
 #include "common.h"
@@ -53,7 +55,6 @@
 #include "libubi.h"
 #include "defs.h"
 #include "crc16.h"
-#include "ubifs-media.h"
 #include "ubifs.h"
 #include "key.h"
 #include "lpt.h"
