@@ -33,6 +33,8 @@
 #ifndef __UBIFS_MEDIA_H__
 #define __UBIFS_MEDIA_H__
 
+#include <asm/byteorder.h>
+
 /* UBIFS node magic number (must not have the padding byte first or last) */
 #define UBIFS_NODE_MAGIC  0x06101831
 
