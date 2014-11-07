@@ -296,7 +296,7 @@ int main (int argc,char *argv[])
 	 * write the entire file to flash *
 	 **********************************/
 
-	if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL,"Writing data: 0k/%luk (0%%)",KB (filestat.st_size));
+	if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL,"Writing data: 0k/%lluk (0%%)",KB ((unsigned long long)filestat.st_size));
 	size = filestat.st_size;
 	i = BUFSIZE;
 	written = 0;
@@ -304,10 +304,10 @@ int main (int argc,char *argv[])
 	{
 		if (size < BUFSIZE) i = size;
 		if (flags & FLAG_VERBOSE)
-			log_printf (LOG_NORMAL,"\rWriting data: %dk/%luk (%lu%%)",
+			log_printf (LOG_NORMAL,"\rWriting data: %dk/%lluk (%llu%%)",
 					KB (written + i),
-					KB (filestat.st_size),
-					PERCENTAGE (written + i,filestat.st_size));
+					KB ((unsigned long long)filestat.st_size),
+					PERCENTAGE (written + i,(unsigned long long)filestat.st_size));
 
 		/* read from filename */
 		safe_read (fil_fd,filename,src,i,flags & FLAG_VERBOSE);
@@ -325,8 +325,8 @@ int main (int argc,char *argv[])
 				exit (EXIT_FAILURE);
 			}
 			log_printf (LOG_ERROR,
-					"Short write count returned while writing to x%.8x-0x%.8x on %s: %d/%lu bytes written to flash\n",
-					written,written + i,device,written + result,filestat.st_size);
+					"Short write count returned while writing to x%.8x-0x%.8x on %s: %d/%llu bytes written to flash\n",
+					written,written + i,device,written + result,(unsigned long long)filestat.st_size);
 			exit (EXIT_FAILURE);
 		}
 
@@ -335,10 +335,10 @@ int main (int argc,char *argv[])
 	}
 	if (flags & FLAG_VERBOSE)
 		log_printf (LOG_NORMAL,
-				"\rWriting data: %luk/%luk (100%%)\n",
-				KB (filestat.st_size),
-				KB (filestat.st_size));
-	DEBUG("Wrote %d / %luk bytes\n",written,filestat.st_size);
+				"\rWriting data: %lluk/%lluk (100%%)\n",
+				KB ((unsigned long long)filestat.st_size),
+				KB ((unsigned long long)filestat.st_size));
+	DEBUG("Wrote %d / %lluk bytes\n",written,(unsigned long long)filestat.st_size);
 
 	/**********************************
 	 * verify that flash == file data *
@@ -349,16 +349,16 @@ int main (int argc,char *argv[])
 	size = filestat.st_size;
 	i = BUFSIZE;
 	written = 0;
-	if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL,"Verifying data: 0k/%luk (0%%)",KB (filestat.st_size));
+	if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL,"Verifying data: 0k/%lluk (0%%)",KB ((unsigned long long)filestat.st_size));
 	while (size)
 	{
 		if (size < BUFSIZE) i = size;
 		if (flags & FLAG_VERBOSE)
 			log_printf (LOG_NORMAL,
-					"\rVerifying data: %dk/%luk (%lu%%)",
+					"\rVerifying data: %dk/%lluk (%lu%%)",
 					KB (written + i),
-					KB (filestat.st_size),
-					PERCENTAGE (written + i,filestat.st_size));
+					KB ((unsigned long long)filestat.st_size),
+					PERCENTAGE (written + i,(unsigned long long)filestat.st_size));
 
 		/* read from filename */
 		safe_read (fil_fd,filename,src,i,flags & FLAG_VERBOSE);
@@ -380,10 +380,10 @@ int main (int argc,char *argv[])
 	}
 	if (flags & FLAG_VERBOSE)
 		log_printf (LOG_NORMAL,
-				"\rVerifying data: %luk/%luk (100%%)\n",
+				"\rVerifying data: %lluk/%lluk (100%%)\n",
 				KB (filestat.st_size),
 				KB (filestat.st_size));
-	DEBUG("Verified %d / %luk bytes\n",written,filestat.st_size);
+	DEBUG("Verified %d / %lluk bytes\n",written,(unsigned long long)filestat.st_size);
 
 	exit (EXIT_SUCCESS);
 }
