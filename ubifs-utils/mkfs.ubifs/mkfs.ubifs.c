@@ -483,7 +483,11 @@ static int get_options(int argc, char**argv)
 	c->orph_lebs = 1;
 	c->key_hash = key_r5_hash;
 	c->key_len = UBIFS_SK_LEN;
+#ifdef WITHOUT_LZO
+	c->default_compr = UBIFS_COMPR_ZLIB;
+#else
 	c->default_compr = UBIFS_COMPR_LZO;
+#endif
 	c->favor_percent = 20;
 	c->lsave_cnt = 256;
 	c->leb_size = -1;
@@ -592,21 +596,29 @@ static int get_options(int argc, char**argv)
 				return err_msg("bad key hash");
 			break;
 		case 'x':
-			if (strcmp(optarg, "favor_lzo") == 0)
-				c->favor_lzo = 1;
+			if (strcmp(optarg, "none") == 0)
+				c->default_compr = UBIFS_COMPR_NONE;
 			else if (strcmp(optarg, "zlib") == 0)
 				c->default_compr = UBIFS_COMPR_ZLIB;
-			else if (strcmp(optarg, "none") == 0)
-				c->default_compr = UBIFS_COMPR_NONE;
+#ifndef WITHOUT_LZO
+			else if (strcmp(optarg, "favor_lzo") == 0)
+				c->favor_lzo = 1;
 			else if (strcmp(optarg, "lzo") != 0)
+#else
+			else
+#endif
 				return err_msg("bad compressor name");
 			break;
 		case 'X':
+#ifdef WITHOT_LZO
+			return err_msg("built without LZO support");
+#else
 			c->favor_percent = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg ||
 			    c->favor_percent <= 0 || c->favor_percent >= 100)
 				return err_msg("bad favor LZO percent '%s'",
 					       optarg);
+#endif
 			break;
 		case 'j':
 			c->max_bud_bytes = get_bytes(optarg);
@@ -1464,7 +1476,11 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		out_len = NODE_BUFFER_SIZE - UBIFS_DATA_NODE_SZ;
 		if (c->default_compr == UBIFS_COMPR_NONE &&
 		    (flags & FS_COMPR_FL))
+#ifdef WITHOUT_LZO
+			use_compr = UBIFS_COMPR_ZLIB;
+#else
 			use_compr = UBIFS_COMPR_LZO;
+#endif
 		else
 			use_compr = c->default_compr;
 		compr_type = compress_data(buf, bytes_read, &dn->data,

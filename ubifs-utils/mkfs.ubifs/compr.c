@@ -24,7 +24,9 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
+#ifndef WITHOUT_LZO
 #include <lzo/lzo1x.h>
+#endif
 #include <linux/types.h>
 
 #define crc32 __zlib_crc32
@@ -85,6 +87,7 @@ static int zlib_deflate(void *in_buf, size_t in_len, void *out_buf,
 	return 0;
 }
 
+#ifndef WITHOUT_LZO
 static int lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 			size_t *out_len)
 {
@@ -102,6 +105,7 @@ static int lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 
 	return 0;
 }
+#endif
 
 static int no_compress(void *in_buf, size_t in_len, void *out_buf,
 		       size_t *out_len)
@@ -113,6 +117,7 @@ static int no_compress(void *in_buf, size_t in_len, void *out_buf,
 
 static char *zlib_buf;
 
+#ifndef WITHOUT_LZO
 static int favor_lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 			       size_t *out_len, int *type)
 {
@@ -158,6 +163,7 @@ select_zlib:
 	memcpy(out_buf, zlib_buf, zlib_len);
 	return 0;
 }
+#endif
 
 int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 		  int type)
@@ -169,6 +175,10 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 		return MKFS_UBIFS_COMPR_NONE;
 	}
 
+#ifdef WITHOUT_LZO
+	{
+		switch (type) {
+#else
 	if (c->favor_lzo)
 		ret = favor_lzo_compress(in_buf, in_len, out_buf, out_len, &type);
 	else {
@@ -176,6 +186,7 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 		case MKFS_UBIFS_COMPR_LZO:
 			ret = lzo_compress(in_buf, in_len, out_buf, out_len);
 			break;
+#endif
 		case MKFS_UBIFS_COMPR_ZLIB:
 			ret = zlib_deflate(in_buf, in_len, out_buf, out_len);
 			break;
@@ -197,9 +208,13 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 
 int init_compression(void)
 {
+#ifdef WITHOUT_LZO
+	lzo_mem = NULL;
+#else
 	lzo_mem = malloc(LZO1X_999_MEM_COMPRESS);
 	if (!lzo_mem)
 		return -1;
+#endif
 
 	zlib_buf = malloc(UBIFS_BLOCK_SIZE * WORST_COMPR_FACTOR);
 	if (!zlib_buf) {
