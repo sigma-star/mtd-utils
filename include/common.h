@@ -117,11 +117,12 @@ extern "C" {
 	fprintf(stderr, "%s: warning!: " fmt "\n", PROGRAM_NAME, ##__VA_ARGS__); \
 } while(0)
 
-#if defined(__UCLIBC__)
-/* uClibc versions before 0.9.34 don't have rpmatch() */
-#if __UCLIBC_MAJOR__ == 0 && \
+/* uClibc versions before 0.9.34 and musl don't have rpmatch() */
+#if defined(__UCLIBC__) && \
+		(__UCLIBC_MAJOR__ == 0 && \
 		(__UCLIBC_MINOR__ < 9 || \
-		(__UCLIBC_MINOR__ == 9 && __UCLIBC_SUBLEVEL__ < 34))
+		(__UCLIBC_MINOR__ == 9 && __UCLIBC_SUBLEVEL__ < 34))) || \
+	!defined(__GLIBC__)
 #undef rpmatch
 #define rpmatch __rpmatch
 static inline int __rpmatch(const char *resp)
@@ -129,7 +130,6 @@ static inline int __rpmatch(const char *resp)
     return (resp[0] == 'y' || resp[0] == 'Y') ? 1 :
 	(resp[0] == 'n' || resp[0] == 'N') ? 0 : -1;
 }
-#endif
 #endif
 
 /**
