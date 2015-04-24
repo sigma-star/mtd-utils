@@ -3,7 +3,6 @@
 
 #include <time.h>
 #include <errno.h>
-#include <error.h>
 #include <netdb.h>
 #include <stdio.h>
 #include <stdlib.h>
