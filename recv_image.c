@@ -4,7 +4,6 @@
 #define _BSD_SOURCE	/* struct ip_mreq */
 
 #include <errno.h>
-#include <error.h>
 #include <stdio.h>
 #include <netdb.h>
 #include <stdlib.h>
