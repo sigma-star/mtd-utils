@@ -476,7 +476,7 @@ static int dev_node2num(struct libmtd *lib, const char *node, int *mtd_num)
  * sysfs_is_supported - check whether the MTD sub-system supports MTD.
  * @lib: MTD library descriptor
  *
- * The Linux kernel MTD subsystem gained MTD support starting from kernel
+ * The Linux kernel MTD subsystem gained sysfs support starting from kernel
  * 2.6.30 and libmtd tries to use sysfs interface if possible, because the NAND
  * sub-page size is available there (and not available at all in pre-sysfs
  * kernels).
