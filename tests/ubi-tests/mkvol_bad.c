@@ -106,7 +106,7 @@ static int test_mkvol(void)
 		return -1;
 
 	req.alignment = dev_info.leb_size - dev_info.min_io_size;
-	req.bytes = (dev_info.leb_size - dev_info.leb_size % req.alignment) *
+	req.bytes = (long long)(dev_info.leb_size - dev_info.leb_size % req.alignment) *
 		    dev_info.avail_lebs + 1;
 	ret = ubi_mkvol(libubi, node, &req);
 	if (check_failed(ret, ENOSPC, "ubi_mkvol", "bytes = %lld", req.bytes))

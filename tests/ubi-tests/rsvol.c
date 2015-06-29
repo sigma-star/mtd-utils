@@ -169,7 +169,7 @@ static int test_rsvol1(struct ubi_vol_info *vol_info)
 	}
 
 	if (ubi_rsvol(libubi, node, vol_info->vol_id,
-		      vol_info->leb_size * dev_info.avail_lebs)) {
+		      (long long)vol_info->leb_size * dev_info.avail_lebs)) {
 		failed("ubi_rsvol");
 		return -1;
 	}

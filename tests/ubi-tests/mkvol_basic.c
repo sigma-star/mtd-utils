@@ -55,7 +55,7 @@ static int mkvol_alignment(void)
 
 		/* Bear in mind alignment reduces EB size */
 		ebsz = dev_info.leb_size - dev_info.leb_size % req.alignment;
-		req.bytes = dev_info.avail_lebs * ebsz;
+		req.bytes = (long long)dev_info.avail_lebs * ebsz;
 
 		req.vol_type = UBI_DYNAMIC_VOLUME;
 		req.name = name;
