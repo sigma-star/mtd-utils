@@ -16,7 +16,7 @@ rm -rf ${TEST_DIR}/*
 
 rm -rf ${TEST_DIR}/*
 
-./integrity/integck || exit 1
+./integrity/integck $TEST_DIR || exit 1
 
 rm -rf ${TEST_DIR}/*
 
