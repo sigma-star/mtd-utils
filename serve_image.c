@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 	while (1) for (pkt_nr=0; pkt_nr < total_pkts_per_block; pkt_nr++) {
 
 		if (blockptr && pkt_nr == 0) {
- 			unsigned long amt_sent = total_pkts_per_block * nr_blocks * sizeof(pktbuf);
+			unsigned long amt_sent = total_pkts_per_block * nr_blocks * sizeof(pktbuf);
 			gettimeofday(&now, NULL);
 
 			time_msecs = (now.tv_sec - then.tv_sec) * 1000;
