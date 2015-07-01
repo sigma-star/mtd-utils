@@ -33,4 +33,3 @@ int ubiutils_srand(void);
 #endif
 
 #endif /* !__UBI_UTILS_COMMON_H__ */
-

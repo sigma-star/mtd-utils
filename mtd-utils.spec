@@ -37,4 +37,3 @@ rm -rf $RPM_BUILD_ROOT
 %changelog
 * Wed May  5 2004  <dwmw2@infradead.org> - 1.0
 - Initial build.
-

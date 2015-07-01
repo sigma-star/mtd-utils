@@ -49,16 +49,3 @@ int do_pwr_dn(int fd, int cycleCnt)
 
     return 0;
 }
-
-
-
-
-
-
-
-
-
-
-
-
-

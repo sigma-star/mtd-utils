@@ -204,4 +204,3 @@ out_libubi:
 	libubi_close(libubi);
 	return -1;
 }
-

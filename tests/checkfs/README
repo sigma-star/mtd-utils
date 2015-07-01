@@ -167,7 +167,3 @@ checkfs is called from the rc.local script file.
 The cycle then repeats till a problem is detected, at which point
 the "ok to power me down" message is not sent and the cycle stops
 waiting for the user to examine the system.
-
-
-
-
