@@ -792,7 +792,7 @@ int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 			req->dev_num = r.ubi_num;
 			/*
 			 * The call succeeded. It means that the kernel ignored
-			 * 'max_beb_per1024' parameter. 
+			 * 'max_beb_per1024' parameter.
 			 */
 			return 1;
 		} else if (errno != EINVAL)

@@ -11,7 +11,6 @@
 #include <crc32.h>
 
 #define ERASE_SIZE 131072
-//#define PKT_SIZE 1400
 #define NR_PKTS ((ERASE_SIZE + PKT_SIZE - 1) / PKT_SIZE)
 #define DROPS 8
 
@@ -83,7 +82,7 @@ int main(void)
 		fd = open("after", O_WRONLY|O_TRUNC|O_CREAT, 0644);
 		if (fd >= 0)
 			write(fd, pktbuf, ERASE_SIZE);
-		
+
 		exit(1);
 	}
 

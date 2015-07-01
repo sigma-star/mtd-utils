@@ -38,5 +38,5 @@ for a in `seq 0 16` ; do
 	mknod /dev/mtd$a c 90 `expr $a + $a`
 	mknod /dev/mtdr$a c 90 `expr $a + $a + 1`
 	mknod /dev/mtdblock$a b 31 $a
-done	
+done
 

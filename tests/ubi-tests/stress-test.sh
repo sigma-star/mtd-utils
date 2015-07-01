@@ -60,12 +60,12 @@ print_params()
 	if [ "$module" = "nandsim" ]; then
 		printf "%s" "page size ${page_size}KiB, VID offset $vid_offs, "
 	fi
-	printf "%s\n" "fastmap $fastmap" 
+	printf "%s\n" "fastmap $fastmap"
 }
 
 # Load mtdram with specified size and PEB size
 # Usage: load_mtdram <flash size> <PEB size>
-# 1. Flash size is specified in MiB 
+# 1. Flash size is specified in MiB
 # 2. PEB size is specified in KiB
 load_mtdram()
 {
@@ -86,7 +86,7 @@ print_separator()
 # Usage: run_test <nandsim|mtdram> <flash size> <PEB size> \
 #                 <Page size> <VID hdr offs> <enable fastmap>
 # 1. Simulator type (nandsim or mtdram)
-# 2. Flash size is specified in MiB 
+# 2. Flash size is specified in MiB
 # 3. PEB size is specified in KiB
 # 4. Page size is specified in bytes (mtdram ingores this)
 # 5. VID header offset (mtdram ingores this)
@@ -98,7 +98,7 @@ run_test()
 	local peb_size="$3";
 	local page_size="$4";
 	local vid_offs="$5"
-	local fastmap="$6";  
+	local fastmap="$6";
 	local fm_supported fm_param mtdnum
 
 	print_separator
