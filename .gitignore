@@ -35,6 +35,7 @@
 /jffs2reader
 /mkfs.jffs2
 /mtd_debug
+/mtdpart
 /nanddump
 /nandtest
 /nandwrite
