@@ -141,7 +141,10 @@ retry:
 			perror("read()");
 			goto err2;
 		}
-		err = write(outfd, buf, size);
+		if (err < size) {
+			fprintf(stderr, "%s: short read, requested %#x, read %#x\n", __func__, size, err);
+		}
+		err = write(outfd, buf, err);
 		if (err < 0) {
 			fprintf(stderr, "%s: write, size %#x, n %#x\n", __func__, size, n);
 			perror("write()");
