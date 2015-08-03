@@ -91,7 +91,7 @@ Tarball gpg signature: $ftp_url/$release_name.tar.bz2.asc
 Signed git tag:        $git_url $tag_name
 EOF
 
-git send-email --from me --to 'MTL Mailing List <linux-mtd@lists.infradead.org>' --cc 'Peter Korsgaard (buildroot) <jacmet@sunsite.dk>' --cc 'Josh Boyer (Fedora) <jwboyer@gmail.com>' --cc 'Riku Voipio (Debian) <riku.voipio@linaro.org>' \$mtd_tmpfile
+git send-email --from me --to 'MTD Mailing List <linux-mtd@lists.infradead.org>' --cc 'Peter Korsgaard (buildroot) <jacmet@sunsite.dk>' --cc 'Josh Boyer (Fedora) <jwboyer@gmail.com>' --cc 'Riku Voipio (Debian) <riku.voipio@linaro.org>' \$mtd_tmpfile
 
 rm \$mtd_tmpfile
 ------------------------------------------------------------------------------
