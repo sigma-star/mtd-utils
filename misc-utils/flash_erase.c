@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 {
 	libmtd_t mtd_desc;
 	struct mtd_dev_info mtd;
-	int fd, clmpos = 0, clmlen = 8;
+	int fd;
 	unsigned long long start;
 	unsigned int eb, eb_start, eb_cnt;
 	bool isNAND;
@@ -191,37 +191,6 @@ int main(int argc, char *argv[])
 		if (!isNAND)
 			cleanmarker.totlen = cpu_to_je32(sizeof(cleanmarker));
 		else {
-			struct nand_oobinfo oobinfo;
-
-			if (ioctl(fd, MEMGETOOBSEL, &oobinfo) != 0)
-				return sys_errmsg("%s: unable to get NAND oobinfo", mtd_device);
-
-			/* Check for autoplacement */
-			if (oobinfo.useecc == MTD_NANDECC_AUTOPLACE) {
-				/* Get the position of the free bytes */
-				if (!oobinfo.oobfree[0][1])
-					return errmsg(" Eeep. Autoplacement selected and no empty space in oob");
-				clmpos = oobinfo.oobfree[0][0];
-				clmlen = oobinfo.oobfree[0][1];
-				if (clmlen > 8)
-					clmlen = 8;
-			} else {
-				/* Legacy mode */
-				switch (mtd.oob_size) {
-					case 8:
-						clmpos = 6;
-						clmlen = 2;
-						break;
-					case 16:
-						clmpos = 8;
-						clmlen = 8;
-						break;
-					case 64:
-						clmpos = 16;
-						clmlen = 8;
-						break;
-				}
-			}
 			cleanmarker.totlen = cpu_to_je32(8);
 		}
 		cleanmarker.hdr_crc = cpu_to_je32(mtd_crc32(0, &cleanmarker, sizeof(cleanmarker) - 4));
@@ -271,7 +240,8 @@ int main(int argc, char *argv[])
 
 		/* write cleanmarker */
 		if (isNAND) {
-			if (mtd_write_oob(mtd_desc, &mtd, fd, (uint64_t)offset + clmpos, clmlen, &cleanmarker) != 0) {
+			if (mtd_write(mtd_desc, &mtd, fd, eb, 0, NULL, 0, &cleanmarker, 0,
+					MTD_OPS_AUTO_OOB) != 0) {
 				sys_errmsg("%s: MTD writeoob failure", mtd_device);
 				continue;
 			}
@@ -281,7 +251,7 @@ int main(int argc, char *argv[])
 				continue;
 			}
 		}
-		verbose(!quiet, " Cleanmarker written at %"PRIxoff_t, offset);
+		verbose(!quiet, " Cleanmarker Updated.");
 	}
 	show_progress(&mtd, offset, eb, eb_start, eb_cnt);
 	bareverbose(!quiet, "\n");
