@@ -384,7 +384,7 @@ int create_lpt(struct ubifs_info *c)
 		goto out;
 	}
 	memset(pnode, 0 , sizeof(struct ubifs_pnode));
-	memset(nnode, 0 , sizeof(struct ubifs_pnode));
+	memset(nnode, 0 , sizeof(struct ubifs_nnode));
 
 	c->lscan_lnum = c->main_first;
 
