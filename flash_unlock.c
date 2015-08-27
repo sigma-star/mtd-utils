@@ -29,7 +29,12 @@
 static void usage(int status)
 {
 	fprintf(status ? stderr : stdout,
-		"Usage: %s <mtd device> [offset [block count]]\n\n"
+		"Usage: %s [options] [--] <mtd device> [offset [block count]]\n"
+		"\n"
+		"Options:\n"
+		" -h         --help              Display this help and exit\n"
+		"            --version           Display version information and exit\n"
+		"\n"
 		"If offset is not specified, it defaults to 0.\n"
 		"If block count is not specified, it defaults to all blocks.\n",
 		PROGRAM_NAME);
