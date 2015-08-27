@@ -54,7 +54,8 @@ int main(int argc, char *argv[])
 	struct mtd_info_user mtdInfo;
 	struct erase_info_user mtdLockInfo;
 	int count;
-	const char *dev;
+	const char *dev, *offs_s, *count_s;
+	int arg_idx;
 
 	for (;;) {
 		int c;
@@ -76,11 +77,31 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	/* Parse command line options */
-	if (argc < 2 || argc > 4)
-		usage(1);
+	arg_idx = optind;
 
-	dev = argv[1];
+	/* Sanity checks */
+	if (argc - arg_idx < 1) {
+		errmsg("too few arguments");
+		usage(1);
+	} else if (argc - arg_idx > 3) {
+		errmsg("too many arguments");
+		usage(1);
+	}
+
+	/* First non-option argument */
+	dev = argv[arg_idx++];
+
+	/* Second non-option argument */
+	if (arg_idx < argc)
+		offs_s = argv[arg_idx++];
+	else
+		offs_s = NULL;
+
+	/* Third non-option argument */
+	if (arg_idx < argc)
+		count_s = argv[arg_idx++];
+	else
+		count_s = NULL;
 
 	/* Get the device info to compare to command line sizes */
 	fd = open(dev, O_RDWR);
@@ -91,16 +112,16 @@ int main(int argc, char *argv[])
 		sys_errmsg_die("could not get mtd info: %s", dev);
 
 	/* Make sure user options are valid */
-	if (argc > 2)
-		mtdLockInfo.start = strtol(argv[2], NULL, 0);
+	if (offs_s)
+		mtdLockInfo.start = strtol(offs_s, NULL, 0);
 	else
 		mtdLockInfo.start = 0;
 	if (mtdLockInfo.start > mtdInfo.size)
 		errmsg_die("%#x is beyond device size %#x",
 			mtdLockInfo.start, mtdInfo.size);
 
-	if (argc > 3) {
-		count = strtol(argv[3], NULL, 0);
+	if (count_s) {
+		count = strtol(count_s, NULL, 0);
 		if (count == -1)
 			mtdLockInfo.length = mtdInfo.size;
 		else
