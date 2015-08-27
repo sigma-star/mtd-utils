@@ -13,6 +13,7 @@
 #define FLASH_UNLOCK 0
 #endif
 
+#include <getopt.h>
 #include <unistd.h>
 #include <stdlib.h>
 #include <stdio.h>
@@ -35,6 +36,12 @@ static void usage(int status)
 	exit(status);
 }
 
+static const char short_opts[] = "h";
+static const struct option long_opts[] = {
+	{ "help",	no_argument,	0, 'h' },
+	{ NULL,		0,		0, 0 },
+};
+
 int main(int argc, char *argv[])
 {
 	int fd, request;
@@ -43,11 +50,26 @@ int main(int argc, char *argv[])
 	int count;
 	const char *dev;
 
+	for (;;) {
+		int c;
+
+		c = getopt_long(argc, argv, short_opts, long_opts, NULL);
+		if (c == EOF)
+			break;
+
+		switch (c) {
+		case 'h':
+			usage(0);
+			break;
+		default:
+			usage(1);
+			break;
+		}
+	}
+
 	/* Parse command line options */
 	if (argc < 2 || argc > 4)
 		usage(1);
-	if (!strcmp(argv[1], "-h") || !strcmp(argv[1], "--help"))
-		usage(0);
 
 	dev = argv[1];
 
