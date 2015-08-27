@@ -39,6 +39,7 @@ static void usage(int status)
 static const char short_opts[] = "h";
 static const struct option long_opts[] = {
 	{ "help",	no_argument,	0, 'h' },
+	{ "version",	no_argument,	0, 'v' },
 	{ NULL,		0,		0, 0 },
 };
 
@@ -61,6 +62,9 @@ int main(int argc, char *argv[])
 		case 'h':
 			usage(0);
 			break;
+		case 'v':
+			common_print_version();
+			exit(0);
 		default:
 			usage(1);
 			break;
