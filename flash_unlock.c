@@ -28,7 +28,7 @@
 static void usage(int status)
 {
 	fprintf(status ? stderr : stdout,
-		"Usage: %s <mtd device> [offset] [block count]\n\n"
+		"Usage: %s <mtd device> [offset [block count]]\n\n"
 		"If offset is not specified, it defaults to 0.\n"
 		"If block count is not specified, it defaults to all blocks.\n",
 		PROGRAM_NAME);
