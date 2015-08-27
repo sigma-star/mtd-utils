@@ -4,13 +4,16 @@
  * utilities for locking/unlocking sectors of flash devices
  */
 
+enum flash_lock_request {
+	REQUEST_LOCK,
+	REQUEST_UNLOCK,
+};
+
 #ifndef PROGRAM_NAME
-#define PROGRAM_NAME "flash_unlock"
-#define FLASH_MSG    "unlock"
-#define FLASH_UNLOCK 1
+#define PROGRAM_NAME		"flash_unlock"
+#define DEFAULT_REQUEST		REQUEST_UNLOCK
 #else
-#define FLASH_MSG    "lock"
-#define FLASH_UNLOCK 0
+#define DEFAULT_REQUEST		REQUEST_LOCK
 #endif
 
 #include <getopt.h>
@@ -26,34 +29,48 @@
 #include "common.h"
 #include <mtd/mtd-user.h>
 
+static const char *flash_msg[] = {
+	[ REQUEST_LOCK ]	= "lock",
+	[ REQUEST_UNLOCK ]	= "unlock",
+};
+
 static void usage(int status)
 {
 	fprintf(status ? stderr : stdout,
+		"Utility to lock or unlock the flash. Default action: %s\n"
+		"\n"
 		"Usage: %s [options] [--] <mtd device> [offset [block count]]\n"
 		"\n"
 		"Options:\n"
 		" -h         --help              Display this help and exit\n"
 		"            --version           Display version information and exit\n"
+		" -l         --lock              Lock a region of flash\n"
+		" -u         --unlock            Unlock a region of flash\n"
 		"\n"
 		"If offset is not specified, it defaults to 0.\n"
 		"If block count is not specified, it defaults to all blocks.\n",
+		flash_msg[DEFAULT_REQUEST],
 		PROGRAM_NAME);
 	exit(status);
 }
 
-static const char short_opts[] = "h";
+static const char short_opts[] = "hlu";
 static const struct option long_opts[] = {
 	{ "help",	no_argument,	0, 'h' },
+	{ "lock",	no_argument,	0, 'l' },
+	{ "unlock",	no_argument,	0, 'u' },
 	{ "version",	no_argument,	0, 'v' },
 	{ NULL,		0,		0, 0 },
 };
 
 /* Program arguments */
 static const char *dev, *offs_s, *count_s;
+static enum flash_lock_request req = DEFAULT_REQUEST;
 
 static void process_args(int argc, char *argv[])
 {
 	int arg_idx;
+	int req_set = 0;
 
 	for (;;) {
 		int c;
@@ -66,6 +83,14 @@ static void process_args(int argc, char *argv[])
 		case 'h':
 			usage(0);
 			break;
+		case 'l':
+			req = REQUEST_LOCK;
+			req_set++;
+			break;
+		case 'u':
+			req = REQUEST_UNLOCK;
+			req_set++;
+			break;
 		case 'v':
 			common_print_version();
 			exit(0);
@@ -73,6 +98,11 @@ static void process_args(int argc, char *argv[])
 			usage(1);
 			break;
 		}
+	}
+
+	if (req_set > 1) {
+		errmsg("cannot specify more than one lock/unlock option");
+		usage(1);
 	}
 
 	arg_idx = optind;
@@ -142,10 +172,20 @@ int main(int argc, char *argv[])
 			mtdLockInfo.start, mtdLockInfo.length, mtdInfo.size);
 
 	/* Finally do the operation */
-	request = FLASH_UNLOCK ? MEMUNLOCK : MEMLOCK;
+	switch (req) {
+	case REQUEST_LOCK:
+		request = MEMLOCK;
+		break;
+	case REQUEST_UNLOCK:
+		request = MEMUNLOCK;
+		break;
+	default:
+		errmsg_die("unknown request type: %d", req);
+		break;
+	}
 	if (ioctl(fd, request, &mtdLockInfo))
 		sys_errmsg_die("could not %s device: %s\n",
-			FLASH_MSG, dev);
+				flash_msg[req], dev);
 
 	return 0;
 }
