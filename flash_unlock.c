@@ -48,13 +48,11 @@ static const struct option long_opts[] = {
 	{ NULL,		0,		0, 0 },
 };
 
-int main(int argc, char *argv[])
+/* Program arguments */
+static const char *dev, *offs_s, *count_s;
+
+static void process_args(int argc, char *argv[])
 {
-	int fd, request;
-	struct mtd_info_user mtdInfo;
-	struct erase_info_user mtdLockInfo;
-	int count;
-	const char *dev, *offs_s, *count_s;
 	int arg_idx;
 
 	for (;;) {
@@ -102,6 +100,17 @@ int main(int argc, char *argv[])
 		count_s = argv[arg_idx++];
 	else
 		count_s = NULL;
+
+}
+
+int main(int argc, char *argv[])
+{
+	int fd, request;
+	struct mtd_info_user mtdInfo;
+	struct erase_info_user mtdLockInfo;
+	int count;
+
+	process_args(argc, argv);
 
 	/* Get the device info to compare to command line sizes */
 	fd = open(dev, O_RDWR);
