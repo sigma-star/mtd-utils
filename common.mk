@@ -80,7 +80,7 @@ ifneq ($(BUILDDIR),$(CURDIR))
 	$(Q)mkdir -p $(dir $@)
 endif
 	$(call BECHO,CC)
-	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -MD -MF $(BUILDDIR)/.$(<F).dep
+	$(Q)$(CC) $(CPPFLAGS) $(CFLAGS) -c -o $@ $< -g -MMD -MF $(BUILDDIR)/.$(<F).dep
 
 .SUFFIXES:
 
