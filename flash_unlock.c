@@ -168,7 +168,7 @@ int main(int argc, char *argv[])
 	} else {
 		mtdLockInfo.start = 0;
 	}
-	if (mtdLockInfo.start > mtdInfo.size)
+	if (mtdLockInfo.start >= mtdInfo.size)
 		errmsg_die("%#x is beyond device size %#x",
 			mtdLockInfo.start, mtdInfo.size);
 
