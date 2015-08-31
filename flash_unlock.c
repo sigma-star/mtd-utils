@@ -52,7 +52,8 @@ static void usage(int status)
 		" -u         --unlock            Unlock a region of flash\n"
 		"\n"
 		"If offset is not specified, it defaults to 0.\n"
-		"If block count is not specified, it defaults to all blocks.\n",
+		"If block count is not specified, it defaults to all blocks.\n"
+		"A block count of -1 means all blocks.\n",
 		flash_msg[DEFAULT_REQUEST],
 		PROGRAM_NAME);
 	exit(status);
