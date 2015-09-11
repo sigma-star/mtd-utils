@@ -519,6 +519,7 @@ int main(int argc, char * const argv[])
 	 */
 	seek = ui.peb_size * 2;
 	if (lseek(args.out_fd, seek, SEEK_SET) != seek) {
+		err = -1;
 		sys_errmsg("cannot seek file \"%s\"", args.f_out);
 		goto out_free;
 	}
@@ -530,6 +531,7 @@ int main(int argc, char * const argv[])
 		int fd, j;
 
 		if (!sname) {
+			err = -1;
 			errmsg("ini-file parsing error (iniparser_getsecname)");
 			goto out_free;
 		}
@@ -550,6 +552,7 @@ int main(int argc, char * const argv[])
 		 */
 		for (j = 0; j < i; j++) {
 			if (vi[i].id == vi[j].id) {
+				err = -1;
 				errmsg("volume IDs must be unique, but ID %d "
 				       "in section \"%s\" is not",
 				       vi[i].id, sname);
@@ -557,6 +560,7 @@ int main(int argc, char * const argv[])
 			}
 
 			if (!strcmp(vi[i].name, vi[j].name)) {
+				err = -1;
 				errmsg("volume name must be unique, but name "
 				       "\"%s\" in section \"%s\" is not",
 				       vi[i].name, sname);
@@ -580,6 +584,7 @@ int main(int argc, char * const argv[])
 		if (img) {
 			fd = open(img, O_RDONLY);
 			if (fd == -1) {
+				err = fd;
 				sys_errmsg("cannot open \"%s\"", img);
 				goto out_free;
 			}
