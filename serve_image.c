@@ -1,5 +1,5 @@
 #define PROGRAM_NAME "serve_image"
-#define _POSIX_C_SOURCE 199309
+#define _POSIX_C_SOURCE 200112L
 
 #include <time.h>
 #include <errno.h>
