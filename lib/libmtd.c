@@ -1072,10 +1072,10 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 				  mtd->mtd_num, seek);
 
 	while (rd < len) {
-		ret = read(fd, buf, len);
+		ret = read(fd, buf + rd, len - rd);
 		if (ret < 0)
 			return sys_errmsg("cannot read %d bytes from mtd%d (eraseblock %d, offset %d)",
-					  len, mtd->mtd_num, eb, offs);
+					  len - rd, mtd->mtd_num, eb, offs + rd);
 		rd += ret;
 	}
 
