@@ -15,6 +15,7 @@
 
 #include <asm/types.h>
 #include "mtd/mtd-user.h"
+#include "common.h"
 
 void usage(int status)
 {
@@ -154,6 +155,7 @@ int main(int argc, char **argv)
 	int keep_contents = 0;
 	uint32_t offset = 0;
 	uint32_t length = -1;
+	int error = 0;
 
 	seed = time(NULL);
 
@@ -205,17 +207,19 @@ int main(int argc, char **argv)
 			break;
 
 		case 'o':
-			offset = atol(optarg);
+			offset = simple_strtoul(optarg, &error);
 			break;
 
 		case 'l':
-			length = strtol(optarg, NULL, 0);
+			length = simple_strtoul(optarg, &error);
 			break;
 
 		}
 	}
 	if (argc - optind != 1)
 		usage(1);
+	if (error)
+		errmsg_die("Try --help for more information");
 
 	fd = open(argv[optind], O_RDWR);
 	if (fd < 0) {
