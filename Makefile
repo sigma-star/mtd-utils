@@ -16,24 +16,30 @@ endif
 
 TESTS = tests
 
-MTD_BINS = \
-	ftl_format flash_erase nanddump doc_loadbios \
-	ftl_check mkfs.jffs2 flash_lock flash_unlock \
-	flash_otp_info flash_otp_dump flash_otp_lock flash_otp_write \
-	mtd_debug flashcp nandwrite nandtest mtdpart \
-	jffs2dump \
-	nftldump nftl_format docfdisk \
-	rfddump rfdformat \
-	serve_image recv_image \
-	sumtool jffs2reader
+MISC_BINS = \
+	ftl_format doc_loadbios ftl_check mtd_debug docfdisk \
+	serve_image recv_image mtdpart flash_erase flash_lock \
+	flash_unlock flash_otp_info flash_otp_dump flash_otp_lock \
+	flash_otp_write flashcp
 UBI_BINS = \
 	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
 	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock
+UBIFS_BINS = \
+	mkfs.ubifs/mkfs.ubifs
+JFFSX_BINS = \
+	mkfs.jffs2 sumtool jffs2reader jffs2dump
+NAND_BINS = \
+	nanddump nandwrite nandtest nftldump nftl_format
+NOR_BINS = \
+	rfddump rfdformat
 
-BINS = $(MTD_BINS)
-BINS += mkfs.ubifs/mkfs.ubifs
+BINS = $(addprefix misc-utils/,$(MISC_BINS))
 BINS += $(addprefix ubi-utils/,$(UBI_BINS))
-SCRIPTS = flash_eraseall
+BINS += $(addprefix ubifs-utils/,$(UBIFS_BINS))
+BINS += $(addprefix jffsX-utils/,$(JFFSX_BINS))
+BINS += $(addprefix nand-utils/,$(NAND_BINS))
+BINS += $(addprefix nor-utils/,$(NOR_BINS))
+SCRIPTS = $(addprefix misc-utils/,flash_eraseall)
 
 TARGETS = $(BINS)
 TARGETS += lib/libmtd.a
@@ -61,11 +67,11 @@ endif
 	rm -f $(BUILDDIR)/include/version.h
 	$(MAKE) -C $(TESTS) clean
 
-install:: $(addprefix $(BUILDDIR)/,${BINS}) ${SCRIPTS}
+install:: $(addprefix $(BUILDDIR)/,${BINS} ${SCRIPTS})
 	mkdir -p ${DESTDIR}/${SBINDIR}
 	install -m 0755 $^ ${DESTDIR}/${SBINDIR}/
 	mkdir -p ${DESTDIR}/${MANDIR}/man1
-	install -m 0644 mkfs.jffs2.1 ${DESTDIR}/${MANDIR}/man1/
+	install -m 0644 jffsX-utils/mkfs.jffs2.1 ${DESTDIR}/${MANDIR}/man1/
 	-gzip -9f ${DESTDIR}/${MANDIR}/man1/*.1
 
 tests::
@@ -85,28 +91,22 @@ $(BUILDDIR)/include/version.h.tmp:
 # Utils in top level
 #
 obj-mkfs.jffs2 = compr_rtime.o compr_zlib.o compr_lzo.o compr.o rbtree.o
-LDFLAGS_mkfs.jffs2 = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
+LDFLAGS_mkfs.jffs2 = $(ZLIBLDFLAGS) $(LZOLDFLAGS) $(CPPFLAGS)
 LDLIBS_mkfs.jffs2  = -lz $(LZOLDLIBS)
 
 LDFLAGS_jffs2reader = $(ZLIBLDFLAGS) $(LZOLDFLAGS)
 LDLIBS_jffs2reader  = -lz $(LZOLDLIBS)
 
-$(foreach v,$(MTD_BINS),$(eval $(call mkdep,,$(v))))
+$(foreach v,$(MISC_BINS),$(eval $(call mkdep,misc-utils/,$(v))))
+$(foreach v,$(JFFSX_BINS),$(eval $(call mkdep,jffsX-utils/,$(v))))
+$(foreach v,$(NAND_BINS),$(eval $(call mkdep,nand-utils/,$(v))))
+$(foreach v,$(NOR_BINS),$(eval $(call mkdep,nor-utils/,$(v))))
 
 #
 # Common libmtd
 #
 obj-libmtd.a = libmtd.o libmtd_legacy.o libcrc32.o libfec.o
 $(call _mkdep,lib/,libmtd.a)
-
-#
-# Utils in mkfs.ubifs subdir
-#
-obj-mkfs.ubifs = crc16.o lpt.o compr.o devtable.o \
-	hashtable/hashtable.o hashtable/hashtable_itr.o
-LDFLAGS_mkfs.ubifs = $(ZLIBLDFLAGS) $(LZOLDFLAGS) $(UUIDLDFLAGS)
-LDLIBS_mkfs.ubifs = -lz -llzo2 -lm -luuid
-$(call mkdep,mkfs.ubifs/,mkfs.ubifs,,ubi-utils/libubi.a)
 
 #
 # Utils in ubi-utils/ subdir
@@ -122,3 +122,12 @@ obj-ubiformat = libubigen.a libscan.a
 
 $(foreach v,libubi.a libubigen.a libiniparser.a libscan.a,$(eval $(call _mkdep,ubi-utils/,$(v))))
 $(foreach v,$(UBI_BINS),$(eval $(call mkdep,ubi-utils/,$(v),libubi.a ubiutils-common.o)))
+
+#
+# Utils in ubifs-utils subdir
+#
+obj-mkfs.ubifs = crc16.o lpt.o compr.o devtable.o \
+	hashtable/hashtable.o hashtable/hashtable_itr.o
+LDFLAGS_mkfs.ubifs = $(ZLIBLDFLAGS) $(LZOLDFLAGS) $(UUIDLDFLAGS)
+LDLIBS_mkfs.ubifs = -lz -llzo2 -lm -luuid
+$(call mkdep,ubifs-utils/mkfs.ubifs/,mkfs.ubifs,,ubi-utils/libubi.a)
