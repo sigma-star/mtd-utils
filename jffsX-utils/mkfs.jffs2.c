@@ -376,7 +376,11 @@ static struct filesystem_entry *recursive_add_host_directory(
  */
 
 #ifdef __GNUC__
+#if __STDC_VERSION__ >= 199901L
+#define SCANF_PREFIX "m"
+#else
 #define SCANF_PREFIX "a"
+#endif
 #define SCANF_STRING(s) (&s)
 #define GETCWD_SIZE 0
 #else
