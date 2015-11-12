@@ -38,7 +38,9 @@
 
 static void *lzo_mem;
 static unsigned long long errcnt = 0;
+#ifndef WITHOUT_LZO
 static struct ubifs_info *c = &info_;
+#endif
 
 #define DEFLATE_DEF_LEVEL     Z_DEFAULT_COMPRESSION
 #define DEFLATE_DEF_WINBITS   11
