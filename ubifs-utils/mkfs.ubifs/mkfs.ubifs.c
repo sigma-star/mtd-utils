@@ -227,13 +227,9 @@ static char *make_path(const char *dir, const char *name)
 {
 	char *s;
 
-	s = malloc(strlen(dir) + strlen(name) + 2);
-	if (!s)
-		return NULL;
-	strcpy(s, dir);
-	if (dir[strlen(dir) - 1] != '/')
-		strcat(s, "/");
-	strcat(s, name);
+	xasprintf(&s, "%s%s%s",
+		  dir, dir[strlen(dir) - 1] == '/' ? "" : "/", name);
+
 	return s;
 }
 
