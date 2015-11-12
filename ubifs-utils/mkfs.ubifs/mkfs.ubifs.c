@@ -259,13 +259,8 @@ static int is_contained(const char *file, const char *dir)
 	file_base = dirname(copy);
 
 	/* Turn the paths into the canonical form */
-	real_file = malloc(PATH_MAX);
-	if (!real_file)
-		goto out_free;
-
-	real_dir = malloc(PATH_MAX);
-	if (!real_dir)
-		goto out_free;
+	real_file = xmalloc(PATH_MAX);
+	real_dir = xmalloc(PATH_MAX);
 
 	if (!realpath(file_base, real_file)) {
 		perror("Could not canonicalize file path");
@@ -500,9 +495,7 @@ static int get_options(int argc, char**argv)
 		case 'r':
 		case 'd':
 			root_len = strlen(optarg);
-			root = malloc(root_len + 2);
-			if (!root)
-				return err_msg("cannot allocate memory");
+			root = xmalloc(root_len + 2);
 
 			/*
 			 * The further code expects '/' at the end of the root
@@ -910,9 +903,7 @@ static int add_to_index(union ubifs_key *key, char *name, int lnum, int offs,
 	struct idx_entry *e;
 
 	dbg_msg(3, "LEB %d offs %d len %d", lnum, offs, len);
-	e = malloc(sizeof(struct idx_entry));
-	if (!e)
-		return err_msg("out of memory");
+	e = xmalloc(sizeof(struct idx_entry));
 	e->next = NULL;
 	e->prev = idx_list_last;
 	e->key = *key;
@@ -1193,9 +1184,7 @@ static struct inum_mapping *lookup_inum_mapping(dev_t dev, ino_t inum)
 			return im;
 		im = im->next;
 	}
-	im = malloc(sizeof(struct inum_mapping));
-	if (!im)
-		return NULL;
+	im = xmalloc(sizeof(struct inum_mapping));
 	im->next = hash_table[k];
 	im->prev = NULL;
 	im->dev = dev;
@@ -1355,9 +1344,7 @@ static int add_non_dir(const char *path_name, ino_t *inum, unsigned int nlink,
 			/* New entry */
 			im->use_inum = *inum;
 			im->use_nlink = 1;
-			im->path_name = malloc(strlen(path_name) + 1);
-			if (!im->path_name)
-				return err_msg("out of memory");
+			im->path_name = xmalloc(strlen(path_name) + 1);
 			strcpy(im->path_name, path_name);
 		} else {
 			/* Existing entry */
@@ -1707,21 +1694,14 @@ static int write_index(void)
 	head_flags = LPROPS_INDEX;
 	/* Allocate index node */
 	idx_sz = ubifs_idx_node_sz(c, c->fanout);
-	idx = malloc(idx_sz);
-	if (!idx)
-		return err_msg("out of memory");
+	idx = xmalloc(idx_sz);
 	/* Make an array of pointers to sort the index list */
 	sz = idx_cnt * sizeof(struct idx_entry *);
 	if (sz / sizeof(struct idx_entry *) != idx_cnt) {
 		free(idx);
 		return err_msg("index is too big (%zu entries)", idx_cnt);
 	}
-	idx_ptr = malloc(sz);
-	if (!idx_ptr) {
-		free(idx);
-		return err_msg("out of memory - needed %zu bytes for index",
-			       sz);
-	}
+	idx_ptr = xmalloc(sz);
 	idx_ptr[0] = idx_list_first;
 	for (i = 1; i < idx_cnt; i++)
 		idx_ptr[i] = idx_ptr[i - 1]->next;
@@ -2164,13 +2144,8 @@ static int init(void)
 	c->lpt_first = UBIFS_LOG_LNUM + c->log_lebs;
 	c->lpt_last = c->lpt_first + c->lpt_lebs - 1;
 
-	c->lpt = malloc(c->main_lebs * sizeof(struct ubifs_lprops));
-	if (!c->lpt)
-		return err_msg("unable to allocate LPT");
-
-	c->ltab = malloc(c->lpt_lebs * sizeof(struct ubifs_lprops));
-	if (!c->ltab)
-		return err_msg("unable to allocate LPT ltab");
+	c->lpt = xmalloc(c->main_lebs * sizeof(struct ubifs_lprops));
+	c->ltab = xmalloc(c->lpt_lebs * sizeof(struct ubifs_lprops));
 
 	/* Initialize LPT's own lprops */
 	for (i = 0; i < c->lpt_lebs; i++) {
@@ -2182,23 +2157,12 @@ static int init(void)
 	c->dark_wm = ALIGN(UBIFS_MAX_NODE_SZ, c->min_io_size);
 	dbg_msg(1, "dead_wm %d  dark_wm %d", c->dead_wm, c->dark_wm);
 
-	leb_buf = malloc(c->leb_size);
-	if (!leb_buf)
-		return err_msg("out of memory");
-
-	node_buf = malloc(NODE_BUFFER_SIZE);
-	if (!node_buf)
-		return err_msg("out of memory");
-
-	block_buf = malloc(UBIFS_BLOCK_SIZE);
-	if (!block_buf)
-		return err_msg("out of memory");
+	leb_buf = xmalloc(c->leb_size);
+	node_buf = xmalloc(NODE_BUFFER_SIZE);
+	block_buf = xmalloc(UBIFS_BLOCK_SIZE);
 
 	sz = sizeof(struct inum_mapping *) * HASH_TABLE_SIZE;
-	hash_table = malloc(sz);
-	if (!hash_table)
-		return err_msg("out of memory");
-	memset(hash_table, 0, sz);
+	hash_table = xzalloc(sz);
 
 	err = init_compression();
 	if (err)
