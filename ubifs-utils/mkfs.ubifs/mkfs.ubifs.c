@@ -1395,12 +1395,12 @@ static int add_non_dir(const char *path_name, ino_t *inum, unsigned int nlink,
  * @dir_name: directory path name
  * @dir_inum: UBIFS inode number of directory
  * @st: directory inode statistics
- * @non_existing: non-zero if this function is called for a directory which
- *                does not exist on the host file-system and it is being
- *                created because it is defined in the device table file.
+ * @existing: zero if this function is called for a directory which
+ *            does not exist on the host file-system and it is being
+ *            created because it is defined in the device table file.
  */
 static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
-			 int non_existing)
+			 int existing)
 {
 	struct dirent *entry;
 	DIR *dir = NULL;
@@ -1416,7 +1416,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 	unsigned long long dir_creat_sqnum = ++c->max_sqnum;
 
 	dbg_msg(2, "%s", dir_name);
-	if (!non_existing) {
+	if (existing) {
 		dir = opendir(dir_name);
 		if (dir == NULL)
 			return sys_err_msg("cannot open directory '%s'",
@@ -1434,7 +1434,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 	 * Before adding the directory itself, we have to iterate over all the
 	 * entries the device table adds to this directory and create them.
 	 */
-	for (; !non_existing;) {
+	for (; existing;) {
 		struct stat dent_st;
 
 		errno = 0;
@@ -1492,7 +1492,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		inum = ++c->highest_inum;
 
 		if (S_ISDIR(dent_st.st_mode)) {
-			err = add_directory(name, inum, &dent_st, 0);
+			err = add_directory(name, inum, &dent_st, 1);
 			if (err)
 				goto out_free;
 			nlink += 1;
@@ -1544,7 +1544,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		inum = ++c->highest_inum;
 
 		if (S_ISDIR(nh_elt->mode)) {
-			err = add_directory(name, inum, &fake_st, 1);
+			err = add_directory(name, inum, &fake_st, 0);
 			if (err)
 				goto out_free;
 			nlink += 1;
@@ -1570,14 +1570,14 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		goto out_free;
 
 	free(name);
-	if (!non_existing && closedir(dir) == -1)
+	if (existing && closedir(dir) == -1)
 		return sys_err_msg("error closing directory '%s'", dir_name);
 
 	return 0;
 
 out_free:
 	free(name);
-	if (!non_existing)
+	if (existing)
 		closedir(dir);
 	return -1;
 }
@@ -1624,7 +1624,7 @@ static int write_data(void)
 	}
 
 	head_flags = 0;
-	err = add_directory(root, UBIFS_ROOT_INO, &root_st, !root);
+	err = add_directory(root, UBIFS_ROOT_INO, &root_st, !!root);
 	if (err)
 		return err;
 	err = add_multi_linked_files();
