@@ -42,6 +42,15 @@
  */
 #define UBIFS_TRUN_KEY UBIFS_KEY_TYPES_CNT
 
+/*
+ * How much a directory entry/extended attribute entry adds to the parent/host
+ * inode.
+ */
+#define CALC_DENT_SIZE(name_len) ALIGN(UBIFS_DENT_NODE_SZ + (name_len) + 1, 8)
+
+/* How much an extended attribute adds to the host inode */
+#define CALC_XATTR_BYTES(data_len) ALIGN(UBIFS_INO_NODE_SZ + (data_len) + 1, 8)
+
 /* The below union makes it easier to deal with keys */
 union ubifs_key
 {

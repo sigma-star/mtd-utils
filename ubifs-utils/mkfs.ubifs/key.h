@@ -119,6 +119,24 @@ static inline void dent_key_init(const struct ubifs_info *c,
 }
 
 /**
+ * xent_key_init - initialize extended attribute entry key.
+ * @c: UBIFS file-system description object
+ * @key: key to initialize
+ * @inum: host inode number
+ * @nm: extended attribute entry name and length
+ */
+static inline void xent_key_init(const struct ubifs_info *c,
+				 union ubifs_key *key, ino_t inum,
+				 const struct qstr *nm)
+{
+	uint32_t hash = c->key_hash(nm->name, nm->len);
+
+	ubifs_assert(!(hash & ~UBIFS_S_KEY_HASH_MASK));
+	key->u32[0] = inum;
+	key->u32[1] = hash | (UBIFS_XENT_KEY << UBIFS_S_KEY_HASH_BITS);
+}
+
+/**
  * data_key_init - initialize data key.
  * @c: UBIFS file-system description object
  * @key: key to initialize
