@@ -115,6 +115,7 @@ static char *output;
 static int out_fd;
 static int out_ubi;
 static int squash_owner;
+static int do_create_inum_attr;
 
 /* The 'head' (position) which nodes are written */
 static int head_lnum;
@@ -137,7 +138,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQq";
+static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqa";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
@@ -161,6 +162,7 @@ static const struct option longopts[] = {
 	{"log-lebs",           1, NULL, 'l'},
 	{"orph-lebs",          1, NULL, 'p'},
 	{"squash-uids" ,       0, NULL, 'U'},
+	{"set-inode-attr",     0, NULL, 'a'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -201,6 +203,9 @@ static const char *helptext =
 "-V, --version            display version information\n"
 "-g, --debug=LEVEL        display debug information (0 - none, 1 - statistics,\n"
 "                         2 - files, 3 - more details)\n"
+"-a, --set-inum-attr      create user.image-inode-number extended attribute on files\n"
+"                         added to the image. The attribute will contain the inode\n"
+"                         number the file has in the generated image.\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
@@ -616,6 +621,10 @@ static int get_options(int argc, char**argv)
 		case 'U':
 			squash_owner = 1;
 			break;
+		case 'a':
+			do_create_inum_attr = 1;
+			break;
+
 		}
 	}
 
@@ -985,6 +994,14 @@ static int add_node(union ubifs_key *key, char *name, void *node, int len)
 }
 
 #ifdef WITHOUT_XATTR
+static inline int create_inum_attr(ino_t inum, const char *name)
+{
+	(void)inum;
+	(void)name;
+
+	return 0;
+}
+
 static inline int inode_add_xattr(struct ubifs_ino_node *host_ino,
 				  const char *path_name, struct stat *st, ino_t inum)
 {
@@ -996,6 +1013,26 @@ static inline int inode_add_xattr(struct ubifs_ino_node *host_ino,
 	return 0;
 }
 #else
+static int create_inum_attr(ino_t inum, const char *name)
+{
+	char *str;
+	int ret;
+
+	if (!do_create_inum_attr)
+		return 0;
+
+	ret = asprintf(&str, "%llu", (unsigned long long)inum);
+	if (ret < 0)
+		return -1;
+
+	ret = lsetxattr(name, "user.image-inode-number", str, ret, 0);
+
+	free(str);
+
+	return ret;
+}
+
+
 static int add_xattr(struct stat *st, ino_t inum, const void *data,
 		     unsigned int data_len, struct qstr *nm)
 {
@@ -1108,6 +1145,23 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 		if (attrsize < 0) {
 			sys_err_msg("lgetxattr failed on %s", path_name);
 			goto out_free;
+		}
+
+		if (!strcmp(name, "user.image-inode-number")) {
+			ino_t inum_from_xattr;
+
+			inum_from_xattr = strtoull(attrbuf, NULL, 10);
+			if (inum != inum_from_xattr) {
+				errno = EINVAL;
+				sys_err_msg("calculated inum (%llu) doesn't match inum from xattr (%llu) size (%zd) on %s",
+					    (unsigned long long)inum,
+					    (unsigned long long)inum_from_xattr,
+					    attrsize,
+					    path_name);
+				goto out_free;
+			}
+
+			continue;
 		}
 
 		nm.name = name;
@@ -1637,6 +1691,10 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 				goto out_free;
 		}
 
+		err = create_inum_attr(inum, name);
+		if (err)
+			goto out_free;
+
 		err = add_dent_node(dir_inum, entry->d_name, inum, type);
 		if (err)
 			goto out_free;
@@ -1688,6 +1746,10 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 			if (err)
 				goto out_free;
 		}
+
+		err = create_inum_attr(inum, name);
+		if (err)
+			goto out_free;
 
 		err = add_dent_node(dir_inum, nh_elt->name, inum, type);
 		if (err)
@@ -1758,6 +1820,11 @@ static int write_data(void)
 	}
 
 	head_flags = 0;
+
+	err = create_inum_attr(UBIFS_ROOT_INO, root);
+	if (err)
+		return err;
+
 	err = add_directory(root, UBIFS_ROOT_INO, &root_st, !!root);
 	if (err)
 		return err;
