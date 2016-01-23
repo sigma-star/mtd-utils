@@ -27,7 +27,7 @@
 #include "common.h"
 #include <sys/types.h>
 #ifndef WITHOUT_XATTR
-#include <attr/xattr.h>
+#include <sys/xattr.h>
 #endif
 
 /* Size (prime number) of hash table for link counting */
