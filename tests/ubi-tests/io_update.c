@@ -44,22 +44,22 @@ const char *node;
 	{512},                       \
 	{666},                       \
 	{2048},                      \
-	{(io), (io), PAGE_SIZE},     \
-	{(io)+1, (io)+1, PAGE_SIZE}, \
-	{PAGE_SIZE},                 \
-	{PAGE_SIZE-1},               \
-	{PAGE_SIZE+(io)},            \
+	{(io), (io), MAX_NAND_PAGE_SIZE},     \
+	{(io)+1, (io)+1, MAX_NAND_PAGE_SIZE}, \
+	{MAX_NAND_PAGE_SIZE},                 \
+	{MAX_NAND_PAGE_SIZE-1},               \
+	{MAX_NAND_PAGE_SIZE+(io)},            \
 	{(s)},                       \
 	{(s)-1},                     \
 	{(s)+1},                     \
 	{(io), (s)+1},               \
-	{(s)+(io), PAGE_SIZE},       \
-	{2*(s), PAGE_SIZE},          \
-	{PAGE_SIZE, 2*(s), 1},       \
-	{PAGE_SIZE, 2*(s)},          \
+	{(s)+(io), MAX_NAND_PAGE_SIZE},       \
+	{2*(s), MAX_NAND_PAGE_SIZE},          \
+	{MAX_NAND_PAGE_SIZE, 2*(s), 1},       \
+	{MAX_NAND_PAGE_SIZE, 2*(s)},          \
 	{2*(s)-1, 2*(s)-1},          \
-	{3*(s), PAGE_SIZE + 1},      \
-	{1, PAGE_SIZE},              \
+	{3*(s), MAX_NAND_PAGE_SIZE + 1},      \
+	{1, MAX_NAND_PAGE_SIZE},              \
 	{(io), (s)}                  \
 }
 

@@ -41,7 +41,7 @@ static int fd;
 /* Data lengthes to test, @io - minimal I/O unit size, @s - eraseblock size */
 #define LENGTHES(io, s)                                                        \
 	{1, (io), (io)+1, 2*(io), 3*(io)-1, 3*(io),                            \
-	 PAGE_SIZE-1, PAGE_SIZE-(io), 2*PAGE_SIZE, 2*PAGE_SIZE-(io),           \
+	 MAX_NAND_PAGE_SIZE-1, MAX_NAND_PAGE_SIZE-(io), 2*MAX_NAND_PAGE_SIZE, 2*MAX_NAND_PAGE_SIZE-(io),           \
 	 (s)/2-1, (s)/2, (s)/2+1, (s)-1, (s), (s)+1, 2*(s)-(io), 2*(s),        \
 	 2*(s)+(io), 3*(s), 3*(s)+(io)};
 
@@ -51,9 +51,9 @@ static int fd;
  */
 #define OFFSETS(io, s, sz)                                                     \
 	{0, (io)-1, (io), (io)+1, 2*(io)-1, 2*(io), 3*(io)-1, 3*(io),          \
-	 PAGE_SIZE-1, PAGE_SIZE-(io), 2*PAGE_SIZE, 2*PAGE_SIZE-(io),           \
+	 MAX_NAND_PAGE_SIZE-1, MAX_NAND_PAGE_SIZE-(io), 2*MAX_NAND_PAGE_SIZE, 2*MAX_NAND_PAGE_SIZE-(io),           \
 	 (s)/2-1, (s)/2, (s)/2+1, (s)-1, (s), (s)+1, 2*(s)-(io), 2*(s),        \
-	 2*(s)+(io), 3*(s), (sz)-(s)-1, (sz)-(io)-1, (sz)-PAGE_SIZE-1};
+	 2*(s)+(io), 3*(s), (sz)-(s)-1, (sz)-(io)-1, (sz)-MAX_NAND_PAGE_SIZE-1};
 
 /**
  * test_static - test static volume-specific features.
