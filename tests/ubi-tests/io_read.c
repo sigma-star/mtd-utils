@@ -161,8 +161,18 @@ remove:
 static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 {
 	int i, len1;
-	unsigned char ck_buf[len], buf[len];
+	unsigned char *ck_buf = NULL;
+	unsigned char *buf = NULL;
 	off_t new_off;
+	int ret = -1;
+
+	ck_buf = malloc(len);
+	buf = malloc(len);
+
+	if (!ck_buf || !buf) {
+		failed("malloc");
+		goto out;
+	}
 
 	if (off + len > vol_info->data_bytes)
 		len1 = vol_info->data_bytes - off;
@@ -172,12 +182,12 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 	if (lseek(fd, off, SEEK_SET) != off) {
 		failed("seek");
 		errorm("len = %d", len);
-		return -1;
+		goto out;
 	}
 	if (read(fd, buf, len) != len1) {
 		failed("read");
 		errorm("len = %d", len);
-		return -1;
+		goto out;
 	}
 
 	new_off = lseek(fd, 0, SEEK_CUR);
@@ -187,7 +197,7 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 		else
 			errorm("read %d bytes from %lld, but resulting "
 			       "offset is %lld", len1, (long long) off, (long long) new_off);
-		return -1;
+		goto out;
 	}
 
 	for (i = 0; i < len1; i++)
@@ -197,10 +207,14 @@ static int test_read3(const struct ubi_vol_info *vol_info, int len, off_t off)
 		errorm("incorrect data read from offset %lld",
 		       (long long)off);
 		errorm("len = %d", len);
-		return -1;
+		goto out;
 	}
 
-	return 0;
+	ret = 0;
+out:
+	free(buf);
+	free(ck_buf);
+	return ret;
 }
 
 /*

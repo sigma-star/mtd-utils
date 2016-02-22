@@ -76,8 +76,22 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 					     leb_change ? dev_info.min_io_size * 2
 					     		: vol_info->leb_size);
 	char vol_node[strlen(UBI_VOLUME_PATTERN) + 100];
-	unsigned char buf[total_len];
+	unsigned char *buf = NULL;
+	unsigned char *buf1 = NULL;
 	int fd, i, j;
+	int ret1 = -1;
+
+	buf = malloc(total_len);
+	if (!buf) {
+		failed("malloc");
+		goto out;
+	}
+
+	buf1 = malloc(total_len);
+	if (!buf1) {
+		failed("malloc");
+		goto out;
+	}
 
 	sprintf(vol_node, UBI_VOLUME_PATTERN, dev_info.dev_num,
 		vol_info->vol_id);
@@ -86,14 +100,13 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 	if (fd == -1) {
 		failed("open");
 		errorm("cannot open \"%s\"\n", node);
-		return -1;
+		goto out;
 	}
 
 	for (i = 0; i < SEQ_SZ; i++) {
 		int ret, stop = 0, len = 0;
 		off_t off = 0;
 		long long test_len;
-		unsigned char buf1[total_len];
 
 		/*
 		 * test_len is LEB size (if we test atomic LEB change) or
@@ -189,12 +202,13 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 		}
 	}
 
-	close(fd);
-	return 0;
-
+	ret1 = 0;
 close:
 	close(fd);
-	return -1;
+out:
+	free(buf);
+	free(buf1);
+	return ret1;
 }
 
 /**
