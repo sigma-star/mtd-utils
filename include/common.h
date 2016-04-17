@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <features.h>
 #include <inttypes.h>
+#include <sys/sysmacros.h>
 #include "version.h"
 
 #ifndef PROGRAM_NAME
