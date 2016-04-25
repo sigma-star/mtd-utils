@@ -174,6 +174,20 @@ int mtd_lock(const struct mtd_dev_info *mtd, int fd, int eb);
 int mtd_unlock(const struct mtd_dev_info *mtd, int fd, int eb);
 
 /**
+ * mtd_erase - erase multiple eraseblocks.
+ * @desc: MTD library descriptor
+ * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
+ * @eb: index of first eraseblock to erase
+ * @blocks: the number of eraseblocks to erase
+ *
+ * This function erases @blocks starting at eraseblock @eb of MTD device
+ * described by @fd. Returns %0 in case of success and %-1 in case of failure.
+ */
+int mtd_erase_multi(libmtd_t desc, const struct mtd_dev_info *mtd,
+			int fd, int eb, int blocks);
+
+/**
  * mtd_erase - erase an eraseblock.
  * @desc: MTD library descriptor
  * @mtd: MTD device description object

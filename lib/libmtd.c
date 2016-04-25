@@ -845,7 +845,8 @@ int mtd_unlock(const struct mtd_dev_info *mtd, int fd, int eb)
 	return mtd_xlock(mtd, fd, eb, MEMUNLOCK);
 }
 
-int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
+int mtd_erase_multi(libmtd_t desc, const struct mtd_dev_info *mtd,
+			int fd, int eb, int blocks)
 {
 	int ret;
 	struct libmtd *lib = (struct libmtd *)desc;
@@ -856,8 +857,12 @@ int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 	if (ret)
 		return ret;
 
+	ret = mtd_valid_erase_block(mtd, eb + blocks - 1);
+	if (ret)
+		return ret;
+
 	ei64.start = (__u64)eb * mtd->eb_size;
-	ei64.length = mtd->eb_size;
+	ei64.length = (__u64)mtd->eb_size * blocks;
 
 	if (lib->offs64_ioctls == OFFS64_IOCTLS_SUPPORTED ||
 	    lib->offs64_ioctls == OFFS64_IOCTLS_UNKNOWN) {
@@ -890,6 +895,11 @@ int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 	if (ret < 0)
 		return mtd_ioctl_error(mtd, eb, "MEMERASE");
 	return 0;
+}
+
+int mtd_erase(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
+{
+	return mtd_erase_multi(desc, mtd, fd, eb, 1);
 }
 
 int mtd_regioninfo(int fd, int regidx, struct region_info_user *reginfo)
