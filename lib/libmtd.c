@@ -939,7 +939,7 @@ static uint8_t patterns[] = {0xa5, 0x5a, 0x0};
  * @patt: the pattern to check
  * @size: buffer size in bytes
  *
- * This function returns %1 in there are only @patt bytes in @buf, and %0 if
+ * This function returns %0 if there are only @patt bytes in @buf, and %-1 if
  * something else was also found.
  */
 static int check_pattern(const void *buf, uint8_t patt, int size)
@@ -948,8 +948,8 @@ static int check_pattern(const void *buf, uint8_t patt, int size)
 
 	for (i = 0; i < size; i++)
 		if (((const uint8_t *)buf)[i] != patt)
-			return 0;
-	return 1;
+			return -1;
+	return 0;
 }
 
 int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
@@ -973,7 +973,7 @@ int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 			goto out;
 
 		err = check_pattern(buf, 0xFF, mtd->eb_size);
-		if (err == 0) {
+		if (err) {
 			errmsg("erased PEB %d, but a non-0xFF byte found", eb);
 			errno = EIO;
 			goto out;
@@ -992,7 +992,7 @@ int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 			goto out;
 
 		err = check_pattern(buf, patterns[i], mtd->eb_size);
-		if (err == 0) {
+		if (err) {
 			errmsg("pattern %x checking failed for PEB %d",
 				patterns[i], eb);
 			errno = EIO;
@@ -1005,7 +1005,7 @@ int mtd_torture(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb)
 
 out:
 	free(buf);
-	return -1;
+	return err;
 }
 
 int mtd_is_bad(const struct mtd_dev_info *mtd, int fd, int eb)
