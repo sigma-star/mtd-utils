@@ -10,7 +10,7 @@
  */
 
 #define PROGRAM_NAME "rfddump"
-#define VERSION "$Revision 1.0 $"
+#define PROGRAM_VERSION "$Revision 1.0 $"
 
 #define _XOPEN_SOURCE 500 /* For pread */
 
@@ -69,7 +69,7 @@ void display_help(void)
 
 void display_version(void)
 {
-	printf("%s " VERSION "\n"
+	printf("%s " PROGRAM_VERSION "\n"
 			"\n"
 			"This is free software; see the source for copying conditions.  There is NO\n"
 			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n",

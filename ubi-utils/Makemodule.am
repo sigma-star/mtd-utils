@@ -1,0 +1,73 @@
+libubi_a_SOURCES = ubi-utils/libubi.c ubi-utils/ubiutils-common.c ubi-utils/libubi_int.h
+libubi_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+libubigen_a_SOURCES = ubi-utils/libubigen.c
+libubigen_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubiupdatevol_SOURCES = ubi-utils/ubiupdatevol.c
+ubiupdatevol_LDADD = libmtd.a libubi.a
+ubiupdatevol_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubimkvol_SOURCES = ubi-utils/ubimkvol.c
+ubimkvol_LDADD = libmtd.a libubi.a
+ubimkvol_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubirmvol_SOURCES = ubi-utils/ubirmvol.c
+ubirmvol_LDADD = libmtd.a libubi.a
+ubirmvol_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubicrc32_SOURCES = ubi-utils/ubicrc32.c
+ubicrc32_LDADD = libmtd.a libubi.a
+ubicrc32_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubinfo_SOURCES = ubi-utils/ubinfo.c
+ubinfo_LDADD = libmtd.a libubi.a
+ubinfo_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubiattach_SOURCES = ubi-utils/ubiattach.c
+ubiattach_LDADD = libmtd.a libubi.a
+ubiattach_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubidetach_SOURCES = ubi-utils/ubidetach.c
+ubidetach_LDADD = libmtd.a libubi.a
+ubidetach_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubinize_SOURCES = ubi-utils/ubinize.c ubi-utils/libiniparser.c ubi-utils/dictionary.c
+ubinize_LDADD = libubi.a libubigen.a libmtd.a
+ubinize_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubiformat_SOURCES = ubi-utils/ubiformat.c ubi-utils/libscan.c
+ubiformat_LDADD = libubi.a libubigen.a libmtd.a
+ubiformat_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubirename_SOURCES = ubi-utils/ubirename.c
+ubirename_LDADD = libmtd.a libubi.a
+ubirename_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+mtdinfo_SOURCES = ubi-utils/mtdinfo.c
+mtdinfo_LDADD = libubi.a libubigen.a libmtd.a
+mtdinfo_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubirsvol_SOURCES = ubi-utils/ubirsvol.c
+ubirsvol_LDADD = libmtd.a libubi.a
+ubirsvol_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+ubiblock_SOURCES = ubi-utils/ubiblock.c
+ubiblock_LDADD = libmtd.a libubi.a
+ubiblock_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
+
+UBI_BINS = \
+	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
+	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock
+
+UBI_EXTRA = \
+	ubi-utils/LICENSE.libiniparser
+
+UBI_HEADER = \
+	ubi-utils/include ubi-utils/libubi_int.h
+
+EXTRA_DIST += $(UBI_HEADER) $(UBI_EXTRA)
+
+sbin_PROGRAMS += $(UBI_BINS)
+
+noinst_LIBRARIES += libubi.a libubigen.a

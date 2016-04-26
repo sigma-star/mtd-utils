@@ -29,7 +29,6 @@
 #include <features.h>
 #include <inttypes.h>
 #include <sys/sysmacros.h>
-#include "version.h"
 
 #ifndef PROGRAM_NAME
 # error "You must define PROGRAM_NAME before including this header"
