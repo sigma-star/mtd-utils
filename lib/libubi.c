@@ -700,11 +700,6 @@ static int do_attach(const char *node, const struct ubi_attach_req *r)
 	if (ret == -1)
 		return -1;
 
-#ifdef UDEV_SETTLE_HACK
-//	if (system("udevsettle") == -1)
-//		return -1;
-	usleep(100000);
-#endif
 	return ret;
 }
 
@@ -849,12 +844,6 @@ int ubi_remove_dev(libubi_t desc, const char *node, int ubi_dev)
 	ret = ioctl(fd, UBI_IOCDET, &ubi_dev);
 	if (ret == -1)
 		goto out_close;
-
-#ifdef UDEV_SETTLE_HACK
-//	if (system("udevsettle") == -1)
-//		return -1;
-	usleep(100000);
-#endif
 
 out_close:
 	close(fd);
@@ -1034,12 +1023,6 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 	close(fd);
 	req->vol_id = r.vol_id;
 
-#ifdef UDEV_SETTLE_HACK
-//	if (system("udevsettle") == -1)
-//		return -1;
-	usleep(100000);
-#endif
-
 	return 0;
 }
 
@@ -1060,12 +1043,6 @@ int ubi_rmvol(libubi_t desc, const char *node, int vol_id)
 
 	close(fd);
 
-#ifdef UDEV_SETTLE_HACK
-//	if (system("udevsettle") == -1)
-//		return -1;
-	usleep(100000);
-#endif
-
 	return 0;
 }
 
@@ -1085,12 +1062,6 @@ int ubi_rnvols(libubi_t desc, const char *node, struct ubi_rnvol_req *rnvol)
 	}
 
 	close(fd);
-
-#ifdef UDEV_SETTLE_HACK
-//	if (system("udevsettle") == -1)
-//		return -1;
-	usleep(100000);
-#endif
 
 	return 0;
 }
