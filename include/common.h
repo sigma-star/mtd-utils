@@ -72,8 +72,13 @@ extern "C" {
 #define PRIxoff_t PRIx64
 #define PRIdoff_t PRId64
 #else
+#if (SIZEOF_LONG >= 8)
 #define PRIxoff_t "l"PRIx32
 #define PRIdoff_t "l"PRId32
+#else
+#define PRIxoff_t "ll"PRIx32
+#define PRIdoff_t "ll"PRId32
+#endif
 #endif
 
 /* Verbose messages */
