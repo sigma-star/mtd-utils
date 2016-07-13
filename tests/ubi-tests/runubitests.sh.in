@@ -1,5 +1,11 @@
 #!/bin/sh -euf
 
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libexecpath=@libexecdir@/mtd-utils
+TESTBINDIR=@testbindir@
+
 tests="mkvol_basic mkvol_bad mkvol_paral rsvol io_basic io_read io_update io_paral volrefcnt"
 
 fatal()
@@ -30,7 +36,7 @@ ubidev="$1"
 
 for t in $tests; do
 	echo "Running $t $ubidev"
-	"./$t" "$ubidev" || fatal "$t failed"
+	"$TESTBINDIR/$t" "$ubidev" || fatal "$t failed"
 done
 
 echo "SUCCESS"

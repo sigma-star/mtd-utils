@@ -1,12 +1,18 @@
 #!/bin/sh
 
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libexecpath=@libexecdir@/mtd-utils
+TESTBINDIR=@testbindir@
+
 TEST_DIR=$TEST_FILE_SYSTEM_MOUNT_DIR
 if test -z "$TEST_DIR";
 then
 	TEST_DIR="/mnt/test_file_system"
 fi
 
-FREESPACE=`../utils/free_space "$TEST_DIR"`
+FREESPACE=`$TESTBINDIR/free_space "$TEST_DIR"`
 
 if test -z "$FREESPACE";
 then
@@ -21,12 +27,12 @@ else
 	DURATION="";
 fi
 
-FWRITE00=atoms/fwrite00
-RNDWR=atoms/rndwrite00
-PDFLUSH=atoms/pdfrun
+FWRITE00=$TESTBINDIR/fwrite00
+RNDWR=$TESTBINDIR/rndwrite00
+PDFLUSH=$TESTBINDIR/pdfrun
 FSIZE=$(( $FREESPACE/15 ));
 
-../utils/fstest_monitor $DURATION \
+$TESTBINDIR/fstest_monitor $DURATION \
 "$FWRITE00 -z $FSIZE -n0 -p 300" \
 "$FWRITE00 -z $FSIZE -n0 -u" \
 "$FWRITE00 -z $FSIZE -n0 -u -c" \

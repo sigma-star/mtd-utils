@@ -1,3 +1,5 @@
+ACLOCAL_AMFLAGS = -I m4
+
 AM_CPPFLAGS = -D_GNU_SOURCE -I$(top_srcdir)/include
 
 if WITHOUT_XATTR
@@ -12,6 +14,9 @@ sbin_PROGRAMS =
 sbin_SCRIPTS =
 noinst_LIBRARIES =
 noinst_PROGRAMS =
+noinst_SCRIPTS =
+pkglibexec_PROGRAMS =
+pkglibexec_SCRIPTS =
 dist_man1_MANS =
 
 EXTRA_DIST =
@@ -32,4 +37,9 @@ include nand-utils/Makemodule.am
 include nor-utils/Makemodule.am
 include jffsX-utils/Makemodule.am
 
-SUBDIRS = tests/ubi-tests
+if BUILD_TESTS
+include tests/ubi-tests/Makemodule.am
+include tests/jittertest/Makemodule.am
+include tests/checkfs/Makemodule.am
+include tests/fs-tests/Makemodule.am
+endif

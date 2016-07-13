@@ -22,3 +22,11 @@ NAND_SH = \
 EXTRA_DIST += $(NAND_SH)
 
 sbin_PROGRAMS += $(NAND_BINS)
+
+if BUILD_TESTS
+if INSTALL_TESTS
+pkglibexec_SCRIPTS += $(NAND_SH)
+else
+noinst_SCRIPTS += $(NAND_SH)
+endif
+endif

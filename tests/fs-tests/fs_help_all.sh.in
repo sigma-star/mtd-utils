@@ -1,27 +1,33 @@
 #!/bin/sh
 
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libexecpath=@libexecdir@/mtd-utils
+TESTBINDIR=@testbindir@
+
 echo -------------------------------------------------------------------------------
-./simple/test_1 -h
+$TESTBINDIR/test_1 -h
 echo -------------------------------------------------------------------------------
-./simple/test_2 -h
+$TESTBINDIR/test_2 -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/stress_1 -h
+$TESTBINDIR/stress_1 -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/stress_2 -h
+$TESTBINDIR/stress_2 -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/stress_3 -h
+$TESTBINDIR/stress_3 -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/fwrite00 -h
+$TESTBINDIR/fwrite00 -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/gcd_hupper -h
+$TESTBINDIR/gcd_hupper -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/pdfrun -h
+$TESTBINDIR/pdfrun -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/rmdir00 -h
+$TESTBINDIR/rmdir00 -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/rndrm00 -h
+$TESTBINDIR/rndrm00 -h
 echo -------------------------------------------------------------------------------
-./stress/atoms/rndwrite00 -h
+$TESTBINDIR/rndwrite00 -h
 echo -------------------------------------------------------------------------------
-./integrity/integck -h
+$TESTBINDIR/integck -h
 echo -------------------------------------------------------------------------------

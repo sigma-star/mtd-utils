@@ -1,12 +1,50 @@
 AC_PREREQ([2.60])
 
 AC_INIT([mtd-utils], 1.5.2, [linux-mtd@lists.infradead.org], mtd-utils)
+AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-bzip2])
 AM_SILENT_RULES([yes])
 AC_PROG_LIBTOOL
 AC_DISABLE_STATIC
 AC_PROG_CC
 AC_PROG_INSTALL
+
+
+AC_ARG_ENABLE([tests],
+	[AS_HELP_STRING([--disable-tests], [Compile test programs])],
+	[case "${enableval}" in
+	yes) AM_CONDITIONAL([BUILD_TESTS], [true]) ;;
+	no)  AM_CONDITIONAL([BUILD_TESTS], [false]) ;;
+	*) AC_MSG_ERROR([bad value ${enableval} for --disable-tests]) ;;
+	esac],
+	[AM_CONDITIONAL([BUILD_TESTS], [true])])
+
+AM_COND_IF([BUILD_TESTS],
+	[AX_PTHREAD([], [AC_MSG_ERROR([pthread missing])])])
+
+
+AC_ARG_ENABLE([install-tests],
+	[AS_HELP_STRING([--enable-install-tests], [Install test programs])],
+	[case "${enableval}" in
+	yes) AM_CONDITIONAL([INSTALL_TESTS], [true]) ;;
+	no)  AM_CONDITIONAL([INSTALL_TESTS], [false]) ;;
+	*) AC_MSG_ERROR([bad value ${enableval} for --enable-install-tests]) ;;
+	esac],
+	[AM_CONDITIONAL([INSTALL_TESTS], [false])])
+
+
+AM_COND_IF([INSTALL_TESTS],
+	[AC_SUBST(testbindir, ["\$libexecpath"])],
+	[AC_SUBST(testbindir, ["\".\""])])
+
+
+AC_CONFIG_FILES([tests/fs-tests/fs_help_all.sh
+	tests/fs-tests/fs_run_all.sh
+	tests/fs-tests/stress/fs_stress00.sh
+	tests/fs-tests/stress/fs_stress01.sh
+	tests/ubi-tests/runubitests.sh
+	tests/ubi-tests/ubi-stress-test.sh])
+
 
 AC_ARG_WITH([xattr],
 	[AS_HELP_STRING([--without-xattr],

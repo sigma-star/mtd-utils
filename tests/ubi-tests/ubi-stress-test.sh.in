@@ -1,7 +1,10 @@
 #!/bin/sh -euf
 
-srcdir="$(readlink -ev -- ${0%/*})"
-PATH="$srcdir:$srcdir/../..:$PATH"
+prefix=@prefix@
+exec_prefix=@exec_prefix@
+bindir=@bindir@
+libexecpath=@libexecdir@/mtd-utils
+TESTBINDIR=@testbindir@
 
 fatal()
 {
@@ -13,7 +16,7 @@ usage()
 {
 	cat 1>&2 <<EOF
 Stress-test an UBI device. This test is basically built on top of
-'runtests.sh' and runs it several times for different configurations.
+'runubitests.sh' and runs it several times for different configurations.
 
 The nandsim and mtdram drivers have to be compiled as kernel modules.
 
@@ -123,7 +126,7 @@ run_test()
 	if [ "$module" = "nandsim" ]; then
 		print_params "$@"
 
-		load_nandsim.sh "$size" "$peb_size" "$page_size" ||
+		$TESTBINDIR/load_nandsim.sh "$size" "$peb_size" "$page_size" ||
 			echo "Cannot load nandsim, test skipped"
 
 		mtdnum="$(find_mtd_device "$nandsim_patt")"
@@ -139,7 +142,7 @@ run_test()
 	fi
 
 	modprobe ubi mtd="$mtdnum,$vid_offs" $fm_param
-	runtests.sh /dev/ubi0 ||:
+	$TESTBINDIR/runubitests.sh /dev/ubi0 ||:
 
 	sudo rmmod ubi
 	sudo rmmod "$module"
