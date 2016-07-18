@@ -293,6 +293,31 @@ nil:
 	linebuf[lx++] = '\0';
 }
 
+/**
+ * ofd_write - writes whole buffer to the file associated with a descriptor
+ *
+ * On failure an error (negative number) is returned. Otherwise 0 is returned.
+ */
+static int ofd_write(int ofd, const void *buf, size_t nbyte)
+{
+	const unsigned char *data = buf;
+	ssize_t bytes;
+
+	while (nbyte) {
+		bytes = write(ofd, data, nbyte);
+		if (bytes < 0) {
+			int err = -errno;
+
+			sys_errmsg("Unable to write to output");
+
+			return err;
+		}
+		data += bytes;
+		nbyte -= bytes;
+	}
+
+	return 0;
+}
 
 /*
  * Main program
@@ -309,6 +334,7 @@ int main(int argc, char * const argv[])
 	bool eccstats = false;
 	unsigned char *readbuf = NULL, *oobbuf = NULL;
 	libmtd_t mtd_desc;
+	int err;
 
 	process_options(argc, argv);
 
@@ -443,15 +469,20 @@ int main(int argc, char * const argv[])
 			for (i = 0; i < bs; i += PRETTY_ROW_SIZE) {
 				pretty_dump_to_buffer(readbuf + i, PRETTY_ROW_SIZE,
 						pretty_buf, PRETTY_BUF_LEN, true, canonical, ofs + i);
-				write(ofd, pretty_buf, strlen(pretty_buf));
+				err = ofd_write(ofd, pretty_buf, strlen(pretty_buf));
+				if (err)
+					goto closeall;
 			}
 		} else {
 			/* Write requested length if oob is omitted */
 			size_t size_left = end_addr - ofs;
 			if (omitoob && (size_left < bs))
-				write(ofd, readbuf, size_left);
+				err = ofd_write(ofd, readbuf, size_left);
 			else
-				write(ofd, readbuf, bs);
+				err = ofd_write(ofd, readbuf, bs);
+
+			if (err)
+				goto closeall;
 		}
 
 		if (omitoob)
@@ -472,10 +503,15 @@ int main(int argc, char * const argv[])
 			for (i = 0; i < mtd.oob_size; i += PRETTY_ROW_SIZE) {
 				pretty_dump_to_buffer(oobbuf + i, mtd.oob_size - i,
 						pretty_buf, PRETTY_BUF_LEN, false, canonical, 0);
-				write(ofd, pretty_buf, strlen(pretty_buf));
+				err = ofd_write(ofd, pretty_buf, strlen(pretty_buf));
+				if (err)
+					goto closeall;
 			}
-		} else
-			write(ofd, oobbuf, mtd.oob_size);
+		} else {
+			err = ofd_write(ofd, oobbuf, mtd.oob_size);
+			if (err)
+				goto closeall;
+		}
 	}
 
 	/* Close the output file and MTD device, free memory */
