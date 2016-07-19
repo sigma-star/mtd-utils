@@ -113,8 +113,6 @@ static const char helptext[] =
 "                            eraseblock\n\n";
 
 
-static const char revtext[] = "$Revision: 1.9 $";
-
 static unsigned char ffbuf[16] = {
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
 	0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff
@@ -159,14 +157,15 @@ void process_options (int argc, char **argv)
 				break;
 			case 'h':
 			case '?':
-				errmsg_die("%s", helptext);
+				puts(helptext);
+				exit(EXIT_SUCCESS);
 			case 'v':
 				verbose = 1;
 				break;
 
 			case 'V':
-				errmsg_die("revision %.*s\n",
-						(int) strlen(revtext) - 13, revtext + 11);
+				common_print_version();
+				exit(EXIT_SUCCESS);
 
 			case 'e': {
 						  char *next;

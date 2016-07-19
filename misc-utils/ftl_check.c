@@ -44,6 +44,7 @@
 #include <unistd.h>
 #include <fcntl.h>
 #include <errno.h>
+#include <getopt.h>
 #include <sys/time.h>
 #include <sys/ioctl.h>
 #include <sys/stat.h>
@@ -175,14 +176,23 @@ void showusage(void)
 
 /*====================================================================*/
 
+static const struct option long_opts[] = {
+	{"help", no_argument, 0, 'h'},
+	{"version", no_argument, 0, 'V'},
+	{0, 0, 0, 0},
+};
+
 int main(int argc, char *argv[])
 {
-	int optch, errflg, fd;
+	int c, optch, errflg, fd;
 	struct stat buf;
 
 	errflg = 0;
-	while ((optch = getopt(argc, argv, "h")) != -1) {
+	while ((optch = getopt_long(argc, argv, "hV", long_opts, &c)) != -1) {
 		switch (optch) {
+			case 'V':
+				common_print_version();
+				exit(EXIT_SUCCESS);
 			case 'h':
 				errflg = 1; break;
 			default:

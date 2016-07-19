@@ -62,7 +62,9 @@
 #include <unistd.h>
 #include <fcntl.h>
 
-static char Version_string[] = "$Id: plotJittervsFill.c,v 1.6 2005/11/07 11:15:21 gleixner Exp $";
+#define PROGRAM_NAME "plotJittervsFill"
+#include "common.h"
+
 static char LogFile[250] = "InputLogFile.log";
 
 static int JitterThreshold_ms = 1000;
@@ -103,7 +105,7 @@ void HandleCmdLineArgs(
             if ((strcmp(argv[argNum],"--version") == 0) ||
                 (strcmp(argv[argNum],"-v")        == 0)) {
                 /* Print version information and exit. */
-                printf("%s\n", Version_string);
+                common_print_version();
                 exit(0);
             }
 

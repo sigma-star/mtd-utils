@@ -33,12 +33,15 @@
 #include <sys/mount.h>
 #include <errno.h>
 #include <string.h>
+#include <getopt.h>
 
 #include <asm/types.h>
 #include <mtd/mtd-user.h>
 #include <mtd/nftl-user.h>
 #include <mtd/inftl-user.h>
 #include <mtd_swab.h>
+
+#include "common.h"
 
 unsigned char BadUnitTable[MAX_ERASE_ZONES];
 unsigned char *readbuf;
@@ -52,6 +55,12 @@ struct INFTLMediaHeader *INFTLhdr;
 
 static int do_oobcheck = 1;
 static int do_rwecheck = 1;
+
+static const struct option long_opts[] = {
+	{"version", no_argument, 0, 'V'},
+	{"help", no_argument, 0, 'h'},
+	{0, 0, 0, 0},
+};
 
 static unsigned char check_block_1(unsigned long block)
 {
@@ -195,6 +204,21 @@ void usage(int rc)
 	exit(rc);
 }
 
+static void display_version(void)
+{
+	common_print_version();
+	printf("Copyright (C) 2005 Thomas Gleixner \n"
+			"\n"
+			"%1$s comes with NO WARRANTY\n"
+			"to the extent permitted by law.\n"
+			"\n"
+			"You may redistribute copies of %1$s\n"
+			"under the terms of the GNU General Public Licence.\n"
+			"See the file `COPYING' for more information.\n",
+			PROGRAM_NAME);
+	exit(EXIT_SUCCESS);
+}
+
 int main(int argc, char **argv)
 {
 	unsigned long startofs = 0, part_size = 0;
@@ -207,16 +231,14 @@ int main(int argc, char **argv)
 	char *mtddevice;
 	const char *nftl;
 	int c, do_inftl = 0, do_bbt = 0;
-
-
-	printf("version 1.24 2005/11/07 11:15:13 gleixner\n");
+	int idx = 0;
 
 	if (argc < 2)
 		usage(1);
 
 	nftl = "NFTL";
 
-	while ((c = getopt(argc, argv, "?hib")) > 0) {
+	while ((c = getopt_long(argc, argv, "?hibV", long_opts, &idx)) != -1) {
 		switch (c) {
 			case 'i':
 				nftl = "INFTL";
@@ -228,6 +250,9 @@ int main(int argc, char **argv)
 			case 'h':
 			case '?':
 				usage(0);
+				break;
+			case 'V':
+				display_version();
 				break;
 			default:
 				usage(1);

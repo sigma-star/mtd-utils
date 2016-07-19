@@ -61,16 +61,15 @@ static void display_help(int status)
 "      --input-size=length Only read |length| bytes of the input file\n"
 "  -q, --quiet             Don't display progress messages\n"
 "  -h, --help              Display this help and exit\n"
-"      --version           Output version information and exit\n"
+"  -V, --version           Output version information and exit\n"
 	);
 	exit(status);
 }
 
 static void display_version(void)
 {
-	printf("%1$s " VERSION "\n"
-			"\n"
-			"Copyright (C) 2003 Thomas Gleixner \n"
+	common_print_version();
+	printf("Copyright (C) 2003 Thomas Gleixner \n"
 			"\n"
 			"%1$s comes with NO WARRANTY\n"
 			"to the extent permitted by law.\n"
@@ -103,10 +102,10 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char short_options[] = "hb:mnNoOpqs:a";
+		static const char short_options[] = "hb:mnNoOpqs:aV";
 		static const struct option long_options[] = {
 			/* Order of these args with val==0 matters; see option_index. */
-			{"version", no_argument, 0, 0},
+			{"version", no_argument, 0, 'V'},
 			{"input-skip", required_argument, 0, 0},
 			{"input-size", required_argument, 0, 0},
 			{"help", no_argument, 0, 'h'},
@@ -131,9 +130,6 @@ static void process_options(int argc, char * const argv[])
 		switch (c) {
 		case 0:
 			switch (option_index) {
-			case 0: /* --version */
-				display_version();
-				break;
 			case 1: /* --input-skip */
 				inputskip = simple_strtoll(optarg, &error);
 				break;
@@ -141,6 +137,9 @@ static void process_options(int argc, char * const argv[])
 				inputsize = simple_strtoll(optarg, &error);
 				break;
 			}
+			break;
+		case 'V':
+			display_version();
 			break;
 		case 'q':
 			quiet = true;

@@ -76,9 +76,8 @@ static void display_help (void)
 
 static void display_version (void)
 {
-	printf("%1$s version " VERSION "\n"
-			"\n"
-			"Copyright (C) 2000 Arcom Control Systems Ltd\n"
+	common_print_version();
+	printf("Copyright (C) 2000 Arcom Control Systems Ltd\n"
 			"\n"
 			"%1$s comes with NO WARRANTY\n"
 			"to the extent permitted by law.\n"
@@ -105,10 +104,10 @@ int main(int argc, char *argv[])
 	 */
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "jNqu";
+		static const char *short_options = "jNquVh";
 		static const struct option long_options[] = {
-			{"help", no_argument, 0, 0},
-			{"version", no_argument, 0, 0},
+			{"help", no_argument, 0, 'h'},
+			{"version", no_argument, 0, 'V'},
 			{"jffs2", no_argument, 0, 'j'},
 			{"noskipbad", no_argument, 0, 'N'},
 			{"quiet", no_argument, 0, 'q'},
@@ -124,16 +123,12 @@ int main(int argc, char *argv[])
 			break;
 
 		switch (c) {
-		case 0:
-			switch (option_index) {
-			case 0:
-				display_help();
-				return 0;
-			case 1:
-				display_version();
-				return 0;
-			}
-			break;
+		case 'h':
+			display_help();
+			return EXIT_SUCCESS;
+		case 'V':
+			display_version();
+			return EXIT_SUCCESS;
 		case 'j':
 			jffs2 = 1;
 			break;

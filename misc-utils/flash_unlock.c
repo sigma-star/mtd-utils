@@ -46,7 +46,7 @@ static void usage(int status)
 		"\n"
 		"Options:\n"
 		" -h         --help              Display this help and exit\n"
-		"            --version           Display version information and exit\n"
+		" -V         --version           Display version information and exit\n"
 		" -i         --islocked          Check if flash region is locked\n"
 		" -l         --lock              Lock a region of flash\n"
 		" -u         --unlock            Unlock a region of flash\n"
@@ -59,13 +59,13 @@ static void usage(int status)
 	exit(status);
 }
 
-static const char short_opts[] = "hilu";
+static const char short_opts[] = "hiluV";
 static const struct option long_opts[] = {
 	{ "help",	no_argument,	0, 'h' },
 	{ "islocked",	no_argument,	0, 'i' },
 	{ "lock",	no_argument,	0, 'l' },
 	{ "unlock",	no_argument,	0, 'u' },
-	{ "version",	no_argument,	0, 'v' },
+	{ "version",	no_argument,	0, 'V' },
 	{ NULL,		0,		0, 0 },
 };
 
@@ -101,7 +101,7 @@ static void process_args(int argc, char *argv[])
 			req = REQUEST_UNLOCK;
 			req_set++;
 			break;
-		case 'v':
+		case 'V':
 			common_print_version();
 			exit(0);
 		default:

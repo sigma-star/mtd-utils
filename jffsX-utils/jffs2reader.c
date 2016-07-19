@@ -71,6 +71,7 @@ BUGS:
 #include <unistd.h>
 #include <fcntl.h>
 #include <time.h>
+#include <getopt.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
@@ -78,6 +79,14 @@ BUGS:
 
 #include "mtd/jffs2-user.h"
 #include "common.h"
+
+static struct option long_opt[] = {
+	{"help", 0, NULL, 'h'},
+	{"version", 0, NULL, 'V'},
+	{NULL, 0, NULL, 0},
+};
+
+static const char *short_opt = "rd:f:tVh";
 
 #define SCRATCH_SIZE (5*1024*1024)
 
@@ -857,7 +866,7 @@ void catfile(char *o, size_t size, char *path, char *b, size_t bsize,
 
 int main(int argc, char **argv)
 {
-	int fd, opt, recurse = 0, want_ctime = 0;
+	int fd, opt, c, recurse = 0, want_ctime = 0;
 	struct stat st;
 
 	char *scratch, *dir = NULL, *file = NULL;
@@ -865,7 +874,7 @@ int main(int argc, char **argv)
 
 	char *buf;
 
-	while ((opt = getopt(argc, argv, "rd:f:t")) > 0) {
+	while ((opt = getopt_long(argc, argv, short_opt, long_opt, &c)) > 0) {
 		switch (opt) {
 			case 'd':
 				dir = optarg;
@@ -879,11 +888,14 @@ int main(int argc, char **argv)
 			case 't':
 				want_ctime++;
 				break;
+			case 'V':
+				common_print_version();
+				exit(EXIT_SUCCESS);
 			default:
 				fprintf(stderr,
 						"Usage: %s <image> [-d|-f] < path >\n",
 						PROGRAM_NAME);
-				exit(EXIT_FAILURE);
+				exit(opt == 'h' ? EXIT_SUCCESS : EXIT_FAILURE);
 		}
 	}
 

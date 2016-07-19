@@ -92,7 +92,8 @@
 #include <fcntl.h>
 #include <sys/mman.h>
 
-
+#define PROGRAM_NAME "JitterTest"
+#include "common.h"
 
 /**************************** Enumerations ****************************/
 enum timerActions
@@ -165,9 +166,6 @@ enum timerActions
 
 
 /************************** Module Variables **************************/
-/* version identifier (value supplied by CVS)*/
-static const char Version[] = "$Id: JitterTest.c,v 1.13 2005/11/07 11:15:20 gleixner Exp $";
-
 static char OutFileName[MAX_FILE_NAME_LEN+1];  /* output file name            */
 static char LogFile[MAX_FILE_NAME_LEN+1] = "/dev/console"; /* default */
 static char ReadFile[MAX_FILE_NAME_LEN+1]; /* This file is read. Should
@@ -988,7 +986,7 @@ void SetSchedulerPriority(
  ***********************************************************************/
 void PrintVersionInfo(void)
 {
-    printf("JitterTest version %s\n", Version);
+    common_print_version();
     printf("Copyright (c) 2001, Daniel Industries, Inc.\n");
     return;
 }

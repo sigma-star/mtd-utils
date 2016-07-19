@@ -22,6 +22,7 @@ void usage(int status)
 	fprintf(status ? stderr : stdout,
 		"usage: %s [OPTIONS] <device>\n\n"
 		"  -h, --help           Display this help output\n"
+		"  -V, --version        Display version information and exit\n"
 		"  -m, --markbad        Mark blocks bad if they appear so\n"
 		"  -s, --seed           Supply random seed\n"
 		"  -p, --passes         Number of passes\n"
@@ -160,9 +161,10 @@ int main(int argc, char **argv)
 	seed = time(NULL);
 
 	for (;;) {
-		static const char short_options[] = "hkl:mo:p:r:s:";
+		static const char short_options[] = "hkl:mo:p:r:s:V";
 		static const struct option long_options[] = {
 			{ "help", no_argument, 0, 'h' },
+			{ "version", no_argument, 0, 'V' },
 			{ "markbad", no_argument, 0, 'm' },
 			{ "seed", required_argument, 0, 's' },
 			{ "passes", required_argument, 0, 'p' },
@@ -181,7 +183,10 @@ int main(int argc, char **argv)
 		case 'h':
 			usage(0);
 			break;
-
+		case 'V':
+			common_print_version();
+			exit(EXIT_SUCCESS);
+			break;
 		case '?':
 			usage(1);
 			break;

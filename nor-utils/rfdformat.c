@@ -13,7 +13,6 @@
  */
 
 #define PROGRAM_NAME "rfdformat"
-#define PROGRAM_VERSION "$Revision 1.0 $"
 
 #define _XOPEN_SOURCE 500 /* For pread/pwrite */
 
@@ -29,6 +28,8 @@
 #include <mtd/mtd-user.h>
 #include <linux/types.h>
 
+#include "common.h"
+
 void display_help(void)
 {
 	printf("Usage: %s [OPTIONS] MTD-device\n"
@@ -42,12 +43,9 @@ void display_help(void)
 
 void display_version(void)
 {
-	printf("%s " PROGRAM_VERSION "\n"
-			"\n"
-			"This is free software; see the source for copying conditions.  There is NO\n"
-			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n",
-			PROGRAM_NAME);
-
+	common_print_version();
+	printf("This is free software; see the source for copying conditions.  There is NO\n"
+			"warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.\n");
 	exit(0);
 }
 

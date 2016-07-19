@@ -43,9 +43,7 @@
 #include <mtd/mtd-user.h>
 #include <getopt.h>
 
-typedef int bool;
-#define true 1
-#define false 0
+#include "common.h"
 
 #define EXIT_FAILURE 1
 #define EXIT_SUCCESS 0
@@ -96,9 +94,11 @@ static void showusage(bool error)
 			"\n"
 			"usage: %1$s [ -v | --verbose ] <filename> <device>\n"
 			"       %1$s -h | --help\n"
+			"       %1$s -V | --version\n"
 			"\n"
 			"   -h | --help      Show this help message\n"
 			"   -v | --verbose   Show progress reports\n"
+			"   -V | --version   Show version information and exit\n"
 			"   <filename>       File which you want to copy to flash\n"
 			"   <device>         Flash device to write to (e.g. /dev/mtd0, /dev/mtd1, etc.)\n"
 			"\n",
@@ -182,10 +182,11 @@ int main (int argc,char *argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "hv";
+		static const char *short_options = "hvV";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 'h'},
 			{"verbose", no_argument, 0, 'v'},
+			{"version", no_argument, 0, 'V'},
 			{0, 0, 0, 0},
 		};
 
@@ -203,6 +204,10 @@ int main (int argc,char *argv[])
 			case 'v':
 				flags |= FLAG_VERBOSE;
 				DEBUG("Got FLAG_VERBOSE\n");
+				break;
+			case 'V':
+				common_print_version();
+				exit(EXIT_SUCCESS);
 				break;
 			default:
 				DEBUG("Unknown parameter: %s\n",argv[option_index]);

@@ -215,7 +215,7 @@ simple_strtoX(strtoull, unsigned long long int)
 /* Simple version-printing for utils */
 #define common_print_version() \
 do { \
-	printf("%s %s\n", PROGRAM_NAME, VERSION); \
+	printf("%s (mtd-utils) %s\n", PROGRAM_NAME, VERSION); \
 } while (0)
 
 #include "xalloc.h"

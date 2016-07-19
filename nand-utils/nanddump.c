@@ -63,9 +63,8 @@ static void display_help(int status)
 
 static void display_version(void)
 {
-	printf("%1$s " VERSION "\n"
-			"\n"
-			"%1$s comes with NO WARRANTY\n"
+	common_print_version();
+	printf("%1$s comes with NO WARRANTY\n"
 			"to the extent permitted by law.\n"
 			"\n"
 			"You may redistribute copies of %1$s\n"
@@ -101,9 +100,9 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char short_options[] = "hs:f:l:opqnca";
+		static const char short_options[] = "hs:f:l:opqncaV";
 		static const struct option long_options[] = {
-			{"version", no_argument, 0, 0},
+			{"version", no_argument, 0, 'V'},
 			{"bb", required_argument, 0, 0},
 			{"omitoob", no_argument, 0, 0},
 			{"help", no_argument, 0, 'h'},
@@ -128,9 +127,6 @@ static void process_options(int argc, char * const argv[])
 		switch (c) {
 			case 0:
 				switch (option_index) {
-					case 0:
-						display_version();
-						break;
 					case 1:
 						/* Handle --bb=METHOD */
 						if (!strcmp(optarg, "padbad"))
@@ -151,6 +147,9 @@ static void process_options(int argc, char * const argv[])
 						}
 						break;
 				}
+				break;
+			case 'V':
+				display_version();
 				break;
 			case 's':
 				start_addr = simple_strtoll(optarg, &error);

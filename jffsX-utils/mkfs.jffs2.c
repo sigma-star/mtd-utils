@@ -1427,8 +1427,6 @@ static const char helptext[] =
 "  -V, --version           Display version information\n"
 "  -i, --incremental=FILE  Parse FILE and generate appendage output for it\n\n";
 
-static const char revtext[] = "1.60";
-
 int load_next_block() {
 
 	int ret;
@@ -1631,14 +1629,16 @@ int main(int argc, char **argv)
 
 			case 'h':
 			case '?':
-				errmsg_die("%s", helptext);
+				puts(helptext);
+				exit(EXIT_SUCCESS);
 
 			case 'v':
 				verbose = 1;
 				break;
 
 			case 'V':
-				errmsg_die("revision %s\n", revtext);
+				common_print_version();
+				exit(EXIT_SUCCESS);
 
 			case 'e': {
 						  char *next;

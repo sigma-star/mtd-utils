@@ -37,7 +37,6 @@
 #include <sys/mount.h>
 #include <sys/statvfs.h>
 
-#define PROGRAM_VERSION "1.1"
 #define PROGRAM_NAME "integck"
 #include "common.h"
 #include "libubi.h"
@@ -2992,7 +2991,7 @@ static void get_tested_fs_info(void)
 	       pid, fsinfo.fstype, fsinfo.mount_point);
 }
 
-static const char doc[] = PROGRAM_NAME " version " PROGRAM_VERSION
+static const char doc[] = PROGRAM_NAME " version " VERSION
 " - a stress test which checks the file-system integrity.\n"
 "\n"
 "The test creates a directory named \"integck_test_dir_<pid>\", where where\n"
@@ -3077,7 +3076,7 @@ static int parse_opts(int argc, char * const argv[])
 			args.verbose = 1;
 			break;
 		case 'V':
-			fprintf(stderr, "%s\n", PROGRAM_VERSION);
+			common_print_version();
 			exit(EXIT_SUCCESS);
 
 		case 'h':

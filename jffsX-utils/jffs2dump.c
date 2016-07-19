@@ -54,8 +54,8 @@ void display_help (void)
 {
 	printf("Usage: %s [OPTION]... INPUTFILE\n"
 	       "Dump the contents of a binary JFFS2 image.\n\n"
-	       "     --help                   display this help and exit\n"
-	       "     --version                display version information and exit\n"
+	       " -h, --help                   display this help and exit\n"
+	       " -V, --version                display version information and exit\n"
 	       " -b, --bigendian              image is big endian\n"
 	       " -l, --littleendian           image is little endian\n"
 	       " -c, --content                dump image contents\n"
@@ -70,9 +70,8 @@ void display_help (void)
 
 void display_version (void)
 {
-	printf("%1$s " VERSION "\n"
-			"\n"
-			"Copyright (C) 2003 Thomas Gleixner \n"
+	common_print_version();
+	printf("Copyright (C) 2003 Thomas Gleixner \n"
 			"\n"
 			"%1$s comes with NO WARRANTY\n"
 			"to the extent permitted by law.\n"
@@ -102,10 +101,10 @@ void process_options (int argc, char *argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "blce:rd:o:v";
+		static const char *short_options = "blce:rd:o:vVh";
 		static const struct option long_options[] = {
-			{"help", no_argument, 0, 0},
-			{"version", no_argument, 0, 0},
+			{"help", no_argument, 0, 'h'},
+			{"version", no_argument, 0, 'V'},
 			{"bigendian", no_argument, 0, 'b'},
 			{"littleendian", no_argument, 0, 'l'},
 			{"content", no_argument, 0, 'c'},
@@ -124,15 +123,11 @@ void process_options (int argc, char *argv[])
 		}
 
 		switch (c) {
-			case 0:
-				switch (option_index) {
-					case 0:
-						display_help();
-						break;
-					case 1:
-						display_version();
-						break;
-				}
+			case 'h':
+				display_help();
+				break;
+			case 'V':
+				display_version();
 				break;
 			case 'v':
 				verbose = 1;
