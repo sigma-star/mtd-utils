@@ -32,7 +32,6 @@
 #include <assert.h>
 #include <mntent.h>
 #include <execinfo.h>
-#include <bits/stdio_lim.h>
 #include <sys/mman.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
