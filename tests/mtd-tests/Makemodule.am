@@ -14,8 +14,12 @@ nandbiterrs_SOURCES = tests/mtd-tests/nandbiterrs.c
 nandbiterrs_LDADD = libmtd.a
 nandbiterrs_CPPFLAGS = $(AM_CPPFLAGS)
 
+flash_readtest_SOURCES = tests/mtd-tests/flash_readtest.c
+flash_readtest_LDADD = libmtd.a
+flash_readtest_CPPFLAGS = $(AM_CPPFLAGS)
+
 MTDTEST_BINS = \
-	flash_torture flash_stress flash_speed nandbiterrs
+	flash_torture flash_stress flash_speed nandbiterrs flash_readtest
 
 if INSTALL_TESTS
 pkglibexec_PROGRAMS += $(MTDTEST_BINS)
