@@ -84,6 +84,7 @@ flash_speed
 flash_readtest
 nandbiterrs
 nandpagetest
+nandsubpagetest
 ubiattach
 ubiblock
 ubicrc32
