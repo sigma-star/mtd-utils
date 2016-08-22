@@ -18,8 +18,13 @@ flash_readtest_SOURCES = tests/mtd-tests/flash_readtest.c
 flash_readtest_LDADD = libmtd.a
 flash_readtest_CPPFLAGS = $(AM_CPPFLAGS)
 
+nandpagetest_SOURCES = tests/mtd-tests/nandpagetest.c
+nandpagetest_LDADD = libmtd.a
+nandpagetest_CPPFLAGS = $(AM_CPPFLAGS)
+
 MTDTEST_BINS = \
-	flash_torture flash_stress flash_speed nandbiterrs flash_readtest
+	flash_torture flash_stress flash_speed nandbiterrs flash_readtest \
+	nandpagetest
 
 if INSTALL_TESTS
 pkglibexec_PROGRAMS += $(MTDTEST_BINS)
