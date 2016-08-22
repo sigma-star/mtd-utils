@@ -1,0 +1,12 @@
+flash_torture_SOURCES = tests/mtd-tests/flash_torture.c
+flash_torture_LDADD = libmtd.a
+flash_torture_CPPFLAGS = $(AM_CPPFLAGS)
+
+MTDTEST_BINS = \
+	flash_torture
+
+if INSTALL_TESTS
+pkglibexec_PROGRAMS += $(MTDTEST_BINS)
+else
+noinst_PROGRAMS += $(MTDTEST_BINS)
+endif

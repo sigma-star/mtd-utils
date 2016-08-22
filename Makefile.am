@@ -46,4 +46,5 @@ include tests/ubi-tests/Makemodule.am
 include tests/jittertest/Makemodule.am
 include tests/checkfs/Makemodule.am
 include tests/fs-tests/Makemodule.am
+include tests/mtd-tests/Makemodule.am
 endif
