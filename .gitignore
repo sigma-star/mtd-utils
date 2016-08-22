@@ -79,6 +79,7 @@ stress_3
 test_1
 test_2
 flash_torture
+flash_stress
 ubiattach
 ubiblock
 ubicrc32

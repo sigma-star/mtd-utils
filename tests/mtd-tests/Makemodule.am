@@ -2,8 +2,12 @@ flash_torture_SOURCES = tests/mtd-tests/flash_torture.c
 flash_torture_LDADD = libmtd.a
 flash_torture_CPPFLAGS = $(AM_CPPFLAGS)
 
+flash_stress_SOURCES = tests/mtd-tests/flash_stress.c
+flash_stress_LDADD = libmtd.a
+flash_stress_CPPFLAGS = $(AM_CPPFLAGS)
+
 MTDTEST_BINS = \
-	flash_torture
+	flash_torture flash_stress
 
 if INSTALL_TESTS
 pkglibexec_PROGRAMS += $(MTDTEST_BINS)
