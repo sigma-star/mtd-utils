@@ -746,13 +746,13 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
 	if (dev_get_major(lib, mtd_num, &mtd->major, &mtd->minor))
 		return -1;
 
-	ret = dev_read_data(lib->mtd_name, mtd_num, &mtd->name,
+	ret = dev_read_data(lib->mtd_name, mtd_num, (char *)&mtd->name,
 			    MTD_NAME_MAX + 1);
 	if (ret < 0)
 		return -1;
 	((char *)mtd->name)[ret - 1] = '\0';
 
-	ret = dev_read_data(lib->mtd_type, mtd_num, &mtd->type_str,
+	ret = dev_read_data(lib->mtd_type, mtd_num, (char *)&mtd->type_str,
 			    MTD_TYPE_MAX + 1);
 	if (ret < 0)
 		return -1;
