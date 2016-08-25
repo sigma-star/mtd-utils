@@ -146,30 +146,6 @@ static int proc_parse_next(struct proc_parse_info *pi)
 }
 
 /**
- * legacy_libmtd_open - legacy version of 'libmtd_open()'.
- *
- * This function is just checks that MTD is present in the system. Returns
- * zero in case of success and %-1 in case of failure. In case of failure,
- * errno contains zero if MTD is not present in the system, or contains the
- * error code if a real error happened. This is similar to the 'libmtd_open()'
- * return conventions.
- */
-int legacy_libmtd_open(void)
-{
-	int fd;
-
-	fd = open(MTD_PROC_FILE, O_RDONLY);
-	if (fd == -1) {
-		if (errno == ENOENT)
-			errno = 0;
-		return -1;
-	}
-
-	close(fd);
-	return 0;
-}
-
-/**
  * legacy_dev_presentl - legacy version of 'mtd_dev_present()'.
  * @info: the MTD device information is returned here
  *
