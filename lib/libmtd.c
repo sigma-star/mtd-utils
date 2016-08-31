@@ -252,6 +252,7 @@ static int read_pos_ll(const char *file, long long *value)
 {
 	int fd, rd;
 	char buf[50];
+	memset(buf, 0, 50);
 
 	fd = open(file, O_RDONLY | O_CLOEXEC);
 	if (fd == -1)
@@ -1135,6 +1136,7 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 	int ret;
 	off_t seek;
 	struct mtd_write_req ops;
+	memset(&ops, 0, sizeof(ops));
 
 	ret = mtd_valid_erase_block(mtd, eb);
 	if (ret)
@@ -1208,6 +1210,8 @@ int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
 	unsigned long long max_offs;
 	const char *cmd64_str, *cmd_str;
 	struct libmtd *lib = (struct libmtd *)desc;
+	memset(&oob64, 0, sizeof(oob64));
+	memset(&oob, 0, sizeof(oob));
 
 	if (cmd64 ==  MEMREADOOB64) {
 		cmd64_str = "MEMREADOOB64";
