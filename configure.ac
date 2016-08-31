@@ -3,6 +3,20 @@ AC_PREREQ([2.60])
 m4_define([RELEASE], 1.5.2)
 
 AC_INIT([mtd-utils], [RELEASE], [linux-mtd@lists.infradead.org], mtd-utils)
+
+
+AC_ARG_ENABLE([unit-tests],
+	[AS_HELP_STRING([--enable-unit-tests], [Compile unit test programs])],
+	[case "${enableval}" in
+	yes) AM_CONDITIONAL([UNIT_TESTS], [true]) ;;
+	no)  AM_CONDITIONAL([UNIT_TESTS], [false]) ;;
+	*) AC_MSG_ERROR([bad value ${enableval} for --enable-unit-tests]) ;;
+	esac],
+	[AM_CONDITIONAL([UNIT_TESTS], [false])])
+
+AM_COND_IF([UNIT_TESTS], [: ${CFLAGS=""}], [])
+
+
 AC_CONFIG_MACRO_DIR([m4])
 AM_INIT_AUTOMAKE([foreign subdir-objects dist-bzip2])
 AM_SILENT_RULES([yes])
@@ -77,6 +91,8 @@ AM_CONDITIONAL([HAVE_EXECINFO], [test "x$execinfo_found" == "xyes"])
 
 PKG_CHECK_MODULES(ZLIB, [ zlib ])
 PKG_CHECK_MODULES(UUID, [ uuid ])
+
+AM_COND_IF([UNIT_TESTS], [PKG_CHECK_MODULES(CMOCKA, [ cmocka ])], [])
 
 AM_COND_IF([WITHOUT_LZO], [], [
 	have_lzo="yes"

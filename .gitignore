@@ -98,6 +98,8 @@ ubirmvol
 ubirsvol
 ubiupdatevol
 volrefcnt
+mtdlib_test
+ubilib_test
 tests/fs-tests/fs_help_all.sh
 tests/fs-tests/fs_run_all.sh
 tests/fs-tests/stress/fs_stress00.sh

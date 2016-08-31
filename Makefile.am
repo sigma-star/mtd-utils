@@ -48,3 +48,7 @@ include tests/checkfs/Makemodule.am
 include tests/fs-tests/Makemodule.am
 include tests/mtd-tests/Makemodule.am
 endif
+
+if UNIT_TESTS
+include tests/unittests/Makemodule.am
+endif
