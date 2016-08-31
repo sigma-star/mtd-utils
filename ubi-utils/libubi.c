@@ -524,7 +524,7 @@ libubi_t libubi_open(void)
 	if (!lib)
 		return NULL;
 
-	lib->sysfs_ctrl = mkpath("/sys", SYSFS_CTRL);
+	lib->sysfs_ctrl = mkpath(SYSFS_ROOT, SYSFS_CTRL);
 	if (!lib->sysfs_ctrl)
 		goto out_error;
 
@@ -532,7 +532,7 @@ libubi_t libubi_open(void)
 	if (!lib->ctrl_dev)
 		goto out_error;
 
-	lib->sysfs_ubi = mkpath("/sys", SYSFS_UBI);
+	lib->sysfs_ubi = mkpath(SYSFS_ROOT, SYSFS_UBI);
 	if (!lib->sysfs_ubi)
 		goto out_error;
 

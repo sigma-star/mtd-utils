@@ -30,6 +30,10 @@ extern "C" {
 
 #define PROGRAM_NAME "libmtd"
 
+#ifndef SYSFS_ROOT
+#define SYSFS_ROOT "/sys"
+#endif
+
 #define SYSFS_MTD        "class/mtd"
 #define MTD_NAME_PATT    "mtd%d"
 #define MTD_DEV          "dev"

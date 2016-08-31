@@ -36,6 +36,9 @@ extern "C" {
  * directories to '/sys/class/ubi/'. For now libubi assumes old layout.
  */
 
+#ifndef SYSFS_ROOT
+#define SYSFS_ROOT	  "/sys"
+#endif
 #define SYSFS_UBI         "class/ubi"
 #define SYSFS_CTRL        "class/misc/ubi_ctrl/"
 

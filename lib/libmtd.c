@@ -561,7 +561,7 @@ libmtd_t libmtd_open(void)
 
 	lib->offs64_ioctls = OFFS64_IOCTLS_UNKNOWN;
 
-	lib->sysfs_mtd = mkpath("/sys", SYSFS_MTD);
+	lib->sysfs_mtd = mkpath(SYSFS_ROOT, SYSFS_MTD);
 	if (!lib->sysfs_mtd)
 		goto out_error;
 
