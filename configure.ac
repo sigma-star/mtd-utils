@@ -72,6 +72,9 @@ AC_ARG_WITH([lzo],
 	[AM_CONDITIONAL([WITHOUT_LZO], [false])])
 
 
+AC_CHECK_HEADERS([execinfo.h], [execinfo_found=yes])
+AM_CONDITIONAL([HAVE_EXECINFO], [test "x$execinfo_found" == "xyes"])
+
 PKG_CHECK_MODULES(ZLIB, [ zlib ])
 PKG_CHECK_MODULES(UUID, [ uuid ])
 

@@ -31,7 +31,6 @@
 #include <getopt.h>
 #include <assert.h>
 #include <mntent.h>
-#include <execinfo.h>
 #include <sys/mman.h>
 #include <sys/vfs.h>
 #include <sys/mount.h>
@@ -40,6 +39,7 @@
 #define PROGRAM_NAME "integck"
 #include "common.h"
 #include "libubi.h"
+#include "libmissing.h"
 
 /*
  * WARNING! This is a dirty hack! The symbols for static functions are not

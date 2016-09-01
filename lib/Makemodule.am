@@ -5,4 +5,7 @@ libmtd_a_SOURCES = \
 	lib/libmtd_legacy.c \
 	lib/libmtd_int.h
 
-noinst_LIBRARIES += libmtd.a
+libmissing_a_SOURCES = \
+	lib/execinfo.c
+
+noinst_LIBRARIES += libmtd.a libmissing.a
