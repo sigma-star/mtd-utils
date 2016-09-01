@@ -45,7 +45,6 @@
 #include <mtd_swab.h>
 #include <crc32.h>
 #include "common.h"
-#include "ubiutils-common.h"
 
 /* The variables below are set by command line arguments */
 struct args {
@@ -130,7 +129,7 @@ static const struct option long_options[] = {
 
 static int parse_opt(int argc, char * const argv[])
 {
-	ubiutils_srand();
+	util_srand();
 	args.image_seq = rand();
 
 	while (1) {
@@ -143,7 +142,7 @@ static int parse_opt(int argc, char * const argv[])
 
 		switch (key) {
 		case 's':
-			args.subpage_size = ubiutils_get_bytes(optarg);
+			args.subpage_size = util_get_bytes(optarg);
 			if (args.subpage_size <= 0)
 				return errmsg("bad sub-page size: \"%s\"", optarg);
 			if (!is_power_of_2(args.subpage_size))
@@ -170,7 +169,7 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'S':
-			args.image_sz = ubiutils_get_bytes(optarg);
+			args.image_sz = util_get_bytes(optarg);
 			if (args.image_sz <= 0)
 				return errmsg("bad image-size: \"%s\"", optarg);
 			break;
@@ -791,9 +790,9 @@ int main(int argc, char * const argv[])
 
 	if (!args.quiet) {
 		normsg_cont("mtd%d (%s), size ", mtd.mtd_num, mtd.type_str);
-		ubiutils_print_bytes(mtd.size, 1);
+		util_print_bytes(mtd.size, 1);
 		printf(", %d eraseblocks of ", mtd.eb_cnt);
-		ubiutils_print_bytes(mtd.eb_size, 1);
+		util_print_bytes(mtd.eb_size, 1);
 		printf(", min. I/O size %d bytes\n", mtd.min_io_size);
 	}
 

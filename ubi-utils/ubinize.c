@@ -37,7 +37,6 @@
 #include <libiniparser.h>
 #include <libubi.h>
 #include "common.h"
-#include "ubiutils-common.h"
 
 static const char optionsstr[] =
 "-o, --output=<file name>     output file name\n"
@@ -110,7 +109,7 @@ static struct args args = {
 
 static int parse_opt(int argc, char * const argv[])
 {
-	ubiutils_srand();
+	util_srand();
 	args.image_seq = rand();
 
 	while (1) {
@@ -131,13 +130,13 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 'p':
-			args.peb_size = ubiutils_get_bytes(optarg);
+			args.peb_size = util_get_bytes(optarg);
 			if (args.peb_size <= 0)
 				return errmsg("bad physical eraseblock size: \"%s\"", optarg);
 			break;
 
 		case 'm':
-			args.min_io_size = ubiutils_get_bytes(optarg);
+			args.min_io_size = util_get_bytes(optarg);
 			if (args.min_io_size <= 0)
 				return errmsg("bad min. I/O unit size: \"%s\"", optarg);
 			if (!is_power_of_2(args.min_io_size))
@@ -145,7 +144,7 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 's':
-			args.subpage_size = ubiutils_get_bytes(optarg);
+			args.subpage_size = util_get_bytes(optarg);
 			if (args.subpage_size <= 0)
 				return errmsg("bad sub-page size: \"%s\"", optarg);
 			if (!is_power_of_2(args.subpage_size))
@@ -324,7 +323,7 @@ static int read_section(const struct ubigen_info *ui, const char *sname,
 	sprintf(buf, "%s:vol_size", sname);
 	p = iniparser_getstring(args.dict, buf, NULL);
 	if (p) {
-		vi->bytes = ubiutils_get_bytes(p);
+		vi->bytes = util_get_bytes(p);
 		if (vi->bytes <= 0)
 			return errmsg("bad \"vol_size\" key value \"%s\" (section \"%s\")",
 				      p, sname);
@@ -353,7 +352,7 @@ static int read_section(const struct ubigen_info *ui, const char *sname,
 
 		normsg_cont("volume size was not specified in section \"%s\", assume"
 			    " minimum to fit image \"%s\"", sname, *img);
-		ubiutils_print_bytes(vi->bytes, 1);
+		util_print_bytes(vi->bytes, 1);
 		printf("\n");
 	}
 

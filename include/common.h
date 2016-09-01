@@ -220,6 +220,10 @@ do { \
 
 #include "xalloc.h"
 
+long long util_get_bytes(const char *str);
+void util_print_bytes(long long bytes, int bracket);
+int util_srand(void);
+
 #ifdef __cplusplus
 }
 #endif

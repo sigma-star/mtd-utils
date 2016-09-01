@@ -1,6 +1,7 @@
 libmtd_a_SOURCES = \
 	lib/libmtd.c \
 	lib/libfec.c \
+	lib/common.c \
 	lib/libcrc32.c \
 	lib/libmtd_legacy.c \
 	lib/libmtd_int.h

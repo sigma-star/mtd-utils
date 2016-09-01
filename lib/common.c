@@ -17,13 +17,13 @@
  */
 
 /*
- * This file contains various common stuff used by UBI utilities.
+ * This file contains various common stuff.
  *
  * Authors: Artem Bityutskiy
  *          Adrian Hunter
  */
 
-#define PROGRAM_NAME "ubiutils"
+#define PROGRAM_NAME "mtd-utils"
 
 #include <sys/time.h>
 #include <sys/types.h>
@@ -62,7 +62,7 @@ static int get_multiplier(const char *str)
 }
 
 /**
- * ubiutils_get_bytes - convert a string containing amount of bytes into an
+ * util_get_bytes - convert a string containing amount of bytes into an
  * integer
  * @str: string to convert
  *
@@ -70,7 +70,7 @@ static int get_multiplier(const char *str)
  * size specifiers. Returns positive amount of bytes in case of success and %-1
  * in case of failure.
  */
-long long ubiutils_get_bytes(const char *str)
+long long util_get_bytes(const char *str)
 {
 	char *endp;
 	long long bytes = strtoull(str, &endp, 0);
@@ -95,7 +95,7 @@ long long ubiutils_get_bytes(const char *str)
 }
 
 /**
- * ubiutils_print_bytes - print bytes.
+ * util_print_bytes - print bytes.
  * @bytes: variable to print
  * @bracket: whether brackets have to be put or not
  *
@@ -104,7 +104,7 @@ long long ubiutils_get_bytes(const char *str)
  * amount of Kilobytes, Megabytes, or Gigabytes, depending on how big @bytes
  * is.
  */
-void ubiutils_print_bytes(long long bytes, int bracket)
+void util_print_bytes(long long bytes, int bracket)
 {
 	const char *p;
 
@@ -129,14 +129,14 @@ void ubiutils_print_bytes(long long bytes, int bracket)
 }
 
 /**
- * ubiutils_srand - randomly seed the standard pseudo-random generator.
+ * util_srand - randomly seed the standard pseudo-random generator.
  *
  * This helper function seeds the standard libc pseudo-random generator with a
  * more or less random value to make sure the 'rand()' call does not return the
  * same sequence every time UBI utilities run. Returns zero in case of success
  * and a %-1 in case of error.
  */
-int ubiutils_srand(void)
+int util_srand(void)
 {
 	struct timeval tv;
 	struct timezone tz;

@@ -33,7 +33,6 @@
 
 #include <libubi.h>
 #include "common.h"
-#include "ubiutils-common.h"
 
 /* The variables below are set by command line arguments */
 struct args {
@@ -137,7 +136,7 @@ static int parse_opt(int argc, char * const argv[])
 			break;
 
 		case 's':
-			args.bytes = ubiutils_get_bytes(optarg);
+			args.bytes = util_get_bytes(optarg);
 			if (args.bytes <= 0)
 				return errmsg("bad volume size: \"%s\"", optarg);
 			break;
@@ -278,9 +277,9 @@ int main(int argc, char * const argv[])
 	}
 
 	printf("Volume ID %d, size %d LEBs (", vol_info.vol_id, vol_info.rsvd_lebs);
-	ubiutils_print_bytes(vol_info.rsvd_bytes, 0);
+	util_print_bytes(vol_info.rsvd_bytes, 0);
 	printf("), LEB size ");
-	ubiutils_print_bytes(vol_info.leb_size, 1);
+	util_print_bytes(vol_info.leb_size, 1);
 	printf(", %s, name \"%s\", alignment %d\n",
 	       req.vol_type == UBI_DYNAMIC_VOLUME ? "dynamic" : "static",
 	       vol_info.name, vol_info.alignment);

@@ -1,4 +1,4 @@
-libubi_a_SOURCES = ubi-utils/libubi.c ubi-utils/ubiutils-common.c ubi-utils/libubi_int.h
+libubi_a_SOURCES = ubi-utils/libubi.c ubi-utils/libubi_int.h
 libubi_a_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
 
 libubigen_a_SOURCES = ubi-utils/libubigen.c
