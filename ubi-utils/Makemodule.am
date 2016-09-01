@@ -66,7 +66,12 @@ UBI_EXTRA = \
 UBI_HEADER = \
 	ubi-utils/include ubi-utils/libubi_int.h
 
+UBI_MAN = \
+	ubi-utils/ubinize.8
+
 EXTRA_DIST += $(UBI_HEADER) $(UBI_EXTRA)
+
+dist_man8_MANS += $(UBI_MAN)
 
 sbin_PROGRAMS += $(UBI_BINS)
 

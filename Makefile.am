@@ -22,6 +22,7 @@ noinst_SCRIPTS =
 pkglibexec_PROGRAMS =
 pkglibexec_SCRIPTS =
 dist_man1_MANS =
+dist_man8_MANS =
 
 EXTRA_DIST =
 
