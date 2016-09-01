@@ -25,7 +25,6 @@ extern "C" {
 
 long long ubiutils_get_bytes(const char *str);
 void ubiutils_print_bytes(long long bytes, int bracket);
-void ubiutils_print_text(FILE *stream, const char *txt, int len);
 int ubiutils_srand(void);
 
 #ifdef __cplusplus

@@ -129,59 +129,6 @@ void ubiutils_print_bytes(long long bytes, int bracket)
 }
 
 /**
- * ubiutils_print_text - print text and fold it.
- * @stream: file stream to print to
- * @text: text to print
- * @width: maximum allowed text width
- *
- * Print text and fold it so that each line would not have more then @width
- * characters.
- */
-void ubiutils_print_text(FILE *stream, const char *text, int width)
-{
-	int pos, bpos = 0;
-	const char *p;
-	char line[1024];
-
-	if (width > 1023) {
-		fprintf(stream, "%s\n", text);
-		return;
-	}
-	p = text;
-	pos = 0;
-	while (p[pos]) {
-		while (!isspace(p[pos])) {
-			line[pos] = p[pos];
-			if (!p[pos])
-				break;
-			++pos;
-			if (pos == width) {
-				line[pos] = '\0';
-				fprintf(stream, "%s\n", line);
-				p += pos;
-				pos = 0;
-			}
-		}
-		while (pos < width) {
-			line[pos] = p[pos];
-			if (!p[pos]) {
-				bpos = pos;
-				break;
-			}
-			if (isspace(p[pos]))
-				bpos = pos;
-			++pos;
-		}
-		line[bpos] = '\0';
-		fprintf(stream, "%s\n", line);
-		p += bpos;
-		pos = 0;
-		while (p[pos] && isspace(p[pos]))
-			++p;
-	}
-}
-
-/**
  * ubiutils_srand - randomly seed the standard pseudo-random generator.
  *
  * This helper function seeds the standard libc pseudo-random generator with a
