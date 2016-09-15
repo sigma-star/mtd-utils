@@ -12,6 +12,9 @@ AC_PROG_CC
 AC_PROG_INSTALL
 
 
+AC_SEARCH_LIBS([clock_gettime],[rt posix4])
+AC_CHECK_FUNCS([clock_gettime])
+
 AC_ARG_ENABLE([tests],
 	[AS_HELP_STRING([--disable-tests], [Compile test programs])],
 	[case "${enableval}" in
