@@ -12,7 +12,7 @@ usage() {
         cat <<EOF
 Usage: ${0##*/} <new_ver> <outdir>
 
-<new_ver>  - mtd utils version to create in X.Y.Z format
+<new_ver>  - mtd utils version to create in X.Y.Z[-rcX] format
 <outdir>   - the output directory where to store the tarball with the
              gpg signature
 EOF
@@ -29,11 +29,13 @@ release_name="mtd-utils-$new_ver"
 tag_name="v$new_ver"
 
 # Make sure the input is sane and the makefile contains sensible version
-echo "$new_ver" | egrep -q -x '[[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+' ||
-        fatal "please, provide new version in X.Y.Z format"
+VER_REGEX="\([0-9]\+.[0-9]\+.[0-9]\+\)\(-rc[0-9]\+\)\?"
 
-egrep -q -x "m4_define\(\[RELEASE\], [0-9]+\.[0-9]+\.[0-9]+\)" configure.ac ||
-        fatal "configure.ac does not contain \"m4_define([RELEASE], X.Y.Z)\""
+echo "$new_ver" | grep -q -x "$VER_REGEX" ||
+        fatal "please, provide new version in X.Y.Z[-rcX] format"
+
+grep -q -x "m4_define(\[RELEASE\], $VER_REGEX)" configure.ac ||
+        fatal "configure.ac does not contain a valid version string"
 
 # Make sure the git index is up-to-date
 [ -z "$(git status --porcelain)" ] || fatal "Git index is not up-to-date"
@@ -42,7 +44,7 @@ egrep -q -x "m4_define\(\[RELEASE\], [0-9]+\.[0-9]+\.[0-9]+\)" configure.ac ||
 [ -z "$(git tag -l "$tag_name")" ] || fatal "Tag $tag_name already exists"
 
 # Change the version in the configure.ac
-sed -i -e "s/^m4_define(\[RELEASE\], [0-9]\+.[0-9]\+.[0-9]\+)/m4_define([RELEASE], $new_ver)/" configure.ac
+sed -i -e "s/^m4_define(\[RELEASE\], $VER_REGEX)/m4_define([RELEASE], $new_ver)/" configure.ac
 
 # And commit the change
 git commit -s -m "Release $release_name" configure.ac
