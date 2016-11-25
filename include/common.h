@@ -30,6 +30,8 @@
 #include <inttypes.h>
 #include <sys/sysmacros.h>
 
+#include "config.h"
+
 #ifndef PROGRAM_NAME
 # error "You must define PROGRAM_NAME before including this header"
 #endif
@@ -71,7 +73,7 @@ extern "C" {
 #define PRIxoff_t PRIx64
 #define PRIdoff_t PRId64
 #else
-#if (SIZEOF_LONG >= 8)
+#if (SIZEOF_LONG == SIZEOF_LOFF_T)
 #define PRIxoff_t "l"PRIx32
 #define PRIdoff_t "l"PRId32
 #else

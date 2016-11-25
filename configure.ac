@@ -4,6 +4,7 @@ m4_define([RELEASE], 1.5.2)
 
 AC_INIT([mtd-utils], [RELEASE], [linux-mtd@lists.infradead.org], mtd-utils)
 
+AC_CONFIG_HEADERS([include/config.h])
 
 AC_ARG_ENABLE([unit-tests],
 	[AS_HELP_STRING([--enable-unit-tests], [Compile unit test programs])],
@@ -108,5 +109,9 @@ AM_COND_IF([WITHOUT_LZO], [], [
 	)
 	test "${have_lzo}" != "yes" && AC_MSG_ERROR([lzo missing])
 ])
+
+AC_CHECK_SIZEOF([long])
+
+AC_CHECK_SIZEOF([loff_t])
 
 AC_OUTPUT([Makefile])

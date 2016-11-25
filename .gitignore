@@ -124,6 +124,9 @@ tests/ubi-tests/ubi-stress-test.sh
 /missing
 /stamp-h?
 /compile
+/include/config.h
+/include/config.h.in
+/include/stamp-h1
 
 #
 # Top-level generic files
