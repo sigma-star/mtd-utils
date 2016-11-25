@@ -28,6 +28,7 @@
 #include <errno.h>
 #include <features.h>
 #include <inttypes.h>
+#include <unistd.h>
 #include <sys/sysmacros.h>
 
 #include "config.h"
@@ -226,6 +227,38 @@ long long util_get_bytes(const char *str);
 void util_print_bytes(long long bytes, int bracket);
 int util_srand(void);
 
+/*
+ * The following helpers are here to avoid compiler complaints about unchecked
+ * return code.
+ * FIXME: The proper fix would be to check the return code in all those places,
+ * but it's usually placed in old code which have no proper exit path and
+ * handling  errors requires rewriting a lot of code.
+ *
+ * WARNING: Please do not use these helpers in new code. Instead, make sure
+ * you check the function return code and provide coherent error handling in
+ * case of error.
+ */
+static inline ssize_t read_nocheck(int fd, void *buf, size_t count)
+{
+	return read(fd, buf, count);
+}
+
+static inline ssize_t write_nocheck(int fd, void *buf, size_t count)
+{
+	return write(fd, buf, count);
+}
+
+static inline ssize_t pread_nocheck(int fd, void *buf, size_t count,
+				    off_t offset)
+{
+	return pread(fd, buf, count, offset);
+}
+
+static inline ssize_t pwrite_nocheck(int fd, void *buf, size_t count,
+				     off_t offset)
+{
+	return pwrite(fd, buf, count, offset);
+}
 #ifdef __cplusplus
 }
 #endif

@@ -859,7 +859,7 @@ void catfile(char *o, size_t size, char *path, char *b, size_t bsize,
 	ri = find_raw_inode(o, size, ino);
 	putblock(b, bsize, rsize, ri);
 
-	write(1, b, *rsize);
+	write_nocheck(1, b, *rsize);
 }
 
 /* usage example */

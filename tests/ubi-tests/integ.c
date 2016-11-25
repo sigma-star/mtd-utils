@@ -496,7 +496,9 @@ static void operate_on_ubi_device(struct ubi_device_info *ubi_device)
 			/* FIXME: Correctly make node */
 			maj = ubi_major(ubi_device->device_file_name);
 			sprintf(dev_name, "mknod %s c %d %d", s->device_file_name, maj, req.vol_id + 1);
-			system(dev_name);
+			if (system(dev_name))
+				error_exit("Failed to create device file");
+
 		} else if (close(fd) == -1)
 			error_exit("Failed to close volume device file");
 	}
@@ -559,7 +561,11 @@ static void get_ubi_devices_info(void)
 
 static void load_ubi(void)
 {
-	system("rmmod ubi");
+	int ret;
+
+	if (system("modprobe -r ubi"))
+		error_exit("Failed to unload UBI module");
+
 	if (system(ubi_module_load_string) != 0)
 		error_exit("Failed to load UBI module");
 	sleep(1);

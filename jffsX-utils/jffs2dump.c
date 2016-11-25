@@ -498,7 +498,7 @@ void do_endianconvert (void)
 
 		/* Skip empty space */
 		if (je16_to_cpu (node->u.magic) == 0xFFFF && je16_to_cpu (node->u.nodetype) == 0xFFFF) {
-			write (fd, p, 4);
+			write_nocheck (fd, p, 4);
 			p += 4;
 			continue;
 		}
@@ -507,7 +507,7 @@ void do_endianconvert (void)
 			printf ("Wrong bitmask  at  0x%08zx, 0x%04x\n", p - data, je16_to_cpu (node->u.magic));
 			newnode.u.magic = cnv_e16 (node->u.magic);
 			newnode.u.nodetype = cnv_e16 (node->u.nodetype);
-			write (fd, &newnode, 4);
+			write_nocheck (fd, &newnode, 4);
 			p += 4;
 			continue;
 		}
@@ -550,8 +550,8 @@ void do_endianconvert (void)
 
 				newnode.i.node_crc = cpu_to_e32 (mtd_crc32 (0, &newnode, sizeof (struct jffs2_raw_inode) - 8));
 
-				write (fd, &newnode, sizeof (struct jffs2_raw_inode));
-				write (fd, p + sizeof (struct jffs2_raw_inode), PAD (je32_to_cpu (node->i.totlen) -  sizeof (struct jffs2_raw_inode)));
+				write_nocheck (fd, &newnode, sizeof (struct jffs2_raw_inode));
+				write_nocheck (fd, p + sizeof (struct jffs2_raw_inode), PAD (je32_to_cpu (node->i.totlen) -  sizeof (struct jffs2_raw_inode)));
 
 				p += PAD(je32_to_cpu (node->i.totlen));
 				break;
@@ -575,8 +575,8 @@ void do_endianconvert (void)
 				else
 					newnode.d.name_crc = cnv_e32 (node->d.name_crc);
 
-				write (fd, &newnode, sizeof (struct jffs2_raw_dirent));
-				write (fd, p + sizeof (struct jffs2_raw_dirent), PAD (je32_to_cpu (node->d.totlen) -  sizeof (struct jffs2_raw_dirent)));
+				write_nocheck (fd, &newnode, sizeof (struct jffs2_raw_dirent));
+				write_nocheck (fd, p + sizeof (struct jffs2_raw_dirent), PAD (je32_to_cpu (node->d.totlen) -  sizeof (struct jffs2_raw_dirent)));
 				p += PAD(je32_to_cpu (node->d.totlen));
 				break;
 
@@ -596,8 +596,8 @@ void do_endianconvert (void)
 					newnode.x.data_crc = cnv_e32 (node->x.data_crc);
 				newnode.x.node_crc = cpu_to_e32 (mtd_crc32 (0, &newnode, sizeof (struct jffs2_raw_xattr) - sizeof (newnode.x.node_crc)));
 
-				write (fd, &newnode, sizeof (struct jffs2_raw_xattr));
-				write (fd, p + sizeof (struct jffs2_raw_xattr), PAD (je32_to_cpu (node->d.totlen) -  sizeof (struct jffs2_raw_xattr)));
+				write_nocheck (fd, &newnode, sizeof (struct jffs2_raw_xattr));
+				write_nocheck (fd, p + sizeof (struct jffs2_raw_xattr), PAD (je32_to_cpu (node->d.totlen) -  sizeof (struct jffs2_raw_xattr)));
 				p += PAD(je32_to_cpu (node->x.totlen));
 				break;
 
@@ -620,10 +620,10 @@ void do_endianconvert (void)
 				newnode.u.totlen = cnv_e32 (node->u.totlen);
 				newnode.u.hdr_crc = cpu_to_e32 (mtd_crc32 (0, &newnode, sizeof (struct jffs2_unknown_node) - 4));
 
-				write (fd, &newnode, sizeof (struct jffs2_unknown_node));
+				write_nocheck (fd, &newnode, sizeof (struct jffs2_unknown_node));
 				len = PAD(je32_to_cpu (node->u.totlen) - sizeof (struct jffs2_unknown_node));
 				if (len > 0)
-					write (fd, p + sizeof (struct jffs2_unknown_node), len);
+					write_nocheck (fd, p + sizeof (struct jffs2_unknown_node), len);
 
 				p += PAD(je32_to_cpu (node->u.totlen));
 				break;
@@ -716,15 +716,15 @@ void do_endianconvert (void)
 														  je32_to_cpu (node->s.totlen) - sizeof (struct jffs2_raw_summary)));
 
 											  // write out new node header
-											  write(fd, &newnode, sizeof (struct jffs2_raw_summary));
+											  write_nocheck(fd, &newnode, sizeof (struct jffs2_raw_summary));
 											  // write out new summary data
-											  write(fd, &node->s.sum, sum_len + sizeof (struct jffs2_sum_marker));
+											  write_nocheck(fd, &node->s.sum, sum_len + sizeof (struct jffs2_sum_marker));
 
 											  break;
 										  }
 
 			case 0xffff:
-										  write (fd, p, 4);
+										  write_nocheck (fd, p, 4);
 										  p += 4;
 										  break;
 
@@ -772,8 +772,8 @@ int main(int argc, char **argv)
 		printf ("Peeling data out of combined data/oob image\n");
 		while (len) {
 			// read image data
-			read (fd, &data[idx], datsize);
-			read (fd, oob, oobsize);
+			read_nocheck (fd, &data[idx], datsize);
+			read_nocheck (fd, oob, oobsize);
 			idx += datsize;
 			imglen -= oobsize;
 			len -= datsize + oobsize;
@@ -781,7 +781,7 @@ int main(int argc, char **argv)
 
 	} else {
 		// read image data
-		read (fd, data, imglen);
+		read_nocheck (fd, data, imglen);
 	}
 	// Close the input file
 	close(fd);

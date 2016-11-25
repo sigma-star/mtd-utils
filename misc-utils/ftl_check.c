@@ -95,7 +95,7 @@ static void check_partition(int fd)
 			perror("seek failed");
 			break;
 		}
-		read(fd, &hdr, sizeof(hdr));
+		read_nocheck(fd, &hdr, sizeof(hdr));
 		if ((le32_to_cpu(hdr.FormattedSize) > 0) &&
 				(le32_to_cpu(hdr.FormattedSize) <= mtd.size) &&
 				(le16_to_cpu(hdr.NumEraseUnits) > 0) &&

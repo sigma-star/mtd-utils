@@ -275,7 +275,11 @@ int main(int argc, char **argv)
 	show_header(mhoffs);
 
 	printf("\nReady to update device.  Type 'yes' to proceed, anything else to abort: ");
-	fgets(line, sizeof(line), stdin);
+	if (!fgets(line, sizeof(line), stdin)) {
+		printf("Failed to retrieve input chars!\n");
+		return 1;
+	}
+
 	if (strcmp("yes\n", line))
 		return 0;
 	printf("Updating MediaHeader...\n");

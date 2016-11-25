@@ -93,15 +93,15 @@ static unsigned char check_block_2(unsigned long block)
 	erase.start = ofs;
 
 	for (blockofs = 0; blockofs < meminfo.erasesize; blockofs += 512) {
-		pread(fd, readbuf, 512, ofs + blockofs);
+		pread_nocheck(fd, readbuf, 512, ofs + blockofs);
 		if (memcmp(readbuf, writebuf[0], 512)) {
 			/* Block wasn't 0xff after erase */
 			printf(": Block not 0xff after erase\n");
 			return ZONE_BAD_ORIGINAL;
 		}
 
-		pwrite(fd, writebuf[1], 512, blockofs + ofs);
-		pread(fd, readbuf, 512, blockofs + ofs);
+		pwrite_nocheck(fd, writebuf[1], 512, blockofs + ofs);
+		pread_nocheck(fd, readbuf, 512, blockofs + ofs);
 		if (memcmp(readbuf, writebuf[1], 512)) {
 			printf(": Block not zero after clearing\n");
 			return ZONE_BAD_ORIGINAL;
@@ -114,8 +114,8 @@ static unsigned char check_block_2(unsigned long block)
 		return ZONE_BAD_ORIGINAL;
 	}
 	for (blockofs = 0; blockofs < meminfo.erasesize; blockofs += 512) {
-		pwrite(fd, writebuf[2], 512, blockofs + ofs);
-		pread(fd, readbuf, 512, blockofs + ofs);
+		pwrite_nocheck(fd, writebuf[2], 512, blockofs + ofs);
+		pread_nocheck(fd, readbuf, 512, blockofs + ofs);
 		if (memcmp(readbuf, writebuf[2], 512)) {
 			printf(": Block not 0x5a after writing\n");
 			return ZONE_BAD_ORIGINAL;
@@ -127,8 +127,8 @@ static unsigned char check_block_2(unsigned long block)
 		return ZONE_BAD_ORIGINAL;
 	}
 	for (blockofs = 0; blockofs < meminfo.erasesize; blockofs += 512) {
-		pwrite(fd, writebuf[3], 512, blockofs + ofs);
-		pread(fd, readbuf, 512, blockofs + ofs);
+		pwrite_nocheck(fd, writebuf[3], 512, blockofs + ofs);
+		pread_nocheck(fd, readbuf, 512, blockofs + ofs);
 		if (memcmp(readbuf, writebuf[3], 512)) {
 			printf(": Block not 0xa5 after writing\n");
 			return ZONE_BAD_ORIGINAL;
@@ -181,7 +181,7 @@ static int checkbbt(void)
 	unsigned char bits;
 	int i, addr;
 
-	if (pread(fd, bbt, 512, 0x800) < 0) {
+	if (pread_nocheck(fd, bbt, 512, 0x800) < 0) {
 		printf("%s: failed to read BBT, errno=%d\n", PROGRAM_NAME, errno);
 		return (-1);
 	}
@@ -402,9 +402,9 @@ int main(int argc, char **argv)
 
 	/* Phase 2. Writing NFTL Media Headers and Bad Unit Table */
 	printf("Phase 2.a Writing %s Media Header and Bad Unit Table\n", nftl);
-	pwrite(fd, writebuf[0], 512, MediaUnit1 * meminfo.erasesize + MediaUnitOff1);
+	pwrite_nocheck(fd, writebuf[0], 512, MediaUnit1 * meminfo.erasesize + MediaUnitOff1);
 	for (ezone = 0; ezone < (meminfo.size / meminfo.erasesize); ezone += 512) {
-		pwrite(fd, BadUnitTable + ezone, 512,
+		pwrite_nocheck(fd, BadUnitTable + ezone, 512,
 				(MediaUnit1 * meminfo.erasesize) + 512 * (1 + ezone / 512));
 	}
 
@@ -416,9 +416,9 @@ int main(int argc, char **argv)
 			le32_to_cpu(NFTLhdr->FormattedSize)/512);
 #endif
 	printf("Phase 2.b Writing Spare %s Media Header and Spare Bad Unit Table\n", nftl);
-	pwrite(fd, writebuf[0], 512, MediaUnit2 * meminfo.erasesize + MediaUnitOff2);
+	pwrite_nocheck(fd, writebuf[0], 512, MediaUnit2 * meminfo.erasesize + MediaUnitOff2);
 	for (ezone = 0; ezone < (meminfo.size / meminfo.erasesize); ezone += 512) {
-		pwrite(fd, BadUnitTable + ezone, 512,
+		pwrite_nocheck(fd, BadUnitTable + ezone, 512,
 				(MediaUnit2 * meminfo.erasesize + MediaUnitOff2) + 512 * (1 + ezone / 512));
 	}
 
