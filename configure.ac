@@ -75,6 +75,9 @@ AC_ARG_WITH([xattr],
 	esac],
 	[AM_CONDITIONAL([WITHOUT_XATTR], [false])])
 
+AC_CHECK_HEADER(sys/xattr.h, [], [AM_CONDITIONAL([WITHOUT_XATTR], [true])])
+AC_CHECK_HEADER(sys/acl.h, [], [AM_CONDITIONAL([WITHOUT_XATTR], [true])])
+
 
 AC_ARG_WITH([lzo],
 	[AS_HELP_STRING([--without-lzo], [Disable support for LZO compression])],
