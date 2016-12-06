@@ -49,6 +49,7 @@ static void display_help(int status)
 "Writes to the specified MTD device.\n"
 "\n"
 "  -a, --autoplace         Use auto OOB layout\n"
+"  -k, --skip-all-ffs      Skip pages that contain only 0xff bytes\n"
 "  -m, --markbad           Mark blocks bad if write fails\n"
 "  -n, --noecc             Write without ecc\n"
 "  -N, --noskipbad         Write without bad block skipping\n"
@@ -92,6 +93,7 @@ static bool		onlyoob = false;
 static bool		markbad = false;
 static bool		noecc = false;
 static bool		autoplace = false;
+static bool		skipallffs = false;
 static bool		noskipbad = false;
 static bool		pad = false;
 static int		blockalign = 1; /* default to using actual block size */
@@ -102,7 +104,7 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char short_options[] = "hb:mnNoOpqs:aV";
+		static const char short_options[] = "hb:mnNoOpqs:akV";
 		static const struct option long_options[] = {
 			/* Order of these args with val==0 matters; see option_index. */
 			{"version", no_argument, 0, 'V'},
@@ -119,6 +121,7 @@ static void process_options(int argc, char * const argv[])
 			{"quiet", no_argument, 0, 'q'},
 			{"start", required_argument, 0, 's'},
 			{"autoplace", no_argument, 0, 'a'},
+			{"skip-all-ffs", no_argument, 0, 'k'},
 			{0, 0, 0, 0},
 		};
 
@@ -171,6 +174,9 @@ static void process_options(int argc, char * const argv[])
 			break;
 		case 'a':
 			autoplace = true;
+			break;
+		case 'k':
+			skipallffs = true;
 			break;
 		case 'h':
 			display_help(EXIT_SUCCESS);
@@ -230,6 +236,8 @@ static void erase_buffer(void *buffer, size_t size)
  */
 int main(int argc, char * const argv[])
 {
+	int allffs;
+	int ii;
 	int fd = -1;
 	int ifd = -1;
 	int pagelen;
@@ -515,14 +523,29 @@ int main(int argc, char * const argv[])
 			}
 		}
 
-		/* Write out data */
-		ret = mtd_write(mtd_desc, &mtd, fd, mtdoffset / mtd.eb_size,
-				mtdoffset % mtd.eb_size,
-				onlyoob ? NULL : writebuf,
-				onlyoob ? 0 : mtd.min_io_size,
-				writeoob ? oobbuf : NULL,
-				writeoob ? mtd.oob_size : 0,
-				write_mode);
+		allffs = 0;
+		if (skipallffs) 
+		{
+			for (ii = 0; ii < mtd.min_io_size; ii += sizeof(uint32_t))
+			{
+				if (*(uint32_t*)(writebuf + ii) != 0xffffffff)
+					break;
+			}
+			if (ii == mtd.min_io_size)
+				allffs = 1;
+		}
+		if (!allffs) {
+			/* Write out data */
+			ret = mtd_write(mtd_desc, &mtd, fd, mtdoffset / mtd.eb_size,
+					mtdoffset % mtd.eb_size,
+					onlyoob ? NULL : writebuf,
+					onlyoob ? 0 : mtd.min_io_size,
+					writeoob ? oobbuf : NULL,
+					writeoob ? mtd.oob_size : 0,
+					write_mode);
+		} else  {
+			ret = 0;
+		}
 		if (ret) {
 			long long i;
 			if (errno != EIO) {
