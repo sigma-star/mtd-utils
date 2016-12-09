@@ -181,6 +181,31 @@ static inline int is_power_of_2(unsigned long long n)
 	return (n != 0 && ((n & (n - 1)) == 0));
 }
 
+/* Check whether buffer is filled with character 'pattern' */
+static inline int buffer_check_pattern(unsigned char *buffer, size_t size,
+				       unsigned char pattern)
+{
+	/* Invalid input */
+	if (!buffer || (size == 0))
+		return 0;
+
+	/* No match on first byte */
+	if (*buffer != pattern)
+		return 0;
+
+	/* First byte matched and buffer is 1 byte long, OK. */
+	if (size == 1)
+		return 1;
+
+	/*
+	 * Check buffer longer than 1 byte. We already know that buffer[0]
+	 * matches the pattern, so the test below only checks whether the
+	 * buffer[0...size-2] == buffer[1...size-1] , which is a test for
+	 * whether the buffer is filled with constant value.
+	 */
+	return !memcmp(buffer, buffer + 1, size - 1);
+}
+
 /**
  * simple_strtoX - convert a hex/dec/oct string into a number
  * @snum: buffer to convert

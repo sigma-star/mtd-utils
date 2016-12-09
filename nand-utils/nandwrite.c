@@ -523,18 +523,8 @@ int main(int argc, char * const argv[])
 			}
 		}
 
-		allffs = 0;
-		if (skipallffs) 
-		{
-			for (ii = 0; ii < mtd.min_io_size; ii += sizeof(uint32_t))
-			{
-				if (*(uint32_t*)(writebuf + ii) != 0xffffffff)
-					break;
-			}
-			if (ii == mtd.min_io_size)
-				allffs = 1;
-		}
-		if (!allffs) {
+		ret = 0;
+		if (!skipallffs || !buffer_check_pattern(writebuf, mtd.min_io_size, 0xff)) {
 			/* Write out data */
 			ret = mtd_write(mtd_desc, &mtd, fd, mtdoffset / mtd.eb_size,
 					mtdoffset % mtd.eb_size,
@@ -543,9 +533,8 @@ int main(int argc, char * const argv[])
 					writeoob ? oobbuf : NULL,
 					writeoob ? mtd.oob_size : 0,
 					write_mode);
-		} else  {
-			ret = 0;
 		}
+
 		if (ret) {
 			long long i;
 			if (errno != EIO) {
