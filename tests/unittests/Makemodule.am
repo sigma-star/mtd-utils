@@ -12,5 +12,12 @@ TEST_BINS = \
 	ubilib_test \
 	mtdlib_test
 
+UNITTEST_HEADER = \
+	tests/unittests/test_lib.h
+
+UNITTEST_EXTRA = \
+	tests/unittests/sysfs_mock
+
+EXTRA_DIST += $(UNITTEST_HEADER) $(UNITTEST_EXTRA)
 
 noinst_PROGRAMS += $(TEST_BINS)
