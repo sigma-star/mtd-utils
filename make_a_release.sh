@@ -55,7 +55,7 @@ git tag -m "$release_name" -s "$tag_name"
 
 # Prepare signed tarball
 ./autogen.sh
-./configure
+./configure --enable-test --enable-unit-tests
 make dist-bzip2
 mkdir -p "$outdir"
 mv "$release_name.tar.bz2" "$outdir"
