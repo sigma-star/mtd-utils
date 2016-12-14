@@ -386,8 +386,8 @@ int main (int argc,char *argv[])
 	if (flags & FLAG_VERBOSE)
 		log_printf (LOG_NORMAL,
 				"\rVerifying data: %lluk/%lluk (100%%)\n",
-				KB (filestat.st_size),
-				KB (filestat.st_size));
+				KB ((unsigned long long)filestat.st_size),
+				KB ((unsigned long long)filestat.st_size));
 	DEBUG("Verified %d / %lluk bytes\n",written,(unsigned long long)filestat.st_size);
 
 	exit (EXIT_SUCCESS);
