@@ -66,6 +66,48 @@ AC_CONFIG_FILES([tests/fs-tests/fs_help_all.sh
 	tests/ubi-tests/ubi-stress-test.sh])
 
 
+need_uuid="no"
+need_zlib="no"
+need_lzo="no"
+
+AC_ARG_WITH([jffs],
+	[AS_HELP_STRING([--without-jffs], [Disable jffsX utilities])],
+	[case "${withval}" in
+	yes) AM_CONDITIONAL([BUILD_JFFSX], [true]) ;;
+	no)  AM_CONDITIONAL([BUILD_JFFSX], [false]) ;;
+	*) AC_MSG_ERROR([bad value ${withval} for --without-jffs]) ;;
+	esac],
+	[AM_CONDITIONAL([BUILD_JFFSX], [true])])
+
+AC_ARG_WITH([ubifs],
+	[AS_HELP_STRING([--without-ubifs], [Disable ubifs utilities])],
+	[case "${withval}" in
+	yes) AM_CONDITIONAL([BUILD_UBIFS], [true]) ;;
+	no)  AM_CONDITIONAL([BUILD_UBIFS], [false]) ;;
+	*) AC_MSG_ERROR([bad value ${withval} for --without-ubifs]) ;;
+	esac],
+	[AM_CONDITIONAL([BUILD_UBIFS], [true])])
+
+AM_COND_IF([BUILD_UBIFS], [
+	need_uuid="yes"
+	need_zlib="yes"
+	need_lzo="yes"
+])
+
+AM_COND_IF([BUILD_JFFSX], [
+	need_zlib="yes"
+	need_lzo="yes"
+])
+
+if test "x$need_zlib" = "xyes"; then
+	PKG_CHECK_MODULES(ZLIB, [zlib])
+fi
+
+if test "x$need_uuid" = "xyes"; then
+	PKG_CHECK_MODULES(UUID, [uuid])
+fi
+
+
 AC_ARG_WITH([xattr],
 	[AS_HELP_STRING([--without-xattr],
 		[Disable support forextended file attributes])],
@@ -83,18 +125,15 @@ AC_CHECK_HEADER(sys/acl.h, [], [AM_CONDITIONAL([WITHOUT_XATTR], [true])])
 AC_ARG_WITH([lzo],
 	[AS_HELP_STRING([--without-lzo], [Disable support for LZO compression])],
 	[case "${withval}" in
-	yes) AM_CONDITIONAL([WITHOUT_LZO], [false]) ;;
+	yes) AM_CONDITIONAL([WITHOUT_LZO], [test "x$need_lzo" != "xyes"]) ;;
 	no)  AM_CONDITIONAL([WITHOUT_LZO], [true]) ;;
 	*) AC_MSG_ERROR([bad value ${withval} for --without-lzo]) ;;
 	esac],
-	[AM_CONDITIONAL([WITHOUT_LZO], [false])])
+	[AM_CONDITIONAL([WITHOUT_LZO], [test "x$need_lzo" != "xyes"])])
 
 
 AC_CHECK_HEADERS([execinfo.h], [execinfo_found=yes])
 AM_CONDITIONAL([HAVE_EXECINFO], [test "x$execinfo_found" == "xyes"])
-
-PKG_CHECK_MODULES(ZLIB, [ zlib ])
-PKG_CHECK_MODULES(UUID, [ uuid ])
 
 AM_COND_IF([UNIT_TESTS], [PKG_CHECK_MODULES(CMOCKA, [ cmocka ])], [])
 
