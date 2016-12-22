@@ -1,6 +1,6 @@
 AC_PREREQ([2.60])
 
-m4_define([RELEASE], 2.0.0-rc2)
+m4_define([RELEASE], 2.0.0)
 
 AC_INIT([mtd-utils], [RELEASE], [linux-mtd@lists.infradead.org], mtd-utils)
 
