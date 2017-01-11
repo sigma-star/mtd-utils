@@ -191,9 +191,13 @@ static void process_options(int argc, char * const argv[])
 		errmsg_die("Can't specify negative device offset with option"
 				" -s: %lld", mtdoffset);
 
-	if (blockalign < 0)
-		errmsg_die("Can't specify negative blockalign with option -b:"
-				" %d", blockalign);
+	if (blockalign <= 0)
+		errmsg_die("Can't specify negative or zero blockalign with "
+				"option -b: %d", blockalign);
+
+	if (!is_power_of_2(blockalign))
+		errmsg_die("Can't specify a non-power-of-two blockalign with "
+				"option -b: %d", blockalign);
 
 	if (autoplace && noecc)
 		errmsg_die("Autoplacement and no-ECC are mutually exclusive");
