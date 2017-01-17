@@ -56,6 +56,8 @@ static void display_help(int status)
 "  -o, --oob               Input contains oob data\n"
 "  -O, --onlyoob           Input contains oob data and only write the oob part\n"
 "  -s addr, --start=addr   Set output start address (default is 0)\n"
+"  --skip-bad-blocks-to-start"
+"                          Skip bad blocks when seeking to the start address\n"
 "  -p, --pad               Pad writes to page size\n"
 "  -b, --blockalign=1|2|4  Set multiple of eraseblocks to align to\n"
 "      --input-skip=length Skip |length| bytes of the input file\n"
@@ -96,6 +98,7 @@ static bool		autoplace = false;
 static bool		skipallffs = false;
 static bool		noskipbad = false;
 static bool		pad = false;
+static bool		skip_bad_blocks_to_start = false;
 static int		blockalign = 1; /* default to using actual block size */
 
 static void process_options(int argc, char * const argv[])
@@ -110,6 +113,7 @@ static void process_options(int argc, char * const argv[])
 			{"version", no_argument, 0, 'V'},
 			{"input-skip", required_argument, 0, 0},
 			{"input-size", required_argument, 0, 0},
+			{"skip-bad-blocks-to-start", no_argument, 0, 0},
 			{"help", no_argument, 0, 'h'},
 			{"blockalign", required_argument, 0, 'b'},
 			{"markbad", no_argument, 0, 'm'},
@@ -138,6 +142,9 @@ static void process_options(int argc, char * const argv[])
 				break;
 			case 2: /* --input-size */
 				inputsize = simple_strtoll(optarg, &error);
+				break;
+			case 3: /* --skip-bad-blocks-to-start */
+				skip_bad_blocks_to_start = true;
 				break;
 			}
 			break;
@@ -363,6 +370,25 @@ int main(int argc, char * const argv[])
 		fprintf(stderr, "Input file is not page-aligned. Use the padding "
 				 "option.\n");
 		goto closeall;
+	}
+
+	/* Skip bad blocks on the way to the start address if necessary */
+	if (skip_bad_blocks_to_start) {
+		long long bbs_offset = 0;
+		while (bbs_offset < mtdoffset) {
+			ret = is_virt_block_bad(&mtd, fd, bbs_offset);
+			if (ret < 0) {
+				sys_errmsg("%s: MTD get bad block failed", mtd_device);
+				goto closeall;
+			} else if (ret == 1) {
+				if (!quiet)
+					fprintf(stderr, "Bad block at %llx, %u block(s) "
+						"from %llx will be skipped\n",
+						bbs_offset, blockalign, bbs_offset);
+				mtdoffset += ebsize_aligned;
+			}
+			bbs_offset += ebsize_aligned;
+		}
 	}
 
 	/* Check, if length fits into device */
