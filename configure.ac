@@ -149,7 +149,7 @@ AM_COND_IF([WITHOUT_LZO], [], [
 	test "${have_lzo}" != "yes" && AC_MSG_ERROR([lzo missing])
 ])
 
-AC_CHECK_SIZEOF([long])
+AC_CHECK_SIZEOF([off_t])
 
 AC_CHECK_SIZEOF([loff_t])
 

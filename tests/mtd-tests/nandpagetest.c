@@ -230,7 +230,7 @@ static int verify_eraseblock(int ebnum)
 			return err;
 
 		if (lseek(fd, addr, SEEK_SET) != addr) {
-			fprintf(stderr, "cannot seek mtd%d to offset %"PRIdoff_t,
+			fprintf(stderr, "cannot seek mtd%d to offset %"PRIdloff_t,
 	 				mtd.mtd_num, addr);
 			return -1;
 		}
