@@ -54,10 +54,7 @@ UBITEST_SH = \
 UBITEST_HEADER = \
 	tests/ubi-tests/helpers.h
 
-UBITEST_EXTRA = \
-	tests/ubi-tests/README.udev
-
-EXTRA_DIST += $(UBITEST_EXTRA) $(UBITEST_HEADER)
+EXTRA_DIST += $(UBITEST_HEADER)
 
 if INSTALL_TESTS
 pkglibexec_SCRIPTS += $(UBITEST_SH)
