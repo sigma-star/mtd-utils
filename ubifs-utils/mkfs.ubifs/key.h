@@ -159,10 +159,12 @@ static inline void data_key_init(union ubifs_key *key, ino_t inum,
  */
 static inline void key_write(const union ubifs_key *from, void *to)
 {
-	union ubifs_key *t = to;
+	__le32 x[2];
 
-	t->j32[0] = cpu_to_le32(from->u32[0]);
-	t->j32[1] = cpu_to_le32(from->u32[1]);
+	x[0] = cpu_to_le32(from->u32[0]);
+	x[1] = cpu_to_le32(from->u32[1]);
+
+	memcpy(to, &x, 8);
 	memset(to + 8, 0, UBIFS_MAX_KEY_LEN - 8);
 }
 
@@ -174,10 +176,12 @@ static inline void key_write(const union ubifs_key *from, void *to)
  */
 static inline void key_write_idx(const union ubifs_key *from, void *to)
 {
-	union ubifs_key *t = to;
+	__le32 x[2];
 
-	t->j32[0] = cpu_to_le32(from->u32[0]);
-	t->j32[1] = cpu_to_le32(from->u32[1]);
+	x[0] = cpu_to_le32(from->u32[0]);
+	x[1] = cpu_to_le32(from->u32[1]);
+
+	memcpy(to, &x, 8);
 }
 
 /**
