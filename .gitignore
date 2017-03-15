@@ -58,6 +58,7 @@ io_basic
 io_paral
 io_read
 io_update
+lsmtd
 makefiles
 mkfs.ubifs
 mkvol_bad

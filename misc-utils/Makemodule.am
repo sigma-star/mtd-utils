@@ -33,11 +33,15 @@ flashcp_SOURCES = misc-utils/flashcp.c
 flash_erase_SOURCES = misc-utils/flash_erase.c
 flash_erase_LDADD = libmtd.a
 
+lsmtd_SOURCES = misc-utils/lsmtd.c misc-utils/lsmtd_scan.c
+lsmtd_LDADD = libmtd.a libubi.a
+lsmtd_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/misc-utils
+
 MISC_BINS = \
 	ftl_format doc_loadbios ftl_check mtd_debug docfdisk \
 	serve_image recv_image flash_erase flash_lock \
 	flash_unlock flash_otp_info flash_otp_dump flash_otp_lock \
-	flash_otp_write flashcp mtdpart
+	flash_otp_write flashcp mtdpart lsmtd
 
 MISC_SH = \
 	misc-utils/flash_eraseall
@@ -46,7 +50,8 @@ MISC_EXTRA = \
 	misc-utils/MAKEDEV
 
 MISC_HEADER = \
-	misc-utils/mcast_image.h
+	misc-utils/mcast_image.h \
+	misc-utils/lsmtd.h
 
 EXTRA_DIST += $(MISC_HEADER) $(MISC_EXTRA) $(MISC_SH)
 
