@@ -146,6 +146,24 @@ static int proc_parse_next(struct proc_parse_info *pi)
 }
 
 /**
+ * legacy_procfs_is_supported - legacy version of 'sysfs_is_supported()'.
+ *
+ * Check if we can access the procfs files for the MTD subsystem.
+ */
+int legacy_procfs_is_supported(void)
+{
+	if (access(MTD_PROC_FILE, R_OK) != 0) {
+		if (errno == ENOENT) {
+			errno = 0;
+		} else {
+			sys_errmsg("cannot read \"%s\"", MTD_PROC_FILE);
+		}
+		return 0;
+	}
+	return 1;
+}
+
+/**
  * legacy_dev_presentl - legacy version of 'mtd_dev_present()'.
  * @info: the MTD device information is returned here
  *

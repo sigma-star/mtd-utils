@@ -120,8 +120,7 @@ int mtd_dev_present(libmtd_t desc, int mtd_num);
  * @info: the MTD device information is returned here
  *
  * This function fills the passed @info object with general MTD information and
- * returns %0 in case of success and %-1 in case of failure. If MTD subsystem is
- * not present in the system, errno is set to @ENODEV.
+ * returns %0 in case of success and %-1 in case of failure.
  */
 int mtd_get_info(libmtd_t desc, struct mtd_info *info);
 

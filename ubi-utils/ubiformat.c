@@ -698,8 +698,6 @@ int main(int argc, char * const argv[])
 
 	err = mtd_get_info(libmtd, &mtd_info);
 	if (err) {
-		if (errno == ENODEV)
-			errmsg("MTD is not present");
 		sys_errmsg("cannot get MTD information");
 		goto out_close_mtd;
 	}

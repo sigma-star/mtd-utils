@@ -98,6 +98,7 @@ struct libmtd
 	unsigned int offs64_ioctls:2;
 };
 
+int legacy_procfs_is_supported(void);
 int legacy_dev_present(int mtd_num);
 int legacy_mtd_get_info(struct mtd_info *info);
 int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd);

@@ -578,6 +578,11 @@ libmtd_t libmtd_open(void)
 		free(lib->sysfs_mtd);
 		free(lib->mtd_name);
 		lib->mtd_name = lib->mtd = lib->sysfs_mtd = NULL;
+
+		if (!legacy_procfs_is_supported()) {
+			free(lib);
+			lib = NULL;
+		}
 		return lib;
 	}
 
@@ -676,13 +681,8 @@ int mtd_get_info(libmtd_t desc, struct mtd_info *info)
 	 * devices are present.
 	 */
 	sysfs_mtd = opendir(lib->sysfs_mtd);
-	if (!sysfs_mtd) {
-		if (errno == ENOENT) {
-			errno = ENODEV;
-			return -1;
-		}
+	if (!sysfs_mtd)
 		return sys_errmsg("cannot open \"%s\"", lib->sysfs_mtd);
-	}
 
 	info->lowest_mtd_num = INT_MAX;
 	while (1) {
