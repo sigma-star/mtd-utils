@@ -128,6 +128,7 @@ static NORETURN void usage(int status)
 			cols[i].desc);
 	}
 
+	fputs("\nFor more details see "PROGRAM_NAME"(8).\n", stdout);
 	exit(status);
 }
 

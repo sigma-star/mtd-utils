@@ -53,7 +53,11 @@ MISC_HEADER = \
 	misc-utils/mcast_image.h \
 	misc-utils/lsmtd.h
 
+MISC_MAN = \
+	misc-utils/lsmtd.8
+
 EXTRA_DIST += $(MISC_HEADER) $(MISC_EXTRA) $(MISC_SH)
 
+dist_man8_MANS += $(MISC_MAN)
 sbin_PROGRAMS += $(MISC_BINS)
 sbin_SCRIPTS += $(MISC_SH)
