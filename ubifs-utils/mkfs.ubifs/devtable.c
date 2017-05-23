@@ -33,9 +33,10 @@
  * c  Character special device file
  * b  Block special device file
  * p  Fifo (named pipe)
+ * l  Link
  *
- * Don't bother with symlinks (permissions are irrelevant), hard links (special
- * cases of regular files), or sockets (why bother).
+ * Don't bother with hard links (special cases of regular files), or sockets
+ * (why bother).
  *
  * Regular files must exist in the target root directory. If a char, block,
  * fifo, or directory does not exist, it will be created.
@@ -176,6 +177,11 @@ static int interpret_table_entry(const char *line)
 			break;
 		case 'b':
 			mode |= S_IFBLK;
+			break;
+		case 'l':
+			mode |= S_IFLNK;
+			if ((mode & 0777) != 0777)
+				return err_msg("link permission must be 0777");
 			break;
 		default:
 			return err_msg("unsupported file type '%c'", type);
