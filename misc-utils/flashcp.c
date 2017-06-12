@@ -45,9 +45,6 @@
 
 #include "common.h"
 
-#define EXIT_FAILURE 1
-#define EXIT_SUCCESS 0
-
 /* for debugging purposes only */
 #ifdef DEBUG
 #undef DEBUG
