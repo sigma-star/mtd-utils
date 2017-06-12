@@ -55,7 +55,7 @@ struct rfd {
 	int verbose;
 };
 
-void display_help(void)
+void display_help(int status)
 {
 	printf("Usage: %s [OPTIONS] MTD-device filename\n"
 			"Dumps the contents of a resident flash disk\n"
@@ -65,7 +65,7 @@ void display_help(void)
 			"-v         --verbose		Be verbose\n"
 			"-b size    --blocksize          Block size (defaults to erase unit)\n",
 			PROGRAM_NAME);
-	exit(0);
+	exit(status);
 }
 
 void display_version(void)
@@ -101,7 +101,7 @@ void process_options(int argc, char *argv[], struct rfd *rfd)
 
 		switch (c) {
 			case 'h':
-				display_help();
+				display_help(EXIT_SUCCESS);
 				break;
 			case 'V':
 				display_version();
@@ -119,7 +119,7 @@ void process_options(int argc, char *argv[], struct rfd *rfd)
 	}
 
 	if ((argc - optind) != 2 || error)
-		display_help();
+		display_help(EXIT_FAILURE);
 
 	rfd->mtd_filename = argv[optind];
 	rfd->out_filename = argv[optind + 1];

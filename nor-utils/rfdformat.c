@@ -30,7 +30,7 @@
 
 #include "common.h"
 
-void display_help(void)
+void display_help(int status)
 {
 	printf("Usage: %s [OPTIONS] MTD-device\n"
 			"Formats NOR flash for resident flash disk\n"
@@ -38,7 +38,7 @@ void display_help(void)
 			"-h         --help               display this help and exit\n"
 			"-V         --version            output version information and exit\n",
 			PROGRAM_NAME);
-	exit(0);
+	exit(status);
 }
 
 void display_version(void)
@@ -69,7 +69,7 @@ void process_options(int argc, char *argv[], const char **mtd_filename)
 
 		switch (c) {
 			case 'h':
-				display_help();
+				display_help(EXIT_SUCCESS);
 				break;
 			case 'V':
 				display_version();
@@ -81,7 +81,7 @@ void process_options(int argc, char *argv[], const char **mtd_filename)
 	}
 
 	if ((argc - optind) != 1 || error)
-		display_help();
+		display_help(EXIT_FAILURE);
 
 	*mtd_filename = argv[optind];
 }
