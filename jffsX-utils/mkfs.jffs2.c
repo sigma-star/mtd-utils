@@ -1629,9 +1629,11 @@ int main(int argc, char **argv)
 				break;
 
 			case 'h':
-			case '?':
 				puts(helptext);
 				exit(EXIT_SUCCESS);
+			case '?':
+				puts(helptext);
+				exit(EXIT_FAILURE);
 
 			case 'v':
 				verbose = 1;

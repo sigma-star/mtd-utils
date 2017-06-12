@@ -50,7 +50,7 @@
 long	imglen;		// length of image
 char	*data;		// image data
 
-void display_help (void)
+void display_help (int error)
 {
 	printf("Usage: %s [OPTION]... INPUTFILE\n"
 	       "Dump the contents of a binary JFFS2 image.\n\n"
@@ -65,7 +65,7 @@ void display_help (void)
 	       " -o, --oobsize=LEN            size of oob data chunk in binary image (NAND only)\n"
 	       " -v, --verbose                verbose output\n",
 	       PROGRAM_NAME);
-	exit(0);
+	exit(error ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
 void display_version (void)
@@ -124,7 +124,7 @@ void process_options (int argc, char *argv[])
 
 		switch (c) {
 			case 'h':
-				display_help();
+				display_help(0);
 				break;
 			case 'V':
 				display_version();
@@ -161,7 +161,7 @@ void process_options (int argc, char *argv[])
 	}
 
 	if ((argc - optind) != 1 || error)
-		display_help ();
+		display_help (error);
 
 	img = argv[optind];
 }

@@ -156,9 +156,11 @@ void process_options (int argc, char **argv)
 				target_endian = __LITTLE_ENDIAN;
 				break;
 			case 'h':
-			case '?':
 				puts(helptext);
 				exit(EXIT_SUCCESS);
+			case '?':
+				puts(helptext);
+				exit(EXIT_FAILURE);
 			case 'v':
 				verbose = 1;
 				break;
