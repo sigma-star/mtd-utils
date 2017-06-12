@@ -333,6 +333,5 @@ int main(int argc, char *argv[])
 	}
 	close(fd);
 
-	exit((ret) ? EXIT_FAILURE : EXIT_SUCCESS);
-	return 0;
+	return ret ? EXIT_FAILURE : EXIT_SUCCESS;
 }
