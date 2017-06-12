@@ -87,7 +87,7 @@ static void process_args(int argc, char *argv[])
 
 		switch (c) {
 		case 'h':
-			usage(0);
+			usage(EXIT_SUCCESS);
 			break;
 		case 'i':
 			req = REQUEST_ISLOCKED;
@@ -105,14 +105,14 @@ static void process_args(int argc, char *argv[])
 			common_print_version();
 			exit(0);
 		default:
-			usage(1);
+			usage(EXIT_FAILURE);
 			break;
 		}
 	}
 
 	if (req_set > 1) {
 		errmsg("cannot specify more than one lock/unlock/islocked option");
-		usage(1);
+		usage(EXIT_FAILURE);
 	}
 
 	arg_idx = optind;
@@ -120,10 +120,10 @@ static void process_args(int argc, char *argv[])
 	/* Sanity checks */
 	if (argc - arg_idx < 1) {
 		errmsg("too few arguments");
-		usage(1);
+		usage(EXIT_FAILURE);
 	} else if (argc - arg_idx > 3) {
 		errmsg("too many arguments");
-		usage(1);
+		usage(EXIT_FAILURE);
 	}
 
 	/* First non-option argument */

@@ -751,7 +751,7 @@ int main(int argc, char **argv)
 	/* Open the input file */
 	if ((fd = open(img, O_RDONLY)) == -1) {
 		perror("open input file");
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	// get image length
@@ -762,7 +762,7 @@ int main(int argc, char **argv)
 	if (!data) {
 		perror("out of memory");
 		close (fd);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 
 	if (datsize && oobsize) {
@@ -796,5 +796,5 @@ int main(int argc, char **argv)
 	free (data);
 
 	// Return happy
-	exit (0);
+	exit (EXIT_SUCCESS);
 }

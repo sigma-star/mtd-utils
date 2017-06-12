@@ -1052,7 +1052,7 @@ static void formalize_posix_acl(void *xvalue, int *value_len)
 	if (offset > *value_len) {
 		printf("Length of JFFS2 ACL expression(%u) is longer than general one(%u).\n",
 				offset, *value_len);
-		exit(1);
+		exit(EXIT_FAILURE);
 	}
 	memcpy(xvalue, buffer, offset);
 	*value_len = offset;

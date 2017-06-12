@@ -234,7 +234,7 @@ int main(int argc, char **argv)
 	int idx = 0;
 
 	if (argc < 2)
-		usage(1);
+		usage(EXIT_FAILURE);
 
 	nftl = "NFTL";
 
@@ -249,13 +249,13 @@ int main(int argc, char **argv)
 				break;
 			case 'h':
 			case '?':
-				usage(0);
+				usage(EXIT_SUCCESS);
 				break;
 			case 'V':
 				display_version();
 				break;
 			default:
-				usage(1);
+				usage(EXIT_FAILURE);
 				break;
 		}
 	}

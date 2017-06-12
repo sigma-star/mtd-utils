@@ -181,14 +181,14 @@ int main(int argc, char **argv)
 
 		switch (c) {
 		case 'h':
-			usage(0);
+			usage(EXIT_SUCCESS);
 			break;
 		case 'V':
 			common_print_version();
 			exit(EXIT_SUCCESS);
 			break;
 		case '?':
-			usage(1);
+			usage(EXIT_FAILURE);
 			break;
 
 		case 'm':
@@ -222,7 +222,7 @@ int main(int argc, char **argv)
 		}
 	}
 	if (argc - optind != 1)
-		usage(1);
+		usage(EXIT_FAILURE);
 	if (error)
 		errmsg_die("Try --help for more information");
 
