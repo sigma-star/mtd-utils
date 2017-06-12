@@ -548,15 +548,17 @@ static int get_options(int argc, char**argv)
 			yes = 1;
 			break;
 		case 'h':
+			printf("%s", helptext);
+			exit(EXIT_SUCCESS);
 		case '?':
 			printf("%s", helptext);
-			exit(0);
+			exit(-1);
 		case 'v':
 			verbose = 1;
 			break;
 		case 'V':
 			common_print_version();
-			exit(0);
+			exit(EXIT_SUCCESS);
 		case 'g':
 			debug_level = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg ||

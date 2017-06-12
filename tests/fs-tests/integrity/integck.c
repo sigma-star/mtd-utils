@@ -3080,10 +3080,13 @@ static int parse_opts(int argc, char * const argv[])
 			exit(EXIT_SUCCESS);
 
 		case 'h':
-		case '?':
 			fprintf(stderr, "%s\n\n", doc);
 			fprintf(stderr, "%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
+		case '?':
+			fprintf(stderr, "%s\n\n", doc);
+			fprintf(stderr, "%s\n", optionsstr);
+			exit(-1);
 		case ':':
 			return errmsg("parameter is missing");
 

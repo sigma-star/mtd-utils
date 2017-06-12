@@ -78,11 +78,15 @@ static int parse_opt(int argc, char * const argv[])
 			args.node = optarg;
 			break;
 		case 'h':
-		case '?':
 			printf("%s\n\n", doc);
 			printf("%s\n\n", usage);
 			printf("%s\n", optionsstr);
 			exit(EXIT_SUCCESS);
+		case '?':
+			printf("%s\n\n", doc);
+			printf("%s\n\n", usage);
+			printf("%s\n", optionsstr);
+			return -1;
 
 		case 'V':
 			common_print_version();
