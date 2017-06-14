@@ -37,6 +37,8 @@
 #ifndef __UBIFS_KEY_H__
 #define __UBIFS_KEY_H__
 
+#include <assert.h>
+
 /**
  * key_mask_hash - mask a valid hash value.
  * @val: value to be masked
@@ -113,7 +115,7 @@ static inline void dent_key_init(const struct ubifs_info *c,
 {
 	uint32_t hash = c->key_hash(nm->name, nm->len);
 
-	ubifs_assert(!(hash & ~UBIFS_S_KEY_HASH_MASK));
+	assert(!(hash & ~UBIFS_S_KEY_HASH_MASK));
 	key->u32[0] = inum;
 	key->u32[1] = hash | (UBIFS_DENT_KEY << UBIFS_S_KEY_HASH_BITS);
 }
@@ -131,7 +133,7 @@ static inline void xent_key_init(const struct ubifs_info *c,
 {
 	uint32_t hash = c->key_hash(nm->name, nm->len);
 
-	ubifs_assert(!(hash & ~UBIFS_S_KEY_HASH_MASK));
+	assert(!(hash & ~UBIFS_S_KEY_HASH_MASK));
 	key->u32[0] = inum;
 	key->u32[1] = hash | (UBIFS_XENT_KEY << UBIFS_S_KEY_HASH_BITS);
 }
@@ -146,7 +148,7 @@ static inline void xent_key_init(const struct ubifs_info *c,
 static inline void data_key_init(union ubifs_key *key, ino_t inum,
 				 unsigned int block)
 {
-	ubifs_assert(!(block & ~UBIFS_S_KEY_BLOCK_MASK));
+	assert(!(block & ~UBIFS_S_KEY_BLOCK_MASK));
 	key->u32[0] = inum;
 	key->u32[1] = block | (UBIFS_DATA_KEY << UBIFS_S_KEY_BLOCK_BITS);
 }
