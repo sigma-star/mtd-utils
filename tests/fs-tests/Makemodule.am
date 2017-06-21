@@ -1,11 +1,6 @@
 integck_SOURCES = tests/fs-tests/integrity/integck.c
-integck_LDADD = libubi.a
+integck_LDADD = libubi.a libmissing.a
 integck_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
-
-if HAVE_EXECINFO
-else
-integck_LDADD += libmissing.a
-endif
 
 test_1_SOURCES = tests/fs-tests/simple/test_1.c tests/fs-tests/lib/tests.c
 test_1_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/tests/fs-tests/lib

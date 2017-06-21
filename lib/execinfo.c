@@ -1,6 +1,6 @@
 #include "libmissing.h"
 
-#ifndef HAVE_EXECINFO
+#ifndef HAVE_EXECINFO_H
 #define PROGRAM_NAME "libmissing"
 #include "common.h"
 
@@ -22,4 +22,4 @@ void backtrace_symbols_fd(void *const *buffer, int size, int fd)
 {
 	errmsg("backtrace_symbols_fd() is not implemented");
 }
-#endif /* !HAVE_EXECINFO */
+#endif /* !HAVE_EXECINFO_H */

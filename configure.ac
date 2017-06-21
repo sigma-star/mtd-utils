@@ -164,7 +164,7 @@ if test "x$need_cmocka" = "xyes"; then
 	PKG_CHECK_MODULES(CMOCKA, [cmocka], [], [cmocka_missing="yes"])
 fi
 
-AC_CHECK_HEADERS([execinfo.h], [execinfo_found=yes])
+AC_CHECK_HEADERS([execinfo.h])
 
 ##### produce summary on dependencies #####
 
@@ -223,7 +223,6 @@ fi
 
 AM_CONDITIONAL([WITHOUT_LZO], [test "x$need_lzo" != "xyes"])
 AM_CONDITIONAL([WITHOUT_XATTR], [test "x$need_xattr" != "xyes"])
-AM_CONDITIONAL([HAVE_EXECINFO], [test "x$execinfo_found" == "xyes"])
 
 AC_CHECK_SIZEOF([off_t])
 AC_CHECK_SIZEOF([loff_t])
