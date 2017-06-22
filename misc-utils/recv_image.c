@@ -20,6 +20,7 @@
 #include <crc32.h>
 #include "mtd/mtd-user.h"
 #include "mcast_image.h"
+#include "libfec.h"
 
 #include "common.h"
 

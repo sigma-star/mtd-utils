@@ -21,6 +21,7 @@
 #include <common.h>
 
 #include "mcast_image.h"
+#include "libfec.h"
 
 int tx_rate = 80000;
 int pkt_delay;
