@@ -24,6 +24,28 @@ AC_DISABLE_STATIC
 AC_PROG_CC
 AC_PROG_INSTALL
 
+## compiler warnings
+UL_WARN_ADD([-Wall])
+UL_WARN_ADD([-Wextra])
+UL_WARN_ADD([-Wunused])
+UL_WARN_ADD([-Wmissing-prototypes])
+UL_WARN_ADD([-Wmissing-declarations])
+UL_WARN_ADD([-Wwrite-strings])
+UL_WARN_ADD([-Wjump-misses-init])
+UL_WARN_ADD([-Wuninitialized])
+UL_WARN_ADD([-Winit-self])
+UL_WARN_ADD([-Wlogical-op])
+UL_WARN_ADD([-Wunused-but-set-parameter])
+UL_WARN_ADD([-Wunused-but-set-variable])
+UL_WARN_ADD([-Wunused-parameter])
+UL_WARN_ADD([-Wunused-result])
+UL_WARN_ADD([-Wunused-variable])
+
+UL_WARN_ADD([-Wno-shadow])
+UL_WARN_ADD([-Wno-sign-compare])
+
+AC_SUBST([WARN_CFLAGS])
+
 ###### handle configure switches, select dependencies ######
 
 need_clock_gettime="no"
