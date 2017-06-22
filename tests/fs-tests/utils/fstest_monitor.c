@@ -177,6 +177,7 @@ static int parse_command_line(char *cmdline, int *pargc, char ***pargv)
 
 static void signal_handler(int signum)
 {
+	(void)signum;
 	kill_children();
 }
 
@@ -185,6 +186,7 @@ int alarm_gone_off = 0;
 
 static void alarm_handler(int signum)
 {
+	(void)signum;
 	if (!result)
 		alarm_gone_off = 1;
 	kill_children();

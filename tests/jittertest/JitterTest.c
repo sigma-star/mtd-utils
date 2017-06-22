@@ -426,6 +426,8 @@ void SignalHandler(
     char tmpBuf[200];
 
     /* Note sigNum not used. */
+    (void)sigNum;
+
     printf("Ctrl+C detected. Worst Jitter time was:%fms.\nJitterTest exiting.\n",
            (float)LastMaxDiff/1000.0);
 
@@ -457,6 +459,8 @@ static void doGrabKProfile(int jitterusec, char *fileName)
     int fdProfile;
     int readBytes;
     char readBuf[4096];
+
+    (void)jitterusec;
 
     if((fdSnapshot = open(fileName, O_WRONLY | O_CREAT, S_IRWXU)) <= 0)
     {
@@ -552,6 +556,8 @@ void AlarmHandler(
 				   where time() will be the same as this time
 				   if invoked < 1sec apart.
 				*/
+
+    (void)sigNum;
 
     if (gettimeofday(&CurrTimeVal, NULL) == (int) 0) {
 
