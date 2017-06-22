@@ -40,7 +40,7 @@ static void stress_2(void)
 	int64_t remains;
 	int64_t repeat;
 	size_t block;
-	char *file_name;
+	const char *file_name;
 	char buf[WRITE_BUFFER_SIZE];
 
 	file_name = "stress_2_test_file";

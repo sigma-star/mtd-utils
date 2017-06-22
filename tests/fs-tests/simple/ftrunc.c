@@ -39,7 +39,7 @@ static void ftrunc(void)
 	ssize_t written;
 	int64_t remains;
 	size_t block;
-	char *file_name;
+	const char *file_name;
 	off_t actual;
 	char buf[WRITE_BUFFER_SIZE];
 
