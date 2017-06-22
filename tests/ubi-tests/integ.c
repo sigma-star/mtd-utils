@@ -561,8 +561,6 @@ static void get_ubi_devices_info(void)
 
 static void load_ubi(void)
 {
-	int ret;
-
 	if (system("modprobe -r ubi"))
 		error_exit("Failed to unload UBI module");
 

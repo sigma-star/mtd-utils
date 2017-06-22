@@ -389,24 +389,6 @@ int iniparser_find_entry(
 
 /*-------------------------------------------------------------------------*/
 /**
-  @brief    Set an entry in a dictionary.
-  @param    ini     Dictionary to modify.
-  @param    entry   Entry to modify (entry name)
-  @param    val     New value to associate to the entry.
-  @return   int 0 if Ok, -1 otherwise.
-
-  If the given entry can be found in the dictionary, it is modified to
-  contain the provided value. If it cannot be found, -1 is returned.
-  It is Ok to set val to NULL.
- */
-/*--------------------------------------------------------------------------*/
-int iniparser_set(dictionary * ini, char * entry, char * val)
-{
-    return dictionary_set(ini, strlwc(entry), val) ;
-}
-
-/*-------------------------------------------------------------------------*/
-/**
   @brief    Delete an entry in a dictionary
   @param    ini     Dictionary to modify
   @param    entry   Entry to delete (entry name)

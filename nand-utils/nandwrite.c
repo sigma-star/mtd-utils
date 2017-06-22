@@ -261,8 +261,6 @@ static int is_virt_block_bad(struct mtd_dev_info *mtd, int fd,
  */
 int main(int argc, char * const argv[])
 {
-	int allffs;
-	int ii;
 	int fd = -1;
 	int ifd = -1;
 	int pagelen;
