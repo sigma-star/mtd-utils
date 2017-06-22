@@ -169,7 +169,7 @@ static void check_partition(int fd)
 } /* format_partition */
 
 /* Show usage information */
-void showusage(void)
+static void showusage(void)
 {
 	fprintf(stderr, "usage: %s device\n", PROGRAM_NAME);
 }

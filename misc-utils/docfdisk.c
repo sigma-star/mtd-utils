@@ -44,7 +44,7 @@ struct INFTLMediaHeader *mh;
 
 #define MAXSCAN 10
 
-void show_header(int mhoffs) {
+static void show_header(int mhoffs) {
 	int i, unitsize, numunits, bmbits, numpart;
 	int start, end, num, nextunit;
 	unsigned int flags;

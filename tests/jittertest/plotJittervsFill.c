@@ -75,7 +75,7 @@ static int Debug = 0; /* Debug level. Each "-d" on the cmd line increases the le
 
 #define MIN_JITTER_THRESHOLD 1 /* ms minimum jitter threshold */
 
-void PrintHelpInfo(void)
+static void PrintHelpInfo(void)
 {
     printf("Usage: plotJittervsFill [options] -f [--file] <input log file name> -t [--jitter_threshold] <jitter threshold in ms>\n");
     printf("[options]:\n-v [--version] Print version and exit\n");
@@ -90,7 +90,7 @@ void PrintHelpInfo(void)
  *  This function handles the command line arguments.
  *  output: stack size
  ***********************************************************************/
-void HandleCmdLineArgs(
+static void HandleCmdLineArgs(
     int argc,                       /* number of command-line arguments */
     char *argv[])                   /* ptrs to command-line arguments   */
 {

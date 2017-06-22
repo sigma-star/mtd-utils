@@ -76,7 +76,7 @@ static int getregions(int fd, struct region_info_user *regions, int *n)
 	return 0;
 }
 
-int erase_flash(int fd, u_int32_t offset, u_int32_t bytes)
+static int erase_flash(int fd, u_int32_t offset, u_int32_t bytes)
 {
 	int err;
 	struct erase_info_user erase;
@@ -91,7 +91,7 @@ int erase_flash(int fd, u_int32_t offset, u_int32_t bytes)
 	return 0;
 }
 
-void printsize(u_int32_t x)
+static void printsize(u_int32_t x)
 {
 	int i;
 	static const char *flags = "KMGT";
@@ -103,7 +103,7 @@ void printsize(u_int32_t x)
 		printf("(%u%c)", x, flags[i]);
 }
 
-int flash_to_file(int fd, off_t offset, size_t len, const char *filename)
+static int flash_to_file(int fd, off_t offset, size_t len, const char *filename)
 {
 	u_int8_t *buf = NULL;
 	int outfd, err;
@@ -172,7 +172,8 @@ err0:
 	return 1;
 }
 
-int file_to_flash(int fd, off_t offset, u_int32_t len, const char *filename)
+static int file_to_flash(int fd, off_t offset, u_int32_t len,
+			 const char *filename)
 {
 	u_int8_t *buf = NULL;
 	FILE *fp;
@@ -228,7 +229,7 @@ retry:
 	return 0;
 }
 
-int showinfo(int fd)
+static int showinfo(int fd)
 {
 	int i, err, n;
 	struct mtd_info_user mtd;
@@ -338,7 +339,7 @@ int showinfo(int fd)
 	return 0;
 }
 
-void showusage(void)
+static void showusage(void)
 {
 	fprintf(stderr, "usage: %1$s info <device>\n"
 			"       %1$s read <device> <offset> <len> <dest-filename>\n"

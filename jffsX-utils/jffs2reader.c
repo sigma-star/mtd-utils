@@ -106,27 +106,9 @@ struct dir {
 
 int target_endian = __BYTE_ORDER;
 
-void putblock(char *, size_t, size_t *, struct jffs2_raw_inode *);
-struct dir *putdir(struct dir *, struct jffs2_raw_dirent *);
-void printdir(char *o, size_t size, struct dir *d, const char *path,
-		int recurse, int want_ctime);
-void freedir(struct dir *);
+static struct jffs2_raw_inode *find_raw_inode(char *, size_t, uint32_t);
 
-struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino);
-struct jffs2_raw_dirent *resolvedirent(char *, size_t, uint32_t, uint32_t,
-		char *, uint8_t);
-struct jffs2_raw_dirent *resolvename(char *, size_t, uint32_t, char *, uint8_t);
-struct jffs2_raw_dirent *resolveinode(char *, size_t, uint32_t);
-
-struct jffs2_raw_dirent *resolvepath0(char *, size_t, uint32_t, const char *,
-		uint32_t *, int);
-struct jffs2_raw_dirent *resolvepath(char *, size_t, uint32_t, const char *,
-		uint32_t *);
-
-void lsdir(char *, size_t, const char *, int, int);
-void catfile(char *, size_t, char *, char *, size_t, size_t *);
-
-int main(int, char **);
+static void lsdir(char *, size_t, const char *, int, int);
 
 /* writes file node into buffer, to the proper position. */
 /* reading all valid nodes in version order reconstructs the file. */
@@ -138,7 +120,7 @@ int main(int, char **);
    n       - node
  */
 
-void putblock(char *b, size_t bsize, size_t * rsize,
+static void putblock(char *b, size_t bsize, size_t * rsize,
 		struct jffs2_raw_inode *n)
 {
 	uLongf dlen = je32_to_cpu(n->dsize);
@@ -184,7 +166,7 @@ void putblock(char *b, size_t bsize, size_t * rsize,
    return value: directory struct value replacing dd
  */
 
-struct dir *putdir(struct dir *dd, struct jffs2_raw_dirent *n)
+static struct dir *putdir(struct dir *dd, struct jffs2_raw_dirent *n)
 {
 	struct dir *o, *d, *p;
 
@@ -279,7 +261,7 @@ static const char SMODE0[] = "..S..S..T";
  * Return the standard ls-like mode string from a file mode.
  * This is static and so is overwritten on each call.
  */
-const char *mode_string(int mode)
+static const char *mode_string(int mode)
 {
 	static char buf[12];
 
@@ -301,8 +283,8 @@ const char *mode_string(int mode)
    d       - dir struct
  */
 
-void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse,
-		int want_ctime)
+static void printdir(char *o, size_t size, struct dir *d, const char *path,
+					 int recurse, int want_ctime)
 {
 	char m;
 	char *filetime;
@@ -404,7 +386,7 @@ void printdir(char *o, size_t size, struct dir *d, const char *path, int recurse
    d       - dir struct
  */
 
-void freedir(struct dir *d)
+static void freedir(struct dir *d)
 {
 	struct dir *t;
 
@@ -429,7 +411,8 @@ void freedir(struct dir *d)
    inode, or NULL
  */
 
-struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
+static struct jffs2_raw_inode *find_raw_inode(char *o, size_t size,
+											  uint32_t ino)
 {
 	/* aligned! */
 	union jffs2_node_union *n;
@@ -497,7 +480,7 @@ struct jffs2_raw_inode *find_raw_inode(char *o, size_t size, uint32_t ino)
    return value: result directory structure, replaces d.
  */
 
-struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
+static struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
 {
 	/* aligned! */
 	union jffs2_node_union *n;
@@ -585,7 +568,7 @@ struct dir *collectdir(char *o, size_t size, uint32_t ino, struct dir *d)
    filesystem image or NULL
  */
 
-struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
+static struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
 		uint32_t ino, uint32_t pino,
 		char *name, uint8_t nsize)
 {
@@ -642,7 +625,7 @@ struct jffs2_raw_dirent *resolvedirent(char *o, size_t size,
    filesystem image or NULL
  */
 
-struct jffs2_raw_dirent *resolvename(char *o, size_t size, uint32_t pino,
+static struct jffs2_raw_dirent *resolvename(char *o, size_t size, uint32_t pino,
 		char *name, uint8_t nsize)
 {
 	return resolvedirent(o, size, 0, pino, name, nsize);
@@ -659,7 +642,7 @@ struct jffs2_raw_dirent *resolvename(char *o, size_t size, uint32_t pino,
    filesystem image or NULL
  */
 
-struct jffs2_raw_dirent *resolveinode(char *o, size_t size, uint32_t ino)
+static struct jffs2_raw_dirent *resolveinode(char *o, size_t size, uint32_t ino)
 {
 	return resolvedirent(o, size, ino, 0, NULL, 0);
 }
@@ -682,7 +665,7 @@ struct jffs2_raw_dirent *resolveinode(char *o, size_t size, uint32_t ino)
    (return value is NULL), but it has inode (*inos=1)
  */
 
-struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
+static struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
 		const char *p, uint32_t * inos, int recc)
 {
 	struct jffs2_raw_dirent *dir = NULL;
@@ -798,7 +781,7 @@ struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
    (return value is NULL), but it has inode (*inos=1)
  */
 
-struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
+static struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
 		const char *p, uint32_t * inos)
 {
 	return resolvepath0(o, size, ino, p, inos, 0);
@@ -812,7 +795,8 @@ struct jffs2_raw_dirent *resolvepath(char *o, size_t size, uint32_t ino,
    p       - path to be resolved
  */
 
-void lsdir(char *o, size_t size, const char *path, int recurse, int want_ctime)
+static void lsdir(char *o, size_t size, const char *path, int recurse,
+				  int want_ctime)
 {
 	struct jffs2_raw_dirent *dd;
 	struct dir *d = NULL;
@@ -841,8 +825,8 @@ void lsdir(char *o, size_t size, const char *path, int recurse, int want_ctime)
    rsize   - file result size
  */
 
-void catfile(char *o, size_t size, char *path, char *b, size_t bsize,
-		size_t * rsize)
+static void catfile(char *o, size_t size, char *path, char *b, size_t bsize,
+					size_t * rsize)
 {
 	struct jffs2_raw_dirent *dd;
 	struct jffs2_raw_inode *ri;

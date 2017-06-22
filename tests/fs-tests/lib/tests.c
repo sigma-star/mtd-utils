@@ -530,7 +530,7 @@ void tests_check_filled_file(const char *file_name)
 	CHECK(close(fd) != -1);
 }
 
-void tests_sync_directory(const char *file_name)
+static void tests_sync_directory(const char *file_name)
 {
 	char *path;
 	char *dir;
@@ -949,7 +949,7 @@ int64_t tests_remove_entry(void)
 }
 
 /* Read mount information from /proc/mounts or /etc/mtab */
-int tests_get_mount_info(struct mntent *info)
+static int tests_get_mount_info(struct mntent *info)
 {
 	FILE *f;
 	struct mntent *entry;

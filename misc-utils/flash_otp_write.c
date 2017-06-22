@@ -16,7 +16,7 @@
 #include <common.h>
 #include <mtd/mtd-user.h>
 
-ssize_t xread(int fd, void *buf, size_t count)
+static ssize_t xread(int fd, void *buf, size_t count)
 {
 	ssize_t ret, done = 0;
 

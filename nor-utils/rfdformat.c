@@ -30,7 +30,7 @@
 
 #include "common.h"
 
-void display_help(int status)
+static void display_help(int status)
 {
 	printf("Usage: %s [OPTIONS] MTD-device\n"
 			"Formats NOR flash for resident flash disk\n"
@@ -41,7 +41,7 @@ void display_help(int status)
 	exit(status);
 }
 
-void display_version(void)
+static void display_version(void)
 {
 	common_print_version();
 	printf("This is free software; see the source for copying conditions.  There is NO\n"
@@ -49,7 +49,7 @@ void display_version(void)
 	exit(0);
 }
 
-void process_options(int argc, char *argv[], const char **mtd_filename)
+static void process_options(int argc, char *argv[], const char **mtd_filename)
 {
 	int error = 0;
 

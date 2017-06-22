@@ -1200,9 +1200,9 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 	return 0;
 }
 
-int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
-	      uint64_t start, uint64_t length, void *data, unsigned int cmd64,
-	      unsigned int cmd)
+static int do_oob_op(libmtd_t desc, const struct mtd_dev_info *mtd, int fd,
+		     uint64_t start, uint64_t length, void *data,
+		     unsigned int cmd64, unsigned int cmd)
 {
 	int ret, oob_offs;
 	struct mtd_oob_buf64 oob64;

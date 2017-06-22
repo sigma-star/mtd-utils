@@ -1640,7 +1640,7 @@ static char *symlink_path(const char *path, const char *target_pathname)
 	return p;
 }
 
-void symlink_check(const struct symlink_info *symlink)
+static void symlink_check(const struct symlink_info *symlink)
 {
 	char *path, buf[8192], *target;
 	struct stat st1, st2;

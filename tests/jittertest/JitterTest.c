@@ -451,7 +451,7 @@ void SignalHandler(
   stats reset by doing a (any) write to the /proc/profile
   file.
  */
-void doGrabKProfile(int jitterusec, char *fileName)
+static void doGrabKProfile(int jitterusec, char *fileName)
 {
     int fdSnapshot;
     int fdProfile;
@@ -498,7 +498,7 @@ void doGrabKProfile(int jitterusec, char *fileName)
 /*
   Call this routine to clear the kernel profiling buffer /proc/profile
 */
-void clearProfileBuf(void){
+static void clearProfileBuf(void){
 
 
   int fdProfile;

@@ -544,7 +544,7 @@ fail:
  * q = values of the polynomial (known)
  */
 
-int
+static int
 invert_vdm(gf *src, int k)
 {
     int i, j, row, col ;

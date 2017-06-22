@@ -50,7 +50,7 @@
 long	imglen;		// length of image
 char	*data;		// image data
 
-void display_help (int error)
+static void display_help (int error)
 {
 	printf("Usage: %s [OPTION]... INPUTFILE\n"
 	       "Dump the contents of a binary JFFS2 image.\n\n"
@@ -68,7 +68,7 @@ void display_help (int error)
 	exit(error ? EXIT_FAILURE : EXIT_SUCCESS);
 }
 
-void display_version (void)
+static void display_version (void)
 {
 	common_print_version();
 	printf("Copyright (C) 2003 Thomas Gleixner \n"
@@ -95,7 +95,7 @@ char	cnvfile[256];		// filename for conversion output
 int	datsize;		// Size of data chunks, when oob data is inside the binary image
 int	oobsize;		// Size of oob chunks, when oob data is inside the binary image
 
-void process_options (int argc, char *argv[])
+static void process_options (int argc, char *argv[])
 {
 	int error = 0;
 
@@ -170,7 +170,7 @@ void process_options (int argc, char *argv[])
 /*
  *	Dump image contents
  */
-void do_dumpcontent (void)
+static void do_dumpcontent (void)
 {
 	char			*p = data, *p_free_begin;
 	union jffs2_node_union 	*node;
@@ -479,7 +479,7 @@ void do_dumpcontent (void)
 /*
  *	Convert endianess
  */
-void do_endianconvert (void)
+static void do_endianconvert (void)
 {
 	char			*p = data;
 	union jffs2_node_union 	*node, newnode;

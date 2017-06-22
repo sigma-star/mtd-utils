@@ -17,7 +17,7 @@
 #include "mtd/mtd-user.h"
 #include "common.h"
 
-void usage(int status)
+static void usage(int status)
 {
 	fprintf(status ? stderr : stdout,
 		"usage: %s [OPTIONS] <device>\n\n"
@@ -40,7 +40,8 @@ int fd;
 int markbad=0;
 int seed;
 
-int read_and_compare(loff_t ofs, unsigned char *data, unsigned char *rbuf)
+static int read_and_compare(loff_t ofs, unsigned char *data,
+			    unsigned char *rbuf)
 {
 	ssize_t len;
 	int i;
@@ -89,7 +90,8 @@ int read_and_compare(loff_t ofs, unsigned char *data, unsigned char *rbuf)
 	return 0;
 }
 
-int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf, int nr_reads)
+static int erase_and_write(loff_t ofs, unsigned char *data, unsigned char *rbuf,
+			   int nr_reads)
 {
 	struct erase_info_user er;
 	ssize_t len;
