@@ -268,14 +268,14 @@ static int read_page(void)
 		return -1;
 	}
 
+	if (ioctl(fd, ECCGETSTATS, &new) != 0)
+		goto failstats;
+
 	if (new.failed > old.failed) {
 		fprintf(stderr, "Failed to recover %d bitflips\n",
 				new.failed - old.failed);
 		return -1;
 	}
-
-	if (ioctl(fd, ECCGETSTATS, &new) != 0)
-		goto failstats;
 
 	return new.corrected - old.corrected;
 failstats:
