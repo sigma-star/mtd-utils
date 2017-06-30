@@ -62,6 +62,7 @@
 #define KEEP_CONTENTS 0x01
 #define MODE_INCREMENTAL 0x02
 #define MODE_OVERWRITE 0x04
+#define PAGE_ERASED 0x08
 
 static int peb = -1, page = -1, max_overwrite = -1, seed = -1;
 static const char *mtddev;
@@ -77,6 +78,7 @@ static const struct option options[] = {
 	{ "peb", required_argument, NULL, 'b' },
 	{ "page", required_argument, NULL, 'p' },
 	{ "seed", required_argument, NULL, 's' },
+	{ "erased", no_argument, NULL, 'e' },
 	{ "writes", required_argument, NULL, 'w' },
 	{ "incremental", no_argument, NULL, 'i' },
 	{ "overwrite", no_argument, NULL, 'o' },
@@ -92,7 +94,8 @@ static void usage(int status)
 	"  -k, --keep          Restore existing contents after test\n"
 	"  -b, --peb <num>     Use this physical erase block\n"
 	"  -p, --page <num>    Use this page within the erase block\n"
-	"  -s, --seed <num>    Specify seed for PRNG\n\n"
+	"  -s, --seed <num>    Specify seed for PRNG\n"
+	"  -e, --erased        Test erased pages instead of written pages\n\n"
 	"Options controling test mode:\n"
 	"  -i, --incremental   Manually insert bit errors until ECC fails\n"
 	"  -o, --overwrite     Rewrite page until bits flip and ECC fails\n\n"
@@ -121,7 +124,7 @@ static void process_options(int argc, char **argv)
 	int c;
 
 	while (1) {
-		c = getopt_long(argc, argv, "hkb:p:s:iow:", options, NULL);
+		c = getopt_long(argc, argv, "hkb:p:s:eiow:", options, NULL);
 		if (c == -1)
 			break;
 
@@ -168,6 +171,9 @@ static void process_options(int argc, char **argv)
 			page = read_num(c, optarg);
 			if (page < 0)
 				goto failarg;
+			break;
+		case 'e':
+			flags |= PAGE_ERASED;
 			break;
 		case 'h':
 			usage(EXIT_SUCCESS);
@@ -224,9 +230,25 @@ static unsigned char hash(unsigned int offset)
 	return c;
 }
 
+static void init_buffer(void)
+{
+	unsigned int i;
+
+	if (flags & PAGE_ERASED) {
+		memset(wbuffer, 0xff, pagesize);
+	} else {
+		for (i = 0; i < pagesize; ++i)
+			wbuffer[i] = hash(i+seed);
+	}
+}
+
 static int write_page(void)
 {
+	int raw = flags & PAGE_ERASED;
 	int err;
+
+	if (raw && ioctl(fd, MTDFILEMODE, MTD_FILE_MODE_RAW) != 0)
+		goto fail_mode;
 
 	err = mtd_write(mtd_desc, &mtd, fd, peb, page*pagesize,
 					wbuffer, pagesize, NULL, 0, 0);
@@ -234,7 +256,13 @@ static int write_page(void)
 	if (err)
 		fprintf(stderr, "Failed to write page %d in block %d\n", peb, page);
 
+	if (raw && ioctl(fd, MTDFILEMODE, MTD_FILE_MODE_NORMAL) != 0)
+		goto fail_mode;
+
 	return err;
+fail_mode:
+	perror("MTDFILEMODE");
+	return -1;
 }
 
 static int rewrite_page(void)
@@ -285,10 +313,11 @@ failstats:
 
 static int verify_page(void)
 {
+	int erased = flags & PAGE_ERASED;
 	unsigned int i, errs = 0;
 
 	for (i = 0; i < pagesize; ++i) {
-		if (rbuffer[i] != hash(i+seed))
+		if (rbuffer[i] != (erased ? 0xff : hash(i+seed)))
 			++errs;
 	}
 
@@ -321,13 +350,12 @@ static int insert_biterror(void)
  * errors into the page, while verifying each step. */
 static int incremental_errors_test(void)
 {
-	unsigned int i, errs_per_subpage = 0;
+	unsigned int errs_per_subpage = 0;
 	int count = 0;
 
 	puts("incremental biterrors test");
 
-	for (i = 0; i < pagesize; ++i)
-		wbuffer[i] = hash(i+seed);
+	init_buffer();
 
 	if (write_page() != 0)
 		return -1;
@@ -372,8 +400,7 @@ static int overwrite_test(void)
 
 	puts("overwrite biterrors test");
 
-	for (i = 0; i < pagesize; ++i)
-		wbuffer[i] = hash(i+seed);
+	init_buffer();
 
 	if (write_page() != 0)
 		return -1;
