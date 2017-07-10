@@ -43,7 +43,7 @@
 #include <errno.h>
 #include <libgen.h>
 #include <ctype.h>
-#include <uuid/uuid.h>
+#include <uuid.h>
 #include <sys/file.h>
 
 #include <mtd/ubifs-media.h>
