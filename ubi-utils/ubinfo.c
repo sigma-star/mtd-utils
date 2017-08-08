@@ -399,6 +399,12 @@ int main(int argc, char * const argv[])
 			goto out_libubi;
 	}
 
+	if (args.vol_name && args.devn == -1) {
+		errmsg("volume name is specified, but UBI device number is not "
+			   "(use -h for help)\n");
+		goto out_libubi;
+	}
+
 	if (args.vol_name) {
 		err = get_vol_id_by_name(libubi, args.devn, args.vol_name);
 		if (err)
