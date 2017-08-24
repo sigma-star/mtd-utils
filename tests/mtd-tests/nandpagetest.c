@@ -65,7 +65,7 @@ static void usage(int status)
 	"Options:\n"
 	"  -h, --help         Display this help output\n"
 	"  -b, --peb <num>    Index of the first erase block to use\n"
-	"  -c, --count <num>  Number of erase blocks to use (default all)\n"
+	"  -c, --count <num>  Number of erase blocks to use (at least 2, default all)\n"
 	"  -s, --skip <num>   Number of erase blocks to skip\n"
 	"  -S, --seed <num>   Seed for pseudor random number generator\n"
 	"  -k, --keep         Restore existing contents after test\n",
@@ -143,6 +143,8 @@ static void process_options(int argc, char **argv)
 
 	if (optind < argc)
 		usage(EXIT_FAILURE);
+	if (ebcnt < 2)
+		errmsg_die("Cannot run with less than two blocks.");
 	if (peb < 0)
 		peb = 0;
 	if (!(flags & SEED_SET))
