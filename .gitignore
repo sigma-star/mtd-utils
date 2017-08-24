@@ -141,6 +141,8 @@ tests/ubi-tests/ubi-stress-test.sh
 patches-*
 *.patch
 
-# cscope files
+# cscope and ctag files
 cscope.*
 ncscope.*
+/TAGS
+/tags
