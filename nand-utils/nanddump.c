@@ -180,6 +180,7 @@ static void process_options(int argc, char * const argv[])
 				break;
 			case 'c':
 				canonical = true;
+				/* fall-through */
 			case 'p':
 				pretty_print = true;
 				break;

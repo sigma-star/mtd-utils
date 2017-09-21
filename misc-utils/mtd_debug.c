@@ -272,6 +272,7 @@ static int showinfo(int fd)
 			break;
 		case MTD_UBIVOLUME:
 			printf("MTD_UBIVOLUME");
+			break;
 		default:
 			printf("(unknown type - new MTD API maybe?)");
 	}

@@ -74,6 +74,7 @@ static int parse_opt(int argc, char * const argv[])
 		switch (key) {
 		case 'c':
 			args.create = 1;
+			/* fall-through */
 		case 'r':
 			args.node = optarg;
 			break;

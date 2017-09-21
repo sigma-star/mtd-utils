@@ -155,8 +155,10 @@ int main(int argc, char *argv[])
 	default:
 	case 0:
 		errmsg("no MTD device specified");
+		/* fall-through */
 	case 1:
 		errmsg("no start erase block specified");
+		/* fall-through */
 	case 2:
 		errmsg("no erase block count specified");
 		error = 1;

@@ -131,6 +131,7 @@ static int parse_command_line(char *cmdline, int *pargc, char ***pargv)
 					break;
 				}
 				state = 1;
+				/* fall-through */
 			case 1: /* Not quoted */
 				if (c == '\\') {
 					if (*p)
