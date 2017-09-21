@@ -148,7 +148,7 @@ int main(int argc, char **argv)
 	int ret, i, mhblock, unitsize, block;
 	unsigned int nblocks[4], npart;
 	unsigned int totblocks;
-	struct INFTLPartition *ip;
+	struct INFTLPartition *ip = NULL;
 	unsigned char *oobbuf;
 	struct mtd_oob_buf oob;
 	char line[20];
