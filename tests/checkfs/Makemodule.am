@@ -1,7 +1,7 @@
 checkfs_SOURCES = tests/checkfs/checkfs.c tests/checkfs/comm.c
 checkfs_CPPFLAGS = $(AM_CPPFLAGS)
 
-makefiles_SOURCES = tests/checkfs/makefiles.c tests/checkfs/comm.c
+makefiles_SOURCES = tests/checkfs/makefiles.c
 makefiles_CPPFLAGS = $(AM_CPPFLAGS)
 
 CHECKFS_BINS = \
