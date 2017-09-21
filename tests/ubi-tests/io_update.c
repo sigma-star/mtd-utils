@@ -147,7 +147,7 @@ static int test_update1(struct ubi_vol_info *vol_info, int leb_change)
 			rnd_len = rand() % (l + 1);
 			for (n = 0; n < rnd_len; n++)
 				buf[off + n] = (unsigned char)rand();
-				memset(buf + off + rnd_len, 0xFF, l - rnd_len);
+			memset(buf + off + rnd_len, 0xFF, l - rnd_len);
 
 			/*
 			 * Deliberately pass len instead of l (len may be
