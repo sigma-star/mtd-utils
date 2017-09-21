@@ -17,7 +17,7 @@
 #include "mtd/mtd-user.h"
 #include "common.h"
 
-static void usage(int status)
+static NORETURN void usage(int status)
 {
 	fprintf(status ? stderr : stdout,
 		"usage: %s [OPTIONS] <device>\n\n"
@@ -184,14 +184,12 @@ int main(int argc, char **argv)
 		switch (c) {
 		case 'h':
 			usage(EXIT_SUCCESS);
-			break;
 		case 'V':
 			common_print_version();
 			exit(EXIT_SUCCESS);
 			break;
 		case '?':
 			usage(EXIT_FAILURE);
-			break;
 
 		case 'm':
 			markbad = 1;

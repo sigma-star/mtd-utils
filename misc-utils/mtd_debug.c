@@ -339,7 +339,7 @@ static int showinfo(int fd)
 	return 0;
 }
 
-static void showusage(void)
+static NORETURN void showusage(void)
 {
 	fprintf(stderr, "usage: %1$s info <device>\n"
 			"       %1$s read <device> <offset> <len> <dest-filename>\n"

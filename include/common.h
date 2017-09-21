@@ -129,6 +129,13 @@ extern "C" {
 	fprintf(stderr, "%s: warning!: " fmt "\n", PROGRAM_NAME, ##__VA_ARGS__); \
 } while(0)
 
+/* for tagging functions that always exit */
+#if defined(__GNUC__) || defined(__clang__)
+	#define NORETURN __attribute__((noreturn))
+#else
+	#define NORETURN
+#endif
+
 /**
  * prompt the user for confirmation
  */

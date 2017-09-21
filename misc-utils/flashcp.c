@@ -81,7 +81,7 @@ static void log_printf (int level,const char *fmt, ...)
 	fflush (fp);
 }
 
-static void showusage(bool error)
+static NORETURN void showusage(bool error)
 {
 	int level = error ? LOG_ERROR : LOG_NORMAL;
 

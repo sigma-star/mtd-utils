@@ -60,7 +60,7 @@ static const struct option options[] = {
 	{ NULL, 0, NULL, 0 },
 };
 
-static void usage(int status)
+static NORETURN void usage(int status)
 {
 	fputs(
 	"Usage: "PROGRAM_NAME" [OPTIONS] <device>\n\n"
@@ -100,7 +100,6 @@ static void process_options(int argc, char **argv)
 		switch (c) {
 		case 'h':
 			usage(EXIT_SUCCESS);
-			break;
 		case 'b':
 			if (peb >= 0)
 				goto failmulti;

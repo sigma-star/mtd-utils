@@ -36,7 +36,7 @@ static const char *flash_msg[] = {
 	[ REQUEST_ISLOCKED ]	= "check lock status",
 };
 
-static void usage(int status)
+static NORETURN void usage(int status)
 {
 	fprintf(status ? stderr : stdout,
 		"Utility to lock, unlock, or check the lock status of the flash.\n"
@@ -88,7 +88,6 @@ static void process_args(int argc, char *argv[])
 		switch (c) {
 		case 'h':
 			usage(EXIT_SUCCESS);
-			break;
 		case 'i':
 			req = REQUEST_ISLOCKED;
 			req_set++;
@@ -106,7 +105,6 @@ static void process_args(int argc, char *argv[])
 			exit(0);
 		default:
 			usage(EXIT_FAILURE);
-			break;
 		}
 	}
 

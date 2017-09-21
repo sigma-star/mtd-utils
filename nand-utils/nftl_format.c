@@ -198,7 +198,7 @@ static int checkbbt(void)
 	return (0);
 }
 
-static void usage(int rc)
+static NORETURN void usage(int rc)
 {
 	fprintf(stderr, "Usage: %s [-ib] <mtddevice> [<start offset> [<size>]]\n", PROGRAM_NAME);
 	exit(rc);
@@ -250,13 +250,11 @@ int main(int argc, char **argv)
 			case 'h':
 			case '?':
 				usage(EXIT_SUCCESS);
-				break;
 			case 'V':
 				display_version();
 				break;
 			default:
 				usage(EXIT_FAILURE);
-				break;
 		}
 	}
 
