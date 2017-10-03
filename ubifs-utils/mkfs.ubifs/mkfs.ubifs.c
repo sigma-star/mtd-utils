@@ -1831,6 +1831,8 @@ static int write_data(void)
 		if (err)
 			return sys_err_msg("bad root file-system directory '%s'",
 					   root);
+		if (squash_owner)
+			root_st.st_uid = root_st.st_gid = 0;
 	} else {
 		root_st.st_mtime = time(NULL);
 		root_st.st_atime = root_st.st_ctime = root_st.st_mtime;
