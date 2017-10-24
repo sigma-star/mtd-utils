@@ -1128,7 +1128,7 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 
 	len = llistxattr(path_name, NULL, 0);
 	if (len < 0) {
-		if (errno == ENOENT)
+		if (errno == ENOENT || errno == EOPNOTSUPP)
 			return 0;
 
 		sys_err_msg("llistxattr failed on %s", path_name);
