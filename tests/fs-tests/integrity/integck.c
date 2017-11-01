@@ -1164,7 +1164,7 @@ static int file_mmap_write(struct file_info *file)
 	}
 	r = random_no(write_cnt);
 	w = file->writes;
-	for (i = 0; w && w->next && i < r; i++)
+	for (i = 0; i < r; i++)
 		w = w->next;
 
 	offs = (w->offset / fsinfo.page_size) * fsinfo.page_size;

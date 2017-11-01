@@ -286,8 +286,6 @@ static int showinfo(int fd)
 		printf("MTD_CAP_NORFLASH");
 	else if (mtd.flags == MTD_CAP_NANDFLASH)
 		printf("MTD_CAP_NANDFLASH");
-	else if (mtd.flags == MTD_WRITEABLE)
-		printf("MTD_WRITEABLE");
 	else {
 		int first = 1;
 		static struct {
