@@ -340,7 +340,6 @@ static int insert_biterror(void)
 				return 0;
 			}
 		}
-		++byte;
 	}
 	fputs("biterror: Failed to find a '1' bit\n", stderr);
 	return -1;
