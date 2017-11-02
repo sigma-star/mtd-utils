@@ -591,12 +591,12 @@ void AlarmHandler(
 
 
         /* Store some historical #'s */
-        if(abs(timeDiffusec) > LastMaxDiff)
+        if(labs(timeDiffusec) > LastMaxDiff)
 	{
-            LastMaxDiff = abs(timeDiffusec);
+            LastMaxDiff = labs(timeDiffusec);
             sprintf(&tmpBuf[strlen(tmpBuf)],"!");
 
-	    if((GrabKProfile == TRUE) && (ProfileTriggerMSecs < (abs(timeDiffusec)/1000)))
+	    if((GrabKProfile == TRUE) && (ProfileTriggerMSecs < (labs(timeDiffusec)/1000)))
 	      {
 		  sprintf(profileFileName, "JitterTest.profilesnap-%i", profileFileNo);
 

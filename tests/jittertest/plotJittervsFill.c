@@ -267,7 +267,7 @@ int main(
         }
 
         /* Is the jitter value > threshold value? */
-        if(abs(jitter_ms) > JitterThreshold_ms)
+        if(abs((int)jitter_ms) > JitterThreshold_ms)
         {
             /* Found a jitter line that matches our crietrion.
                Now set flag to be on the look out for the next
@@ -276,7 +276,7 @@ int main(
 
             if(saveJitterCnt < MAX_SAVE_BUFFER)
             {
-                saveJitter[saveJitterCnt] = (int)abs(jitter_ms); /* why keep the (ms) jitter in float */
+                saveJitter[saveJitterCnt] = abs((int)jitter_ms); /* why keep the (ms) jitter in float */
                 dataLineNo[saveJitterCnt] = lineNo;
                 saveJitterCnt++;
                 lookFor_df = TRUE;
