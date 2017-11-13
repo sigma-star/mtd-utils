@@ -422,7 +422,7 @@ static int type_str2int(const char *str)
 }
 
 /**
- * dev_node2num - find UBI device number by its character device node.
+ * dev_node2num - find MTD device number by its character device node.
  * @lib: MTD library descriptor
  * @node: name of the MTD device node
  * @mtd_num: MTD device number is returned here
