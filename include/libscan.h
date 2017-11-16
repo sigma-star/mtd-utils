@@ -68,7 +68,7 @@ enum
  * @corrupted_cnt: count of eraseblocks with corrupted erase counter header
  * @alien_cnt: count of eraseblock containing non-ubi data
  * @bad_cnt: count of bad eraseblocks
- * @bad_cnt: count of non-bad eraseblocks
+ * @good_cnt: count of non-bad eraseblocks
  * @vid_hdr_offs: volume ID header offset from the found EC headers (%-1 means
  *                undefined)
  * @data_offs: data offset from the found EC headers (%-1 means undefined)
