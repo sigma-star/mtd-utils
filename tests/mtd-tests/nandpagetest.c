@@ -143,7 +143,7 @@ static void process_options(int argc, char **argv)
 
 	if (optind < argc)
 		usage(EXIT_FAILURE);
-	if (ebcnt < 2)
+	if (ebcnt >= 0 && ebcnt < 2)
 		errmsg_die("Cannot run with less than two blocks.");
 	if (peb < 0)
 		peb = 0;
