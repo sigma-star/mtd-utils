@@ -127,6 +127,9 @@ tests/ubi-tests/ubi-stress-test.sh
 /include/config.h
 /include/config.h.in
 /include/stamp-h1
+test-driver
+*.log
+*.trs
 
 #
 # Top-level generic files

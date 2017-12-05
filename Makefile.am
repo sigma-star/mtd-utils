@@ -12,6 +12,7 @@ endif
 
 sbin_PROGRAMS =
 sbin_SCRIPTS =
+check_PROGRAMS =
 noinst_LIBRARIES =
 noinst_PROGRAMS =
 noinst_SCRIPTS =
@@ -20,6 +21,7 @@ pkglibexec_SCRIPTS =
 dist_man1_MANS =
 dist_man8_MANS =
 
+TESTS =
 EXTRA_DIST =
 
 GLOBAL_HEADER = \
