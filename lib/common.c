@@ -107,6 +107,9 @@ long long util_get_bytes(const char *str)
 void util_print_bytes(long long bytes, int bracket)
 {
 	const char *p;
+	int GiB = 1024 * 1024 * 1024;
+	int MiB = 1024 * 1024;
+	int KiB = 1024;
 
 	if (bracket)
 		p = " (";
@@ -115,12 +118,15 @@ void util_print_bytes(long long bytes, int bracket)
 
 	printf("%lld bytes", bytes);
 
-	if (bytes > 1024 * 1024 * 1024)
-		printf("%s%.1f GiB", p, (double)bytes / (1024 * 1024 * 1024));
-	else if (bytes > 1024 * 1024)
-		printf("%s%.1f MiB", p, (double)bytes / (1024 * 1024));
-	else if (bytes > 1024 && bytes != 0)
-		printf("%s%.1f KiB", p, (double)bytes / 1024);
+	if (bytes > GiB)
+		printf("%s%lld.%lld GiB", p,
+		       bytes / GiB, bytes % GiB / (GiB / 10));
+	else if (bytes > MiB)
+		printf("%s%lld.%lld MiB", p,
+		        bytes / MiB, bytes % MiB / (MiB / 10));
+	else if (bytes > KiB && bytes != 0)
+		printf("%s%lld.%lld KiB", p,
+		        bytes / KiB, bytes % KiB / (KiB / 10));
 	else
 		return;
 
