@@ -844,7 +844,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (!args.override_ec && si->empty_cnt < si->good_cnt) {
-		int percent = ((double)si->ok_cnt)/si->good_cnt * 100;
+		int percent = (si->ok_cnt * 100) / si->good_cnt;
 
 		/*
 		 * Make sure the majority of eraseblocks have valid
