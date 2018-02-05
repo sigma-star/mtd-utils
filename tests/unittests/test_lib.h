@@ -57,13 +57,6 @@ int __wrap_ioctl(int fd, unsigned long req, ...)
 	return retval;
 }
 
-int __wrap_stat(const char *path, struct stat *buf)
-{
-	check_expected(path);
-	assert_non_null(buf);
-	return mock_type(int);
-}
-
 int __wrap_read(int fd, char *buf, size_t len)
 {
 	assert_true(fd > 0);
@@ -116,11 +109,6 @@ off_t __wrap_lseek(int fd, off_t seek, int whence)
 		expect_value(__wrap_ioctl, req, X);\
 		will_return(__wrap_ioctl, Y);\
 		will_return(__wrap_ioctl, NULL);\
-	} while(0);
-
-#define expect_stat(X,Y) do { \
-		expect_string(__wrap_stat, path, X);\
-		will_return(__wrap_stat, Y);\
 	} while(0);
 
 #define expect_write(X,Y,Z) do { \

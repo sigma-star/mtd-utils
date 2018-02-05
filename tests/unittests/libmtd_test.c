@@ -53,7 +53,6 @@ static void test_mtd_dev_present(void **state)
 {
 	int ret;
 	libmtd_t lib = mock_libmtd_open();
-	expect_stat(SYSFS_ROOT "/class/mtd/mtd0", 0);
 	ret = mtd_dev_present(lib, 0);
 	assert_int_equal(ret, 1);
 	libmtd_close(lib);
@@ -423,7 +422,6 @@ static void test_mtd_get_dev_info1(void **state)
 	struct mtd_dev_info info;
 	int dev_num = 0;
 	memset(&info, 0, sizeof(info));
-	expect_stat(SYSFS_ROOT "/class/mtd/mtd0", 0);
 	expect_open(SYSFS_ROOT "/class/mtd/mtd0/dev", O_RDONLY, 0);
 	expect_read_real(50,0);
 	expect_read(1,0);

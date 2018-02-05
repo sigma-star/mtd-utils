@@ -98,7 +98,6 @@ static libubi_t mock_libubi_open()
 static void test_ubi_dev_present(void **state)
 {
 	libubi_t lib = mock_libubi_open();
-	expect_stat(SYSFS_ROOT "/class/ubi/ubi0", 0);
 	int r = ubi_dev_present(lib, 0);
 	assert_int_equal(r, 1);
 
