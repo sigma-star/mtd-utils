@@ -54,7 +54,7 @@ static void test_ubi_leb_unmap(void **state)
 {
 	int mock_fd = 1;
 	int lnum = 12;
-	expect_ioctl(UBI_IOCEBUNMAP, 0, &lnum, sizeof(lnum));
+	expect_ioctl(UBI_IOCEBUNMAP, 0, &lnum);
 	int r = ubi_leb_unmap(mock_fd, lnum);
 	assert_int_equal(r, 0);
 
@@ -65,7 +65,7 @@ static void test_ubi_is_mapped(void **state)
 {
 	int mock_fd = 1;
 	int lnum = 1;
-	expect_ioctl(UBI_IOCEBISMAP, 0, &lnum, sizeof(lnum));
+	expect_ioctl(UBI_IOCEBISMAP, 0, &lnum);
 	int r = ubi_is_mapped(mock_fd, lnum);
 	assert_int_equal(r, 0);
 
@@ -77,7 +77,7 @@ static void test_ubi_update_start(void **state)
 	int mock_fd = 1;
 	long long bytes = 0x1234;
 
-	expect_ioctl(UBI_IOCVOLUP, 0, &bytes, sizeof(bytes));
+	expect_ioctl(UBI_IOCVOLUP, 0, &bytes);
 	int r = ubi_update_start(NULL, mock_fd, bytes);
 	assert_int_equal(r, 0);
 	(void) state;
@@ -116,7 +116,7 @@ static void test_ubi_rsvol(void **state)
 	req.bytes = bytes;
 	req.vol_id = vol_id;
 	expect_open(node, O_RDONLY, 4);
-	expect_ioctl(UBI_IOCRSVOL, 0, &req, sizeof(req));
+	expect_ioctl(UBI_IOCRSVOL, 0, &req);
 	expect_close(4, 0);
 	int r = ubi_rsvol(NULL, node, vol_id, bytes);
 	assert_int_equal(r, 0);
@@ -131,7 +131,7 @@ static void test_ubi_rnvols(void **state)
 	struct ubi_rnvol_req req;
 	memset(&req, 0xaf, sizeof(req));
 	expect_open(node, O_RDONLY, 4);
-	expect_ioctl(UBI_IOCRNVOL, 0, &req, sizeof(req));
+	expect_ioctl(UBI_IOCRNVOL, 0, &req);
 	expect_close(4, 0);
 	int r = ubi_rnvols(lib, node, &req);
 	assert_int_equal(r, 0);
@@ -146,7 +146,7 @@ static void test_ubi_rmvol(void **state)
 	const char *node = "/foo";
 	int vol_id = 12;
 	expect_open(node, O_RDONLY, 4);
-	expect_ioctl(UBI_IOCRMVOL, 0, &vol_id, sizeof(vol_id));
+	expect_ioctl(UBI_IOCRMVOL, 0, &vol_id);
 	expect_close(4, 0);
 	int r = ubi_rmvol(lib, node, vol_id);
 	assert_int_equal(r, 0);
@@ -166,7 +166,7 @@ static void test_ubi_leb_change_start(void **state)
 	req.lnum = lnum;
 	req.bytes = bytes;
 	req.dtype = 3;
-	expect_ioctl(UBI_IOCEBCH, 0, &req, sizeof(req));
+	expect_ioctl(UBI_IOCEBCH, 0, &req);
 	int r = ubi_leb_change_start(lib, mock_fd, lnum, bytes);
 	assert_int_equal(r, 0);
 
@@ -209,7 +209,7 @@ static void test_ubi_mkvol(void **state)
 	rr.name_len = strlen(vol_name);
 	strncpy(rr.name, vol_name, UBI_MAX_VOLUME_NAME + 1);
 	expect_open(node, O_RDONLY, 3);
-	expect_ioctl(UBI_IOCMKVOL, 0, &rr, sizeof(rr));
+	expect_ioctl(UBI_IOCMKVOL, 0, &rr);
 	expect_close(3,0);
 	int r = ubi_mkvol(lib, node, &req);
 	assert_int_equal(r, 0);
@@ -225,7 +225,7 @@ void test_ubi_remove_dev(void **state)
 	libubi_t lib = mock_libubi_open();
 	int ubi_dev = 0xAA;
 	expect_open(node, O_RDONLY, 4);
-	expect_ioctl(UBI_IOCDET, 0, &ubi_dev, sizeof(ubi_dev));
+	expect_ioctl(UBI_IOCDET, 0, &ubi_dev);
 	expect_close(4,0);
 	int r = ubi_remove_dev(lib, node, ubi_dev);
 	assert_int_equal(r, 0);
@@ -247,7 +247,7 @@ void test_ubi_attach(void **state)
 	rr.ubi_num = 1;
 	rr.mtd_num = 1;
 	expect_open(node, O_RDONLY, 4);
-	expect_ioctl(UBI_IOCATT, 0, &rr, sizeof(rr));
+	expect_ioctl(UBI_IOCATT, 0, &rr);
 	expect_close(4,0);
 
 	int r = ubi_attach(lib, node, &req);
@@ -266,7 +266,7 @@ void test_ubi_set_property(void **state)
 	memset(&req, 0, sizeof(req));
 	req.property = prop;
 	req.value = val;
-	expect_ioctl(UBI_IOCSETVOLPROP, 0, &req, sizeof(req));
+	expect_ioctl(UBI_IOCSETVOLPROP, 0, &req);
 	int r = ubi_set_property(mock_fd, prop, val);
 	assert_int_equal(r,0);
 

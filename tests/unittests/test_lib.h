@@ -45,16 +45,15 @@ int __wrap_ioctl(int fd, unsigned long req, ...)
 	assert_true(fd > 0);
 	check_expected(req);
 	int retval = mock_type(int);
-	void *expected_arg = mock_type(void*);
-	size_t expected_len = mock_type(size_t);
+	char *expected_arg = mock_type(char*);
 	if (expected_arg == NULL)
 		return retval;
 	va_list ap;
 	va_start(ap, req);
-	void *arg = va_arg(ap, void *);
+	char *arg = va_arg(ap, char *);
 	va_end(ap);
 	assert_non_null(arg);
-	assert_memory_equal(expected_arg, arg, expected_len);
+	assert_memory_equal(expected_arg, arg, _IOC_SIZE(req));
 	return retval;
 }
 
@@ -107,18 +106,16 @@ off_t __wrap_lseek(int fd, off_t seek, int whence)
 		will_return(__wrap_close, Y);\
 	} while(0);
 
-#define expect_ioctl(W,X,Y,Z) do { \
+#define expect_ioctl(W,X,Y) do { \
 		expect_value(__wrap_ioctl, req, W);\
 		will_return(__wrap_ioctl, X);\
 		will_return(__wrap_ioctl, Y);\
-		will_return(__wrap_ioctl, Z);\
 	} while(0);
 
 #define expect_ioctl_short(X,Y) do { \
 		expect_value(__wrap_ioctl, req, X);\
 		will_return(__wrap_ioctl, Y);\
 		will_return(__wrap_ioctl, NULL);\
-		will_return(__wrap_ioctl, 0);\
 	} while(0);
 
 #define expect_stat(X,Y) do { \
