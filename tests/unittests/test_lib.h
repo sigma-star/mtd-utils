@@ -40,7 +40,7 @@ int __wrap_close(int fd)
 	return retval;
 }
 
-int __wrap_ioctl(int fd, int req, ...)
+int __wrap_ioctl(int fd, unsigned long req, ...)
 {
 	assert_true(fd > 0);
 	check_expected(req);
@@ -108,14 +108,14 @@ off_t __wrap_lseek(int fd, off_t seek, int whence)
 	} while(0);
 
 #define expect_ioctl(W,X,Y,Z) do { \
-		expect_value(__wrap_ioctl, req, (int)W);\
+		expect_value(__wrap_ioctl, req, W);\
 		will_return(__wrap_ioctl, X);\
 		will_return(__wrap_ioctl, Y);\
 		will_return(__wrap_ioctl, Z);\
 	} while(0);
 
 #define expect_ioctl_short(X,Y) do { \
-		expect_value(__wrap_ioctl, req, (int)X);\
+		expect_value(__wrap_ioctl, req, X);\
 		will_return(__wrap_ioctl, Y);\
 		will_return(__wrap_ioctl, NULL);\
 		will_return(__wrap_ioctl, 0);\
