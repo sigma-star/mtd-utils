@@ -551,8 +551,12 @@ int main(int argc, char **argv)
 	}
 	printf("verified %u eraseblocks\n", i);
 
-	if (crosstest())
-		goto out;
+	if (ebcnt > 1) {
+		if (crosstest())
+			goto out;
+	} else {
+		printf("skipping erasecrosstest, 2 erase blocks needed\n");
+	}
 
 	if (erasecrosstest())
 		goto out;
