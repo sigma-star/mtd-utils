@@ -1825,6 +1825,8 @@ static int write_data(void)
 {
 	int err;
 	mode_t mode = S_IFDIR | S_IRWXU | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH;
+	struct path_htbl_element *ph_elt;
+	struct name_htbl_element *nh_elt;
 
 	if (root) {
 		err = stat(root, &root_st);
@@ -1837,6 +1839,17 @@ static int write_data(void)
 		root_st.st_mtime = time(NULL);
 		root_st.st_atime = root_st.st_ctime = root_st.st_mtime;
 		root_st.st_mode = mode;
+	}
+
+	/*
+	 * Check for root entry and update permissions if it exists. This will
+	 * also remove the entry from the device table list.
+	 */
+	ph_elt = devtbl_find_path("/");
+	if (ph_elt) {
+		nh_elt = devtbl_find_name(ph_elt, "");
+		if (nh_elt && override_attributes(&root_st, ph_elt, nh_elt))
+			return -1;
 	}
 
 	head_flags = 0;

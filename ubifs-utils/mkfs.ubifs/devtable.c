@@ -146,16 +146,16 @@ static int interpret_table_entry(const char *line)
 		increment, count);
 
 	len = strnlen(buf, 1024);
+	if (len == 0)
+		return err_msg("empty path");
 	if (len == 1024)
 		return err_msg("too long path");
 
-	if (!strcmp(buf, "/"))
+	if (buf[0] != '/')
 		return err_msg("device table entries require absolute paths");
-	if (buf[1] == '\0')
-		return err_msg("root directory cannot be created");
 	if (strstr(buf, "//"))
 		return err_msg("'//' cannot be used in the path");
-	if (buf[len - 1] == '/')
+	if (len > 1 && buf[len - 1] == '/')
 		return err_msg("do not put '/' at the end");
 
 	if (strstr(buf, "/./") || strstr(buf, "/../") ||
