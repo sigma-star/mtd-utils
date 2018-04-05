@@ -612,7 +612,7 @@ static int get_options(int argc, char**argv)
 				return err_msg("bad compressor name");
 			break;
 		case 'X':
-#ifdef WITHOT_LZO
+#ifdef WITHOUT_LZO
 			return err_msg("built without LZO support");
 #else
 			c->favor_percent = strtol(optarg, &endp, 0);
