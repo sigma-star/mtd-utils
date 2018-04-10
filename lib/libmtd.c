@@ -614,6 +614,10 @@ libmtd_t libmtd_open(void)
 	if (!lib->mtd_oob_size)
 		goto out_error;
 
+	lib->mtd_oobavail = mkpath(lib->mtd, MTD_OOBAVAIL);
+	if (!lib->mtd_oobavail)
+		goto out_error;
+
 	lib->mtd_region_cnt = mkpath(lib->mtd, MTD_REGION_CNT);
 	if (!lib->mtd_region_cnt)
 		goto out_error;
@@ -637,6 +641,7 @@ void libmtd_close(libmtd_t desc)
 	free(lib->mtd_flags);
 	free(lib->mtd_region_cnt);
 	free(lib->mtd_oob_size);
+	free(lib->mtd_oobavail);
 	free(lib->mtd_subpage_size);
 	free(lib->mtd_min_io_size);
 	free(lib->mtd_size);
@@ -769,6 +774,15 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
 		return -1;
 	if (dev_read_pos_int(lib->mtd_oob_size, mtd_num, &mtd->oob_size))
 		return -1;
+	if (dev_read_pos_int(lib->mtd_oobavail, mtd_num, &mtd->oobavail)) {
+		/*
+		 * Fail to access oobavail sysfs file,
+		 * try ioctl ECCGETLAYOUT. */
+		mtd->oobavail = legacy_get_mtd_oobavail1(mtd_num);
+		/* Set 0 as default if can not get valid ecc layout */
+		if (mtd->oobavail < 0)
+			mtd->oobavail = 0;
+	}
 	if (dev_read_pos_int(lib->mtd_region_cnt, mtd_num, &mtd->region_cnt))
 		return -1;
 	if (dev_read_hex_int(lib->mtd_flags, mtd_num, &ret))

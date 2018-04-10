@@ -215,6 +215,46 @@ int legacy_mtd_get_info(struct mtd_info *info)
 	return 0;
 }
 
+int legacy_get_mtd_oobavail(const char *node)
+{
+	struct stat st;
+	struct nand_ecclayout_user usrlay;
+	int fd, ret;
+
+	if (stat(node, &st))
+		return sys_errmsg("cannot open \"%s\"", node);
+
+	if (!S_ISCHR(st.st_mode)) {
+		errno = EINVAL;
+		return errmsg("\"%s\" is not a character device", node);
+	}
+
+	fd = open(node, O_RDONLY);
+	if (fd == -1)
+		return sys_errmsg("cannot open \"%s\"", node);
+
+	ret = ioctl(fd, ECCGETLAYOUT, &usrlay);
+	if (ret < 0) {
+		sys_errmsg("ECCGETLAYOUT ioctl request failed");
+		goto out_close;
+	}
+
+	ret = usrlay.oobavail;
+
+out_close:
+	close(fd);
+
+	return ret;
+}
+
+int legacy_get_mtd_oobavail1(int mtd_num)
+{
+	char node[sizeof(MTD_DEV_PATT) + 20];
+
+	sprintf(node, MTD_DEV_PATT, mtd_num);
+	return legacy_get_mtd_oobavail(node);
+}
+
 /**
  * legacy_get_dev_info - legacy version of 'mtd_get_dev_info()'.
  * @node: name of the MTD device node
@@ -334,6 +374,9 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	mtd->subpage_size = mtd->min_io_size;
 
 	close(fd);
+
+	ret = legacy_get_mtd_oobavail(node);
+	mtd->oobavail = ret > 0 ? ret : 0;
 
 	/*
 	 * Unfortunately, the device name is not available via ioctl, and

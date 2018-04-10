@@ -66,6 +66,7 @@ struct mtd_info
  * @min_io_size: minimum input/output unit size
  * @subpage_size: sub-page size
  * @oob_size: OOB size (zero if the device does not have OOB area)
+ * @oobavail: free OOB size
  * @region_cnt: count of additional erase regions
  * @writable: zero if the device is read-only
  * @bb_allowed: non-zero if the MTD device may have bad eraseblocks
@@ -84,6 +85,7 @@ struct mtd_dev_info
 	int min_io_size;
 	int subpage_size;
 	int oob_size;
+	int oobavail;
 	int region_cnt;
 	unsigned int writable:1;
 	unsigned int bb_allowed:1;

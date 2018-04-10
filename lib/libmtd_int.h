@@ -44,6 +44,7 @@ extern "C" {
 #define MTD_MIN_IO_SIZE  "writesize"
 #define MTD_SUBPAGE_SIZE "subpagesize"
 #define MTD_OOB_SIZE     "oobsize"
+#define MTD_OOBAVAIL     "oobavail"
 #define MTD_REGION_CNT   "numeraseregions"
 #define MTD_FLAGS        "flags"
 
@@ -63,6 +64,7 @@ extern "C" {
  * @mtd_min_io_size: minimum I/O unit size file pattern
  * @mtd_subpage_size: sub-page size file pattern
  * @mtd_oob_size: MTD device OOB size file pattern
+ * @mtd_oobavail: MTD device free OOB size file pattern
  * @mtd_region_cnt: count of additional erase regions file pattern
  * @mtd_flags: MTD device flags file pattern
  * @sysfs_supported: non-zero if sysfs is supported by MTD
@@ -92,6 +94,7 @@ struct libmtd
 	char *mtd_min_io_size;
 	char *mtd_subpage_size;
 	char *mtd_oob_size;
+	char *mtd_oobavail;
 	char *mtd_region_cnt;
 	char *mtd_flags;
 	unsigned int sysfs_supported:1;
@@ -103,6 +106,8 @@ int legacy_dev_present(int mtd_num);
 int legacy_mtd_get_info(struct mtd_info *info);
 int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd);
 int legacy_get_dev_info1(int dev_num, struct mtd_dev_info *mtd);
+int legacy_get_mtd_oobavail(const char *node);
+int legacy_get_mtd_oobavail1(int mtd_num);
 
 #ifdef __cplusplus
 }
