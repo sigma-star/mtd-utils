@@ -92,7 +92,7 @@ int main(int argc, char *argv[])
 {
 	libmtd_t mtd_desc;
 	struct mtd_dev_info mtd;
-	int fd;
+	int fd, cmlen = 8;
 	unsigned long long start;
 	unsigned int eb, eb_start, eb_cnt;
 	bool isNAND;
@@ -190,10 +190,11 @@ int main(int argc, char *argv[])
 	if (jffs2) {
 		cleanmarker.magic = cpu_to_je16 (JFFS2_MAGIC_BITMASK);
 		cleanmarker.nodetype = cpu_to_je16 (JFFS2_NODETYPE_CLEANMARKER);
-		if (!isNAND)
+		if (!isNAND) {
 			cleanmarker.totlen = cpu_to_je32(sizeof(cleanmarker));
-		else {
+		} else {
 			cleanmarker.totlen = cpu_to_je32(8);
+			cmlen = min(mtd.oobavail, 8);
 		}
 		cleanmarker.hdr_crc = cpu_to_je32(mtd_crc32(0, &cleanmarker, sizeof(cleanmarker) - 4));
 	}
@@ -242,7 +243,7 @@ int main(int argc, char *argv[])
 
 		/* write cleanmarker */
 		if (isNAND) {
-			if (mtd_write(mtd_desc, &mtd, fd, eb, 0, NULL, 0, &cleanmarker, 0,
+			if (mtd_write(mtd_desc, &mtd, fd, eb, 0, NULL, 0, &cleanmarker, cmlen,
 					MTD_OPS_AUTO_OOB) != 0) {
 				sys_errmsg("%s: MTD writeoob failure", mtd_device);
 				continue;
