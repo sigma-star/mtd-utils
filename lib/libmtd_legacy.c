@@ -54,7 +54,7 @@
  * @name: device name
  * @buf: contents of /proc/mtd
  * @data_size: how much data was read into @buf
- * @pos: next string in @buf to parse
+ * @next: next string in @buf to parse
  */
 struct proc_parse_info
 {
@@ -164,8 +164,8 @@ int legacy_procfs_is_supported(void)
 }
 
 /**
- * legacy_dev_presentl - legacy version of 'mtd_dev_present()'.
- * @info: the MTD device information is returned here
+ * legacy_dev_present - legacy version of 'mtd_dev_present()'.
+ * @mtd_num: MTD device number
  *
  * When the kernel does not provide sysfs files for the MTD subsystem,
  * fall-back to parsing the /proc/mtd file to determine whether an mtd device
@@ -404,7 +404,7 @@ out_close:
 
 /**
  * legacy_get_dev_info1 - legacy version of 'mtd_get_dev_info1()'.
- * @node: name of the MTD device node
+ * @mtd_num: MTD device number
  * @mtd: the MTD device information is returned here
  *
  * This function is similar to 'mtd_get_dev_info1()' and has the same
