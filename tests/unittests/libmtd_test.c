@@ -42,6 +42,7 @@ static void test_libmtd_open(void **state)
 	assert_string_equal(lib->mtd_min_io_size, SYSFS_ROOT "/class/mtd/mtd%d/writesize");
 	assert_string_equal(lib->mtd_subpage_size, SYSFS_ROOT "/class/mtd/mtd%d/subpagesize");
 	assert_string_equal(lib->mtd_oob_size, SYSFS_ROOT "/class/mtd/mtd%d/oobsize");
+	assert_string_equal(lib->mtd_oobavail, SYSFS_ROOT "/class/mtd/mtd%d/oobavail");
 	assert_string_equal(lib->mtd_region_cnt, SYSFS_ROOT "/class/mtd/mtd%d/numeraseregions");
 	assert_string_equal(lib->mtd_flags, SYSFS_ROOT "/class/mtd/mtd%d/flags");
 
@@ -447,6 +448,9 @@ static void test_mtd_get_dev_info1(void **state)
 	expect_read_real(50,0);
 	expect_close(3,1);
 	expect_open(SYSFS_ROOT "/class/mtd/mtd0/oobsize", O_RDONLY, 0);
+	expect_read_real(50,0);
+	expect_close(3,1);
+	expect_open(SYSFS_ROOT "/class/mtd/mtd0/oobavail", O_RDONLY, 0);
 	expect_read_real(50,0);
 	expect_close(3,1);
 	expect_open(SYSFS_ROOT "/class/mtd/mtd0/numeraseregions", O_RDONLY, 0);
