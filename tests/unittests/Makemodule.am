@@ -1,12 +1,12 @@
 ubilib_test_SOURCES = tests/unittests/libubi_test.c lib/libubi.c
 ubilib_test_LDADD = $(CMOCKA_LIBS)
 ubilib_test_LDFLAGS = -Wl,--wrap=open -Wl,--wrap=close -Wl,--wrap=ioctl -Wl,--wrap=read -Wl,--wrap=lseek
-ubilib_test_CPPFLAGS = -O0 --std=gnu99 $(CMOCKA_CFLAGS) -I include -DSYSFS_ROOT='"tests/unittests/sysfs_mock"'
+ubilib_test_CPPFLAGS = -O0 --std=gnu99 $(CMOCKA_CFLAGS) -I$(top_srcdir)/include -DSYSFS_ROOT='"$(top_srcdir)/tests/unittests/sysfs_mock"'
 
 mtdlib_test_SOURCES = tests/unittests/libmtd_test.c lib/libmtd.c lib/libmtd_legacy.c
 mtdlib_test_LDADD = $(CMOCKA_LIBS)
 mtdlib_test_LDFLAGS = -Wl,--wrap=open -Wl,--wrap=close -Wl,--wrap=ioctl -Wl,--wrap=read -Wl,--wrap=lseek -Wl,--wrap=write
-mtdlib_test_CPPFLAGS = -O0 --std=gnu99 $(CMOCKA_CFLAGS) -I lib/ -I include -DSYSFS_ROOT='"tests/unittests/sysfs_mock"'
+mtdlib_test_CPPFLAGS = -O0 --std=gnu99 $(CMOCKA_CFLAGS) -I$(top_srcdir)/lib/ -I$(top_srcdir)/include -DSYSFS_ROOT='"$(top_srcdir)/tests/unittests/sysfs_mock"'
 
 TEST_BINS = \
 	ubilib_test \
