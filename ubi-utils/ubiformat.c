@@ -692,13 +692,14 @@ int main(int argc, char * const argv[])
 	struct ubigen_info ui;
 	struct ubi_scan_info *si;
 
-	libmtd = libmtd_open();
-	if (!libmtd)
-		return errmsg("MTD subsystem is not present");
 
 	err = parse_opt(argc, argv);
 	if (err)
-		goto out_close_mtd;
+		return -1;
+
+	libmtd = libmtd_open();
+	if (!libmtd)
+		return errmsg("MTD subsystem is not present");
 
 	err = mtd_get_info(libmtd, &mtd_info);
 	if (err) {
