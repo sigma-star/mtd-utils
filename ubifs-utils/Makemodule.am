@@ -16,8 +16,8 @@ mkfs_ubifs_SOURCES = \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable.c \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_itr.c \
 	ubifs-utils/mkfs.ubifs/devtable.c
-mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(UUID_LIBS) -lm
-mkfs_ubifs_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS) $(UUID_CFLAGS) \
+mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) -lm
+mkfs_ubifs_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS) $(UUID_CFLAGS) $(LIBSELINUX_CFLAGS)\
 	-I$(top_srcdir)/ubi-utils/include -I$(top_srcdir)/ubifs-utils/mkfs.ubifs/
 
 UBIFS_BINS = \

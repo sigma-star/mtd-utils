@@ -68,6 +68,7 @@ need_zlib="no"
 need_lzo="no"
 need_xattr="no"
 need_cmocka="no"
+need_selinux="no"
 
 
 AM_COND_IF([UNIT_TESTS], [
@@ -153,6 +154,15 @@ AC_ARG_WITH([lzo],
 	*) AC_MSG_ERROR([bad value ${withval} for --without-lzo]) ;;
 	esac])
 
+AC_ARG_WITH([selinux],
+	[AS_HELP_STRING([--with-selinux],
+		[Enable support for selinux extended attributes])],
+	[case "${withval}" in
+	yes) need_selinux="yes";;
+	no) ;;
+	*) AC_MSG_ERROR([bad value ${withval} for --with-selinux]) ;;
+	esac])
+
 ##### search for dependencies #####
 
 clock_gettime_missing="no"
@@ -162,9 +172,14 @@ zlib_missing="no"
 lzo_missing="no"
 xattr_missing="no"
 cmocka_missing="no"
+selinux_missing="no"
 
 if test "x$need_zlib" = "xyes"; then
 	PKG_CHECK_MODULES(ZLIB, [zlib], [], [zlib_missing="yes"])
+fi
+
+if test "x$need_selinux" = "xyes"; then
+	PKG_CHECK_MODULES(LIBSELINUX, [libselinux], [], [selinux_missing="yes"])
 fi
 
 if test "x$need_uuid" = "xyes"; then
@@ -193,6 +208,11 @@ fi
 if test "x$need_xattr" = "xyes"; then
 	AC_CHECK_HEADERS([sys/xattr.h], [], [xattr_missing="yes"])
 	AC_CHECK_HEADERS([sys/acl.h], [], [xattr_missing="yes"])
+fi
+
+if test "x$need_selinux" = "xyes"; then
+	AC_CHECK_HEADERS([selinux/selinux.h], [], [selinux_missing="yes"])
+	AC_CHECK_HEADERS([selinux/label.h], [], [selinux_missing="yes"])
 fi
 
 if test "x$need_cmocka" = "xyes"; then
@@ -244,6 +264,12 @@ if test "x$xattr_missing" = "xyes"; then
 	need_xattr="no"
 fi
 
+if test "x$selinux_missing" = "xyes"; then
+	AC_MSG_WARN([cannot find headers for selinux library])
+	AC_MSG_WARN([disabling SELINUX support])
+	need_selinux="no"
+fi
+
 if test "x$cmocka_missing" = "xyes"; then
 	AC_MSG_WARN([cannot find CMocka library required for unit tests])
 	AC_MSG_NOTICE([unit tests can optionally be disabled])
@@ -258,6 +284,7 @@ fi
 
 AM_CONDITIONAL([WITHOUT_LZO], [test "x$need_lzo" != "xyes"])
 AM_CONDITIONAL([WITHOUT_XATTR], [test "x$need_xattr" != "xyes"])
+AM_CONDITIONAL([WITH_SELINUX], [test "x$need_selinux" == "xyes"])
 
 AC_CHECK_SIZEOF([off_t])
 AC_CHECK_SIZEOF([loff_t])

@@ -30,6 +30,11 @@
 #include <sys/xattr.h>
 #endif
 
+#ifdef WITH_SELINUX
+#include <selinux/selinux.h>
+#include <selinux/label.h>
+#endif
+
 /* Size (prime number) of hash table for link counting */
 #define HASH_TABLE_SIZE 10099
 
@@ -39,6 +44,13 @@
 
 /* Default time granularity in nanoseconds */
 #define DEFAULT_TIME_GRAN 1000000000
+
+
+#ifdef WITH_SELINUX
+#define XATTR_NAME_SELINUX "security.selinux"
+static struct selabel_handle *sehnd;
+static char *secontext;
+#endif
 
 /**
  * struct idx_entry - index entry.
@@ -116,6 +128,9 @@ static int out_fd;
 static int out_ubi;
 static int squash_owner;
 static int do_create_inum_attr;
+static char *context;
+static int context_len;
+static struct stat context_st;
 
 /* The 'head' (position) which nodes are written */
 static int head_lnum;
@@ -163,6 +178,7 @@ static const struct option longopts[] = {
 	{"orph-lebs",          1, NULL, 'p'},
 	{"squash-uids" ,       0, NULL, 'U'},
 	{"set-inode-attr",     0, NULL, 'a'},
+	{"selinux",            1, NULL, 's'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -206,6 +222,7 @@ static const char *helptext =
 "-a, --set-inum-attr      create user.image-inode-number extended attribute on files\n"
 "                         added to the image. The attribute will contain the inode\n"
 "                         number the file has in the generated image.\n"
+"-s, --selinux=FILE       Selinux context file\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
@@ -638,7 +655,18 @@ static int get_options(int argc, char**argv)
 		case 'a':
 			do_create_inum_attr = 1;
 			break;
+		case 's':
+			context_len = strlen(optarg);
+			context = (char *) xmalloc(context_len + 1);
+			if (!context)
+				return err_msg("xmalloc failed\n");
+			memcpy(context, optarg, context_len);
 
+			/* Make sure root directory exists */
+			if (stat(context, &context_st))
+				return sys_err_msg("bad file context %s\n",
+								   context);
+			break;
 		}
 	}
 
@@ -725,6 +753,7 @@ static int get_options(int argc, char**argv)
 		printf("\tfanout:       %d\n", c->fanout);
 		printf("\torph_lebs:    %d\n", c->orph_lebs);
 		printf("\tspace_fixup:  %d\n", c->space_fixup);
+		printf("\tselinux file: %s\n", context);
 	}
 
 	if (validate_options())
@@ -1202,6 +1231,70 @@ out_free:
 }
 #endif
 
+#ifdef WITH_SELINUX
+static int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
+			   const char *path_name, struct stat *st, ino_t inum)
+{
+	int ret;
+	char *sepath = NULL;
+	char *name;
+	struct qstr nm;
+	unsigned int con_size;
+
+	if (!context || !sehnd) {
+		secontext = NULL;
+		con_size = 0;
+		return 0;
+	}
+
+	if (path_name[strlen(root)] == '/')
+		sepath = strdup(&path_name[strlen(root)]);
+
+	else if (asprintf(&sepath, "/%s", &path_name[strlen(root)]) < 0)
+		sepath = NULL;
+
+	if (!sepath)
+		return sys_err_msg("could not get sepath\n");
+
+	if (selabel_lookup(sehnd, &secontext, sepath, st->st_mode) < 0) {
+		/* Failed to lookup context, assume unlabeled */
+		secontext = strdup("system_u:object_r:unlabeled_t:s0");
+		dbg_msg(2, "missing context: %s\t%s\t%d\n", secontext, sepath,
+				st->st_mode);
+	}
+
+	dbg_msg(2, "appling selinux context on sepath=%s, secontext=%s\n",
+			sepath, secontext);
+	free(sepath);
+	con_size = strlen(secontext) + 1;
+	name = strdup(XATTR_NAME_SELINUX);
+
+	nm.name = name;
+	nm.len = strlen(name);
+	host_ino->xattr_cnt++;
+	host_ino->xattr_size += CALC_DENT_SIZE(nm.len);
+	host_ino->xattr_size += CALC_XATTR_BYTES(con_size);
+	host_ino->xattr_names += nm.len;
+
+	ret = add_xattr(st, inum, secontext, con_size, &nm);
+	if (ret < 0)
+		dbg_msg(2, "add_xattr failed %d\n", ret);
+	return ret;
+}
+
+#else
+static inline int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
+			   const char *path_name, struct stat *st, ino_t inum)
+{
+	(void)host_ino;
+	(void)path_name;
+	(void)st;
+	(void)inum;
+
+	return 0;
+}
+#endif
+
 /**
  * add_inode - write an inode.
  * @st: stat information of source inode
@@ -1260,7 +1353,11 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 	len = UBIFS_INO_NODE_SZ + data_len;
 
 	if (xattr_path) {
+#ifdef WITH_SELINUX
+		ret = inode_add_selinux_xattr(ino, xattr_path, st, inum);
+#else
 		ret = inode_add_xattr(ino, xattr_path, st, inum);
+#endif
 		if (ret < 0)
 			return ret;
 	}
@@ -2415,6 +2512,18 @@ static int init(void)
 	if (err)
 		return err;
 
+#ifdef WITH_SELINUX
+	if (context) {
+		struct selinux_opt seopts[] = {
+			{ SELABEL_OPT_PATH, context }
+		};
+
+		sehnd = selabel_open(SELABEL_CTX_FILE, seopts, 1);
+		if (!sehnd)
+			return err_msg("could not open selinux context\n");
+	}
+#endif
+
 	return 0;
 }
 
@@ -2439,6 +2548,12 @@ static void destroy_hash_table(void)
  */
 static void deinit(void)
 {
+
+#ifdef WITH_SELINUX
+	if (sehnd)
+		selabel_close(sehnd);
+#endif
+
 	free(c->lpt);
 	free(c->ltab);
 	free(leb_buf);
