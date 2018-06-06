@@ -1007,46 +1007,6 @@ static int add_node(union ubifs_key *key, char *name, void *node, int len)
 	return 0;
 }
 
-#ifdef WITHOUT_XATTR
-static inline int create_inum_attr(ino_t inum, const char *name)
-{
-	(void)inum;
-	(void)name;
-
-	return 0;
-}
-
-static inline int inode_add_xattr(struct ubifs_ino_node *host_ino,
-				  const char *path_name, struct stat *st, ino_t inum)
-{
-	(void)host_ino;
-	(void)path_name;
-	(void)st;
-	(void)inum;
-
-	return 0;
-}
-#else
-static int create_inum_attr(ino_t inum, const char *name)
-{
-	char *str;
-	int ret;
-
-	if (!do_create_inum_attr)
-		return 0;
-
-	ret = asprintf(&str, "%llu", (unsigned long long)inum);
-	if (ret < 0)
-		return -1;
-
-	ret = lsetxattr(name, "user.image-inode-number", str, ret, 0);
-
-	free(str);
-
-	return ret;
-}
-
-
 static int add_xattr(struct stat *st, ino_t inum, const void *data,
 		     unsigned int data_len, struct qstr *nm)
 {
@@ -1113,6 +1073,46 @@ static int add_xattr(struct stat *st, ino_t inum, const void *data,
 out:
 	free(xent);
 	free(ino);
+
+	return ret;
+}
+
+#ifdef WITHOUT_XATTR
+static inline int create_inum_attr(ino_t inum, const char *name)
+{
+	(void)inum;
+	(void)name;
+
+	return 0;
+}
+
+static inline int inode_add_xattr(struct ubifs_ino_node *host_ino,
+				  const char *path_name,
+				  struct stat *st, ino_t inum)
+{
+	(void)host_ino;
+	(void)path_name;
+	(void)st;
+	(void)inum;
+
+	return 0;
+}
+#else
+static int create_inum_attr(ino_t inum, const char *name)
+{
+	char *str;
+	int ret;
+
+	if (!do_create_inum_attr)
+		return 0;
+
+	ret = asprintf(&str, "%llu", (unsigned long long)inum);
+	if (ret < 0)
+		return ret;
+
+	ret = lsetxattr(name, "user.image-inode-number", str, ret, 0);
+
+	free(str);
 
 	return ret;
 }
