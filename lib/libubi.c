@@ -1240,11 +1240,8 @@ int ubi_get_vol_info1(libubi_t desc, int dev_num, int vol_id,
 	info->dev_num = dev_num;
 	info->vol_id = vol_id;
 
-	if (vol_get_major(lib, dev_num, vol_id, &info->major, &info->minor)) {
-		if (errno == ENOENT)
-			errno = ENODEV;
+	if (vol_get_major(lib, dev_num, vol_id, &info->major, &info->minor))
 		return -1;
-	}
 
 	ret = vol_read_data(lib->vol_type, dev_num, vol_id, buf, 50);
 	if (ret < 0)
