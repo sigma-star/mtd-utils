@@ -106,6 +106,16 @@ AM_COND_IF([INSTALL_TESTS],
 	[AC_SUBST(testbindir, ["\".\""])])
 
 
+AC_ARG_ENABLE([lsmtd],
+	[AS_HELP_STRING([--disable-lsmtd], [Do not build the lsmtd program])],
+	[case "${enableval}" in
+	yes) AM_CONDITIONAL([BUILD_LSMTD], [true]) ;;
+	no)  AM_CONDITIONAL([BUILD_LSMTD], [false]) ;;
+	*) AC_MSG_ERROR([bad value ${enableval} for --disable-lsmtd]) ;;
+	esac],
+	[AM_CONDITIONAL([BUILD_LSMTD], [true])])
+
+
 AC_ARG_WITH([jffs],
 	[AS_HELP_STRING([--without-jffs], [Disable jffsX utilities])],
 	[case "${withval}" in
