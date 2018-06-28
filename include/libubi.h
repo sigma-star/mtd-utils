@@ -69,6 +69,7 @@ struct ubi_attach_request
  * @bytes: volume size in bytes
  * @vol_type: volume type (%UBI_DYNAMIC_VOLUME or %UBI_STATIC_VOLUME)
  * @name: volume name
+ * @flags: volume flags
  */
 struct ubi_mkvol_request
 {
@@ -77,6 +78,7 @@ struct ubi_mkvol_request
 	long long bytes;
 	int vol_type;
 	const char *name;
+	uint8_t flags;
 };
 
 /**
