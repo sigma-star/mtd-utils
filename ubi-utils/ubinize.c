@@ -385,9 +385,21 @@ static int read_section(const struct ubigen_info *ui, const char *sname,
 	sprintf(buf, "%s:vol_flags", sname);
 	p = iniparser_getstring(args.dict, buf, NULL);
 	if (p) {
+		/*
+		 * For now, the flag can be either autoresize or skip-check, as
+		 * skip-check is reserved for static volumes and autoresize for
+		 * such a volume makes no sense.
+		 * Once we add another flag that isn't incompatible with each
+		 * and every existing flag, we'll have to implement a solution
+		 * that allows multiple flags to be set at the same time in
+		 * vol_flags setting of the section.
+		 */
 		if (!strcmp(p, "autoresize")) {
 			verbose(args.verbose, "autoresize flags found");
 			vi->flags |= UBI_VTBL_AUTORESIZE_FLG;
+		} else if (!strcmp(p, "skip-check")) {
+			verbose(args.verbose, "skip-check flag found");
+			vi->flags |= UBI_VTBL_SKIP_CRC_CHECK_FLG;
 		} else {
 			return errmsg("unknown flags \"%s\" in section \"%s\"",
 				      p, sname);
@@ -522,6 +534,10 @@ int main(int argc, char * const argv[])
 				goto out_free;
 			}
 		}
+
+		if (vi[i].flags & UBI_VTBL_SKIP_CRC_CHECK_FLG &&
+		    vi[i].type != UBI_VID_STATIC)
+			return errmsg("skip-check is only valid for static volumes");
 
 		if (vi[i].flags & UBI_VTBL_AUTORESIZE_FLG) {
 			if (autoresize_was_already)
