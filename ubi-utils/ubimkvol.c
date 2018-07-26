@@ -221,7 +221,7 @@ int main(int argc, char * const argv[])
 	libubi_t libubi;
 	struct ubi_dev_info dev_info;
 	struct ubi_vol_info vol_info;
-	struct ubi_mkvol_request req;
+	struct ubi_mkvol_request req = { };
 
 	err = parse_opt(argc, argv);
 	if (err)
