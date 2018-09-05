@@ -24,6 +24,7 @@
 #include <errno.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <unistd.h>
 #include <pthread.h>
 #include <sys/types.h>
@@ -149,22 +150,22 @@ static void *update_thread(void *ptr)
 			if (ret) {
 				failed("ubi_rmvol");
 				errorm("cannot remove volume %d", vol_id);
-				return NULL;
+				return (void *) -1;
 			}
 			ret = ubi_mkvol(libubi, node, &reqests[vol_id]);
 			if (ret) {
 				failed("ubi_mkvol");
 				errorm("cannot create volume %d", vol_id);
-				return NULL;
+				return (void *) -1;
 			}
 		}
 
 		ret = update_volume(vol_id, bytes);
-		if (ret)
-			return NULL;
+		if (ret != 0)
+			return (void *) -1;
 	}
 
-	return NULL;
+	return (void *) 0;
 }
 
 static void *write_thread(void *ptr)
@@ -179,7 +180,7 @@ static void *write_thread(void *ptr)
 	if (fd == -1) {
 		failed("open");
 		errorm("cannot open \"%s\"\n", vol_node);
-		return NULL;
+		return (void *) -1;
 	}
 
 	ret = ubi_set_property(fd, UBI_VOL_PROP_DIRECT_WRITE, 1);
@@ -228,12 +229,13 @@ static void *write_thread(void *ptr)
 	}
 
 	close(fd);
-	return NULL;
+	return (void *) 0;
 }
 
 int main(int argc, char * const argv[])
 {
-	int i, ret;
+	int i, ret, error=false;
+	intptr_t thread_ret;
 	pthread_t threads[THREADS_NUM];
 
 	if (initial_check(argc, argv))
@@ -301,8 +303,14 @@ int main(int argc, char * const argv[])
 		}
 	}
 
-	for (i = 0; i < THREADS_NUM; i++)
-		pthread_join(threads[i], NULL);
+	for (i = 0; i < THREADS_NUM; i++) {
+		pthread_join(threads[i], (void **) &thread_ret);
+		if (thread_ret != 0)
+			error = true;
+	}
+
+	if (error)
+		goto remove;
 
 	for (i = 0; i <= THREADS_NUM; i++) {
 		if (ubi_rmvol(libubi, node, i)) {
