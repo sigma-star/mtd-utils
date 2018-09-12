@@ -235,6 +235,8 @@ int legacy_get_mtd_oobavail(const char *node)
 
 	ret = ioctl(fd, ECCGETLAYOUT, &usrlay);
 	if (ret < 0) {
+		if (errno == EOPNOTSUPP)
+			goto out_close;
 		sys_errmsg("ECCGETLAYOUT ioctl request failed");
 		goto out_close;
 	}
