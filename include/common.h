@@ -141,15 +141,14 @@ extern "C" {
  */
 static inline bool prompt(const char *msg, bool def)
 {
-	char *line = NULL;
-	size_t len;
 	bool ret = def;
+	char line[64];
 
 	do {
 		normsg_cont("%s (%c/%c) ", msg, def ? 'Y' : 'y', def ? 'n' : 'N');
 		fflush(stdout);
 
-		while (getline(&line, &len, stdin) == -1) {
+		if (fgets(line, sizeof(line), stdin) == NULL) {
 			printf("failed to read prompt; assuming '%s'\n",
 				def ? "yes" : "no");
 			break;
@@ -168,8 +167,6 @@ static inline bool prompt(const char *msg, bool def)
 		}
 		break;
 	} while (1);
-
-	free(line);
 
 	return ret;
 }
