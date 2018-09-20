@@ -129,8 +129,8 @@ int main(int argc, char **argv)
 	}
 
 	if (st.st_size % erasesize) {
-		fprintf(stderr, "Image size %" PRIdoff_t " bytes is not a multiple of erasesize %d bytes\n",
-				st.st_size, erasesize);
+		fprintf(stderr, "Image size %lld bytes is not a multiple of erasesize %d bytes\n",
+				(long long)st.st_size, erasesize);
 		exit(1);
 	}
 	image = mmap(NULL, st.st_size, PROT_READ, MAP_PRIVATE, rfd, 0);

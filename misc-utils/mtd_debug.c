@@ -160,7 +160,7 @@ retry:
 	if (buf != NULL)
 		free(buf);
 	close(outfd);
-	printf("Copied %zu bytes from address 0x%.8"PRIxoff_t" in flash to %s\n", len, offset, filename);
+	printf("Copied %zu bytes from address 0x%.8llx in flash to %s\n", len, (unsigned long long)offset, filename);
 	return 0;
 
 err2:
@@ -225,7 +225,7 @@ retry:
 	if (buf != NULL)
 		free(buf);
 	fclose(fp);
-	printf("Copied %d bytes from %s to address 0x%.8"PRIxoff_t" in flash\n", len, filename, offset);
+	printf("Copied %d bytes from %s to address 0x%.8llx in flash\n", len, filename, (unsigned long long)offset);
 	return 0;
 }
 

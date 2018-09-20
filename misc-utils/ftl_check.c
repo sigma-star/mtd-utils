@@ -131,7 +131,7 @@ static void check_partition(int fd)
 			perror("read failed");
 			break;
 		}
-		printf("\nErase unit %"PRIdoff_t":\n", i);
+		printf("\nErase unit %lld:\n", (long long)i);
 		if ((hdr2.FormattedSize != hdr.FormattedSize) ||
 				(hdr2.NumEraseUnits != hdr.NumEraseUnits) ||
 				(hdr2.SerialNumber != hdr.SerialNumber))

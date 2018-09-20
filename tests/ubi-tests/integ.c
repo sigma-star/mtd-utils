@@ -243,7 +243,7 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 			while (size)
 				if (read_buffer[--size] != 0xff) {
 					fprintf(stderr, "block no. = %d\n" , erase_block->block_number);
-					fprintf(stderr, "offset = %"PRIdoff_t"\n" , gap_start);
+					fprintf(stderr, "offset = %lld\n" , (long long)gap_start);
 					fprintf(stderr, "size = %ld\n" , (long) bytes_read);
 					error_exit("verify 0xff failed");
 				}
@@ -254,7 +254,7 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 		errno = 0;
 		bytes_read = read(fd, read_buffer, w->size);
 		if (bytes_read != w->size) {
-			fprintf(stderr, "offset = %"PRIdoff_t"\n" , w->offset);
+			fprintf(stderr, "offset = %lld\n" , (long long)w->offset);
 			fprintf(stderr, "size = %ld\n" , (long) w->size);
 			fprintf(stderr, "bytes_read = %ld\n" , (long) bytes_read);
 			error_exit("read failed");
@@ -279,7 +279,7 @@ static void check_erase_block(struct erase_block_info *erase_block, int fd)
 		while (size)
 			if (read_buffer[--size] != 0xff) {
 				fprintf(stderr, "block no. = %d\n" , erase_block->block_number);
-				fprintf(stderr, "offset = %"PRIdoff_t"\n" , gap_start);
+				fprintf(stderr, "offset = %lld\n" , (long long)gap_start);
 				fprintf(stderr, "size = %ld\n" , (long) bytes_read);
 				error_exit("verify 0xff failed!");
 			}

@@ -801,11 +801,11 @@ int write_leb(int lnum, int len, void *buf)
 			return sys_err_msg("ubi_leb_change_start failed");
 
 	if (lseek(out_fd, pos, SEEK_SET) != pos)
-		return sys_err_msg("lseek failed seeking %"PRIdoff_t, pos);
+		return sys_err_msg("lseek failed seeking %lld", (long long)pos);
 
 	if (write(out_fd, buf, c->leb_size) != c->leb_size)
-		return sys_err_msg("write failed writing %d bytes at pos %"PRIdoff_t,
-				   c->leb_size, pos);
+		return sys_err_msg("write failed writing %d bytes at pos %lld",
+				   c->leb_size, (long long)pos);
 
 	return 0;
 }

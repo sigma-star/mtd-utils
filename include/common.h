@@ -69,24 +69,6 @@ extern "C" {
 #define O_CLOEXEC 0
 #endif
 
-/* define a print format specifier for off_t */
-#if (SIZEOF_OFF_T >= 8)
-#define PRIxoff_t PRIx64
-#define PRIdoff_t PRId64
-#else
-#define PRIxoff_t "l"PRIx32
-#define PRIdoff_t "l"PRId32
-#endif
-
-/* define a print format specifier for loff_t */
-#if (SIZEOF_LOFF_T >= 8)
-#define PRIxloff_t PRIx64
-#define PRIdloff_t PRId64
-#else
-#define PRIxloff_t "l"PRIx32
-#define PRIdloff_t "l"PRId32
-#endif
-
 /* Verbose messages */
 #define bareverbose(verbose, fmt, ...) do {                        \
 	if (verbose)                                               \

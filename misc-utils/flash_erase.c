@@ -53,8 +53,8 @@ int target_endian = __BYTE_ORDER;
 static void show_progress(struct mtd_dev_info *mtd, off_t start, int eb,
 			  int eb_start, int eb_cnt)
 {
-	bareverbose(!quiet, "\rErasing %d Kibyte @ %"PRIxoff_t" -- %2i %% complete ",
-		mtd->eb_size / 1024, start, ((eb - eb_start) * 100) / eb_cnt);
+	bareverbose(!quiet, "\rErasing %d Kibyte @ %llx -- %2i %% complete ",
+		mtd->eb_size / 1024, (unsigned long long)start, ((eb - eb_start) * 100) / eb_cnt);
 	fflush(stdout);
 }
 
@@ -211,7 +211,7 @@ int main(int argc, char *argv[])
 		if (!noskipbad) {
 			int ret = mtd_is_bad(&mtd, fd, eb);
 			if (ret > 0) {
-				verbose(!quiet, "Skipping bad block at %08"PRIxoff_t, offset);
+				verbose(!quiet, "Skipping bad block at %08llx", (unsigned long long)offset);
 				continue;
 			} else if (ret < 0) {
 				if (errno == EOPNOTSUPP) {

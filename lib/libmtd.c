@@ -1093,8 +1093,8 @@ int mtd_read(const struct mtd_dev_info *mtd, int fd, int eb, int offs,
 	/* Seek to the beginning of the eraseblock */
 	seek = (off_t)eb * mtd->eb_size + offs;
 	if (lseek(fd, seek, SEEK_SET) != seek)
-		return sys_errmsg("cannot seek mtd%d to offset %"PRIdoff_t,
-				  mtd->mtd_num, seek);
+		return sys_errmsg("cannot seek mtd%d to offset %lld",
+				  mtd->mtd_num, (long long)seek);
 
 	while (rd < len) {
 		ret = read(fd, buf + rd, len - rd);
@@ -1202,8 +1202,8 @@ int mtd_write(libmtd_t desc, const struct mtd_dev_info *mtd, int fd, int eb,
 	if (data) {
 		/* Seek to the beginning of the eraseblock */
 		if (lseek(fd, seek, SEEK_SET) != seek)
-			return sys_errmsg("cannot seek mtd%d to offset %"PRIdoff_t,
-					mtd->mtd_num, seek);
+			return sys_errmsg("cannot seek mtd%d to offset %lld",
+					mtd->mtd_num, (long long)seek);
 		ret = write(fd, data, len);
 		if (ret != len)
 			return sys_errmsg("cannot write %d bytes to mtd%d "

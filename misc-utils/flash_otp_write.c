@@ -76,7 +76,7 @@ int main(int argc,char *argv[])
 		return errno;
 	}
 
-	printf("Writing OTP user data on %s at offset 0x%"PRIxoff_t"\n", argv[2], offset);
+	printf("Writing OTP user data on %s at offset 0x%llx\n", argv[2], (unsigned long long)offset);
 
 	if (mtd_type_is_nand_user(&mtdInfo))
 		len = mtdInfo.writesize;
