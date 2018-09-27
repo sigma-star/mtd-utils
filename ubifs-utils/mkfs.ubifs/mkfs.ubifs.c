@@ -1070,7 +1070,7 @@ static int add_xattr(struct stat *st, ino_t inum, const void *data,
 		goto out;
 
 	ino->creat_sqnum = cpu_to_le64(creat_sqnum);
-	ino->nlink      = cpu_to_le32(st->st_nlink);
+	ino->nlink      = cpu_to_le32(1);
 	/*
 	 * The time fields are updated assuming the default time granularity
 	 * of 1 second. To support finer granularities, utime() would be needed.
