@@ -11,6 +11,7 @@ mkfs_ubifs_SOURCES = \
 	ubifs-utils/mkfs.ubifs/lpt.c \
 	ubifs-utils/mkfs.ubifs/compr.c \
 	ubifs-utils/mkfs.ubifs/crypto.c \
+	ubifs-utils/mkfs.ubifs/fscrypt.c \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_itr.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_private.h \
@@ -30,6 +31,7 @@ UBIFS_HEADER = \
 	ubifs-utils/mkfs.ubifs/lpt.h ubifs-utils/mkfs.ubifs/mkfs.ubifs.h \
 	ubifs-utils/mkfs.ubifs/ubifs.h \
 	ubifs-utils/mkfs.ubifs/crypto.h \
+	ubifs-utils/mkfs.ubifs/fscrypt.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_itr.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_private.h
