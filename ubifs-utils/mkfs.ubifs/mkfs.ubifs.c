@@ -766,7 +766,7 @@ static int get_options(int argc, char**argv)
 		c->encrypted = 1;
 
 		if (cipher_name == NULL)
-			cipher_name = "AES-128-CBC";
+			cipher_name = "AES-256-XTS";
 
 		root_fctx = init_fscrypt_context(cipher_name, fscrypt_flags,
 						key_file, key_desc);
