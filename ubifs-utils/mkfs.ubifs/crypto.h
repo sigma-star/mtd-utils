@@ -28,6 +28,7 @@
 
 struct cipher {
 	const char *name;
+	unsigned int key_length;
 
 	ssize_t (*encrypt_block)(const void *plaintext, size_t size,
 				 const void *key, uint64_t block_index,

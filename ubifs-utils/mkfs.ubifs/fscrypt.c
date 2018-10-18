@@ -188,7 +188,7 @@ static int parse_key_descriptor(const char *desc, __u8 *dst)
 	return 0;
 }
 
-static int load_master_key(const char *key_file)
+static int load_master_key(const char *key_file, struct cipher *fsc)
 {
 	int kf;
 	ssize_t keysize;
@@ -206,6 +206,11 @@ static int load_master_key(const char *key_file)
 	}
 	if (keysize == 0) {
 		err_msg("loading key from '%s': file is empty", key_file);
+		goto fail;
+	}
+	if (keysize < fsc->key_length) {
+		err_msg("key '%s' is too short (at least %u bytes required)",
+			key_file, fsc->key_length);
 		goto fail;
 	}
 
@@ -237,7 +242,7 @@ struct fscrypt_context *init_fscrypt_context(const char *cipher_name,
 	if (parse_key_descriptor(key_descriptor, master_key_descriptor))
 		return NULL;
 
-	if (load_master_key(key_file))
+	if (load_master_key(key_file, fscrypt_cipher))
 		return NULL;
 
 	RAND_bytes((void *)nonce, FS_KEY_DERIVATION_NONCE_SIZE);

@@ -281,10 +281,12 @@ ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
 static struct cipher ciphers[] = {
 	{
 		.name = "AES-128-CBC",
+		.key_length = 16,
 		.encrypt_block = encrypt_block_aes128_cbc,
 		.encrypt_fname = encrypt_aes128_cbc_cts,
 	}, {
 		.name = "AES-256-XTS",
+		.key_length = 64,
 		.encrypt_block = encrypt_block_aes256_xts,
 		.encrypt_fname = encrypt_aes256_cbc_cts,
 	}
