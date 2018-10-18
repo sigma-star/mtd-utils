@@ -165,6 +165,9 @@ static int parse_key_descriptor(const char *desc, __u8 *dst)
 {
 	int i, hi, lo;
 
+	if (desc[0] == '0' && (desc[1] == 'x' || desc[1] == 'X'))
+		desc += 2;
+
 	for (i = 0; i < FS_KEY_DESCRIPTOR_SIZE; ++i) {
 		if (!desc[i * 2] || !desc[i * 2 + 1]) {
 			err_msg("key descriptor '%s' is too short", desc);
