@@ -209,4 +209,14 @@ static inline int keys_cmp(const union ubifs_key *key1,
 	return 0;
 }
 
+/**
+ * key_type - get key type.
+ * @c: UBIFS file-system description object
+ * @key: key to get type of
+ */
+static inline int key_type(const union ubifs_key *key)
+{
+	return key->u32[1] >> UBIFS_S_KEY_BLOCK_BITS;
+}
+
 #endif /* !__UBIFS_KEY_H__ */

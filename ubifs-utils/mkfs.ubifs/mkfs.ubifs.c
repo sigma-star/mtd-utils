@@ -1161,6 +1161,14 @@ static int add_node(union ubifs_key *key, char *name, int name_len, void *node, 
 {
 	int err, lnum, offs;
 
+	if (key_type(key) == UBIFS_DENT_KEY || key_type(key) == UBIFS_XENT_KEY) {
+		if (!name)
+			return err_msg("Directory entry or xattr without name!");
+	} else {
+		if (name)
+			return err_msg("Name given for non dir/xattr node!");
+	}
+
 	prepare_node(node, len);
 
 	err = reserve_space(len, &lnum, &offs);
