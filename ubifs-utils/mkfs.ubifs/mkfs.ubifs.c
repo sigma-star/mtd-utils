@@ -217,6 +217,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
+//TODO: add options for double hash and encryption
 static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqa";
 
 static const struct option longopts[] = {
@@ -654,6 +655,8 @@ static int get_options(int argc, char**argv)
 	c->max_leb_cnt = -1;
 	c->max_bud_bytes = -1;
 	c->log_lebs = -1;
+	c->double_hash = 0;
+	c->encrypted = 0;
 
 	while (1) {
 		opt = getopt_long(argc, argv, optstring, longopts, &i);
@@ -2826,15 +2829,16 @@ static int init(void)
 	sz = sizeof(struct inum_mapping *) * HASH_TABLE_SIZE;
 	hash_table = xzalloc(sz);
 
-	//TODO make this a parameter
-	RAND_bytes((void *)master_key_descriptor, FS_KEY_DESCRIPTOR_SIZE);
-	RAND_bytes((void *)nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+	if (c->encrypted) {
+		RAND_bytes((void *)master_key_descriptor,
+				FS_KEY_DESCRIPTOR_SIZE);
+		RAND_bytes((void *)nonce, FS_KEY_DERIVATION_NONCE_SIZE);
 
-	root_fctx = init_fscrypt_context(FS_POLICY_FLAGS_PAD_4,
-					master_key_descriptor, nonce);
-	print_fscrypt_master_key_descriptor(root_fctx);
-	c->double_hash = 1;
-	c->encrypted = 1;
+		root_fctx = init_fscrypt_context(FS_POLICY_FLAGS_PAD_4,
+						master_key_descriptor, nonce);
+		print_fscrypt_master_key_descriptor(root_fctx);
+		c->double_hash = 1;
+	}
 
 	err = init_compression();
 	if (err)
