@@ -217,8 +217,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-//TODO: add options for double hash and encryption
-static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqa";
+static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqaK:b:";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
@@ -244,6 +243,8 @@ static const struct option longopts[] = {
 	{"squash-uids" ,       0, NULL, 'U'},
 	{"set-inode-attr",     0, NULL, 'a'},
 	{"selinux",            1, NULL, 's'},
+	{"key",                1, NULL, 'K'},
+	{"key-descriptor",     1, NULL, 'b'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -288,6 +289,8 @@ static const char *helptext =
 "                         added to the image. The attribute will contain the inode\n"
 "                         number the file has in the generated image.\n"
 "-s, --selinux=FILE       Selinux context file\n"
+"-K, --key=FILE           load an encryption key from a specified file.\n"
+"-b, --key-descriptor=HEX specify the key descriptor as a hex string.\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
@@ -582,11 +585,87 @@ static void print_fscrypt_master_key_descriptor(struct fscrypt_context *fctx)
 	normsg("");
 }
 
-static struct fscrypt_context *init_fscrypt_context(unsigned int flags,
-						void *master_key_descriptor,
-						void *nonce)
+static int xdigit(int x)
 {
-	struct fscrypt_context *new_fctx = xmalloc(sizeof(*new_fctx));
+	if (isupper(x))
+		return x - 'A' + 0x0A;
+	if (islower(x))
+		return x - 'a' + 0x0A;
+	return x - '0';
+}
+
+static int parse_key_descriptor(const char *desc, __u8 *dst)
+{
+	int i, hi, lo;
+
+	for (i = 0; i < FS_KEY_DESCRIPTOR_SIZE; ++i) {
+		if (!desc[i * 2] || !desc[i * 2 + 1]) {
+			err_msg("key descriptor '%s' is too short", desc);
+			return -1;
+		}
+		if (!isxdigit(desc[i * 2]) || !isxdigit(desc[i * 2 + 1])) {
+			err_msg("invalid key descriptor '%s'", desc);
+			return -1;
+		}
+
+		hi = xdigit(desc[i * 2]);
+		lo = xdigit(desc[i * 2 + 1]);
+
+		dst[i] = (hi << 4) | lo;
+	}
+
+	if (desc[i * 2]) {
+		err_msg("key descriptor '%s' is too long", desc);
+		return -1;
+	}
+	return 0;
+}
+
+static int load_master_key(const char *key_file)
+{
+	int kf;
+	ssize_t keysize;
+
+	kf = open(key_file, O_RDONLY);
+	if (kf < 0) {
+		sys_errmsg("open '%s'", key_file);
+		return -1;
+	}
+
+	keysize = read(kf, fscrypt_masterkey, sizeof(fscrypt_masterkey));
+	if (keysize < 0) {
+		sys_errmsg("read '%s'", key_file);
+		goto fail;
+	}
+	if (keysize == 0) {
+		err_msg("loading key from '%s': file is empty", key_file);
+		goto fail;
+	}
+
+	close(kf);
+	return 0;
+fail:
+	close(kf);
+	return -1;
+}
+
+static struct fscrypt_context *init_fscrypt_context(unsigned int flags,
+						const char *key_file,
+						const char *key_descriptor)
+{
+	__u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+	__u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
+	struct fscrypt_context *new_fctx;
+
+	if (parse_key_descriptor(key_descriptor, master_key_descriptor))
+		return NULL;
+
+	if (load_master_key(key_file))
+		return NULL;
+
+	RAND_bytes((void *)nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+
+	new_fctx = xmalloc(sizeof(*new_fctx));
 
 	new_fctx->format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
 	new_fctx->contents_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CBC;
@@ -635,6 +714,7 @@ static int open_ubi(const char *node)
 static int get_options(int argc, char**argv)
 {
 	int opt, i;
+	const char *key_file = NULL, *key_desc = NULL;
 	const char *tbl_file = NULL;
 	struct stat st;
 	char *endp;
@@ -812,6 +892,18 @@ static int get_options(int argc, char**argv)
 				return sys_err_msg("bad file context %s\n",
 								   context);
 			break;
+		case 'K':
+			if (key_file) {
+				return err_msg("key file specified more than once");
+			}
+			key_file = optarg;
+			break;
+		case 'b':
+			if (key_desc) {
+				return err_msg("key descriptor specified more than once");
+			}
+			key_desc = optarg;
+			break;
 		}
 	}
 
@@ -828,6 +920,22 @@ static int get_options(int argc, char**argv)
 		c->leb_size = c->vi.leb_size;
 		if (c->max_leb_cnt == -1)
 			c->max_leb_cnt = c->vi.rsvd_lebs;
+	}
+
+	if (key_file || key_desc) {
+		if (!key_file)
+			return err_msg("no key file specified");
+		if (!key_desc)
+			return err_msg("no key descriptor specified");
+
+		c->double_hash = 1;
+		c->encrypted = 1;
+
+		root_fctx = init_fscrypt_context(FS_POLICY_FLAGS_PAD_4,
+						key_file, key_desc);
+		if (!root_fctx)
+			return -1;
+		print_fscrypt_master_key_descriptor(root_fctx);
 	}
 
 	if (c->min_io_size == -1)
@@ -2786,8 +2894,6 @@ static int close_target(void)
  */
 static int init(void)
 {
-	__u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
-	__u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
 	int err, i, main_lebs, big_lpt = 0, sz;
 
 	c->highest_inum = UBIFS_FIRST_INO;
@@ -2828,17 +2934,6 @@ static int init(void)
 
 	sz = sizeof(struct inum_mapping *) * HASH_TABLE_SIZE;
 	hash_table = xzalloc(sz);
-
-	if (c->encrypted) {
-		RAND_bytes((void *)master_key_descriptor,
-				FS_KEY_DESCRIPTOR_SIZE);
-		RAND_bytes((void *)nonce, FS_KEY_DERIVATION_NONCE_SIZE);
-
-		root_fctx = init_fscrypt_context(FS_POLICY_FLAGS_PAD_4,
-						master_key_descriptor, nonce);
-		print_fscrypt_master_key_descriptor(root_fctx);
-		c->double_hash = 1;
-	}
 
 	err = init_compression();
 	if (err)
