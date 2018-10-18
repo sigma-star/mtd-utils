@@ -2720,6 +2720,12 @@ static int init(void)
 	sz = sizeof(struct inum_mapping *) * HASH_TABLE_SIZE;
 	hash_table = xzalloc(sz);
 
+	//TODO make this a parameter
+	root_fctx = init_fscrypt_context();
+	print_fscrypt_master_key_descriptor(root_fctx);
+	c->double_hash = 1;
+	c->encrypted = 1;
+
 	err = init_compression();
 	if (err)
 		return err;
