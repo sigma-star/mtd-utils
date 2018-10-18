@@ -57,7 +57,7 @@ ssize_t encrypt_aes256_cbc_cts(const void *plaintext, size_t size,
 			       const void *key, void *ciphertext);
 
 ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
-		       void *derived_key);
+		       size_t source_key_len, void *derived_key);
 
 
 struct cipher *get_cipher(const char *name);

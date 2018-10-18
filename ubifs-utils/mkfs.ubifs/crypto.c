@@ -277,7 +277,7 @@ ssize_t encrypt_aes256_cbc_cts(const void *plaintext, size_t size,
 }
 
 ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
-		       void *derived_key)
+		       size_t source_key_len, void *derived_key)
 {
 	const EVP_CIPHER *cipher;
 	size_t aes_key_len;
@@ -289,7 +289,7 @@ ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
 	}
 	aes_key_len = EVP_CIPHER_key_length(cipher);
 
-	return do_encrypt(cipher, source_key, aes_key_len, deriving_key,
+	return do_encrypt(cipher, source_key, source_key_len, deriving_key,
 			  aes_key_len, NULL, 0, derived_key);
 }
 

@@ -526,7 +526,7 @@ static unsigned char *calc_fscrypt_subkey(struct fscrypt_context *fctx)
 	int ret;
 	unsigned char *new_key = xmalloc(FS_MAX_KEY_SIZE);
 
-	ret = derive_key_aes(fctx->nonce, fscrypt_masterkey, new_key);
+	ret = derive_key_aes(fctx->nonce, fscrypt_masterkey, FS_MAX_KEY_SIZE, new_key);
 	if (ret < 0) {
 		err_msg("derive_key_aes failed: %i\n", ret);
 
