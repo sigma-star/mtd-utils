@@ -207,32 +207,32 @@ static ssize_t encrypt_cbc_cts(const void *plaintext, size_t size,
 
 	memset(iv, 0, ivsize);
 
-	diff = size % key_len;
+	diff = size % ivsize;
 
 	if (diff) {
-		padded_size = size - diff + key_len;
+		padded_size = size - diff + ivsize;
 		padded = size > 256 ? malloc(padded_size) : alloca(padded_size);
 
 		memcpy(padded, plaintext, size);
 		memset(padded + size, 0, padded_size - size);
 
 		ret = do_encrypt(cipher, padded, padded_size, key, key_len,
-				 iv, sizeof(iv), ciphertext);
+				 iv, ivsize, ciphertext);
 
 		if (size > 256)
 			free(padded);
 	} else {
 		ret = do_encrypt(cipher, plaintext, size, key, key_len,
-				 iv, sizeof(iv), ciphertext);
+				 iv, ivsize, ciphertext);
 	}
 
 	if (ret < 0)
 		return ret;
 
-	count = ret / key_len;
+	count = ret / ivsize;
 
 	if (count > 1)
-		block_swap(ciphertext, count - 2, count - 1, key_len);
+		block_swap(ciphertext, count - 2, count - 1, ivsize);
 
 	return size;
 }
