@@ -217,7 +217,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqaK:b:";
+static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqaK:b:P:";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
@@ -245,6 +245,7 @@ static const struct option longopts[] = {
 	{"selinux",            1, NULL, 's'},
 	{"key",                1, NULL, 'K'},
 	{"key-descriptor",     1, NULL, 'b'},
+	{"padding",            1, NULL, 'P'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -291,6 +292,8 @@ static const char *helptext =
 "-s, --selinux=FILE       Selinux context file\n"
 "-K, --key=FILE           load an encryption key from a specified file.\n"
 "-b, --key-descriptor=HEX specify the key descriptor as a hex string.\n"
+"-P, --padding=NUM        specify padding policy for encrypting filenames\n"
+"                         (default = 4).\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
@@ -713,7 +716,7 @@ static int open_ubi(const char *node)
 
 static int get_options(int argc, char**argv)
 {
-	int opt, i;
+	int opt, i, fscrypt_flags = FS_POLICY_FLAGS_PAD_4;
 	const char *key_file = NULL, *key_desc = NULL;
 	const char *tbl_file = NULL;
 	struct stat st;
@@ -904,6 +907,35 @@ static int get_options(int argc, char**argv)
 			}
 			key_desc = optarg;
 			break;
+		case 'P': {
+			int error = 0;
+			unsigned long num;
+
+			num = simple_strtoul(optarg, &error);
+			if (error)
+				num = -1;
+
+			fscrypt_flags &= ~FS_POLICY_FLAGS_PAD_MASK;
+
+			switch (num) {
+			case 4:
+				fscrypt_flags |= FS_POLICY_FLAGS_PAD_4;
+				break;
+			case 8:
+				fscrypt_flags |= FS_POLICY_FLAGS_PAD_8;
+				break;
+			case 16:
+				fscrypt_flags |= FS_POLICY_FLAGS_PAD_16;
+				break;
+			case 32:
+				fscrypt_flags |= FS_POLICY_FLAGS_PAD_32;
+				break;
+			default:
+				return errmsg("invalid padding policy '%s'",
+						optarg);
+			}
+			break;
+		}
 		}
 	}
 
@@ -931,7 +963,7 @@ static int get_options(int argc, char**argv)
 		c->double_hash = 1;
 		c->encrypted = 1;
 
-		root_fctx = init_fscrypt_context(FS_POLICY_FLAGS_PAD_4,
+		root_fctx = init_fscrypt_context(fscrypt_flags,
 						key_file, key_desc);
 		if (!root_fctx)
 			return -1;
