@@ -1817,10 +1817,9 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		}
 		/* Make data node */
 		memset(dn, 0, UBIFS_DATA_NODE_SZ);
-		data_key_init(&key, inum, block_no++);
+		data_key_init(&key, inum, block_no);
 		dn->ch.node_type = UBIFS_DATA_NODE;
 		key_write(&key, &dn->key);
-		dn->size = cpu_to_le32(bytes_read);
 		out_len = NODE_BUFFER_SIZE - UBIFS_DATA_NODE_SZ;
 		if (c->default_compr == UBIFS_COMPR_NONE &&
 		    (flags & FS_COMPR_FL))
@@ -1834,7 +1833,39 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		compr_type = compress_data(buf, bytes_read, &dn->data,
 					   &out_len, use_compr);
 		dn->compr_type = cpu_to_le16(compr_type);
-		//TODO: encrypt
+		dn->size = cpu_to_le32(bytes_read);
+
+		if (!fctx) {
+			dn->compr_size = 0;
+		} else {
+			void *inbuf, *outbuf, *crypt_key;
+			size_t ret, pad_len = round_up(out_len, FS_CRYPTO_BLOCK_SIZE);
+
+			dn->compr_size = out_len;
+
+			inbuf = xzalloc(pad_len);
+			outbuf = xzalloc(pad_len);
+
+			memcpy(inbuf, &dn->data, out_len);
+
+			crypt_key = calc_fscrypt_subkey(fctx);
+			if (!crypt_key)
+				return err_msg("could not compute subkey");
+
+			ret = encrypt_block_aes128_cbc(inbuf, pad_len, crypt_key, block_no,
+						       outbuf);
+			if (ret != pad_len)
+				return err_msg("encrypt_block_aes128_cbc returned %zi instead of %zi", ret, pad_len);
+
+			memcpy(&dn->data, outbuf, pad_len);
+
+			out_len = pad_len;
+
+			free(inbuf);
+			free(outbuf);
+			free(crypt_key);
+		}
+
 		dn_len = UBIFS_DATA_NODE_SZ + out_len;
 		/* Add data node to file system */
 		err = add_node(&key, NULL, 0, dn, dn_len);
@@ -1842,6 +1873,8 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 			close(fd);
 			return err;
 		}
+
+		block_no++;
 	} while (ret != 0);
 
 	if (close(fd) == -1)
