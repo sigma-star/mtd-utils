@@ -2841,8 +2841,6 @@ int main(int argc, char *argv[])
 	if (crypto_init())
 		return -1;
 
-	RAND_poll();
-
 	err = get_options(argc, argv);
 	if (err)
 		return err;

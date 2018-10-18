@@ -330,6 +330,7 @@ static struct cipher ciphers[] = {
 int crypto_init(void)
 {
 	ERR_load_crypto_strings();
+	RAND_poll();
 	return 0;
 }
 
