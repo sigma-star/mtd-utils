@@ -253,8 +253,8 @@ struct fscrypt_context *init_fscrypt_context(const char *cipher_name,
 	new_fctx = xmalloc(sizeof(*new_fctx));
 
 	new_fctx->format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
-	new_fctx->contents_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CBC;
-	new_fctx->filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CTS;
+	new_fctx->contents_encryption_mode = fscrypt_cipher->fscrypt_block_mode;
+	new_fctx->filenames_encryption_mode = fscrypt_cipher->fscrypt_fname_mode;
 	new_fctx->flags = flags;
 
 	memcpy(&new_fctx->nonce, nonce, FS_KEY_DERIVATION_NONCE_SIZE);

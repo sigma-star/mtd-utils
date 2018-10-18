@@ -36,6 +36,9 @@ struct cipher {
 
 	ssize_t (*encrypt_fname)(const void *plaintext, size_t size,
 				 const void *key, void *ciphertext);
+
+	unsigned int fscrypt_block_mode;
+	unsigned int fscrypt_fname_mode;
 };
 
 

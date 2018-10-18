@@ -23,9 +23,8 @@
 #include <string.h>
 #include <assert.h>
 
-#include "crypto.h"
+#include "fscrypt.h"
 #include "common.h"
-#include "mtd_swab.h"
 
 static int do_sha256(const unsigned char *in, size_t len, unsigned char *out)
 {
@@ -284,11 +283,15 @@ static struct cipher ciphers[] = {
 		.key_length = 16,
 		.encrypt_block = encrypt_block_aes128_cbc,
 		.encrypt_fname = encrypt_aes128_cbc_cts,
+		.fscrypt_block_mode = FS_ENCRYPTION_MODE_AES_128_CBC,
+		.fscrypt_fname_mode = FS_ENCRYPTION_MODE_AES_128_CTS,
 	}, {
 		.name = "AES-256-XTS",
 		.key_length = 64,
 		.encrypt_block = encrypt_block_aes256_xts,
 		.encrypt_fname = encrypt_aes256_cbc_cts,
+		.fscrypt_block_mode = FS_ENCRYPTION_MODE_AES_256_XTS,
+		.fscrypt_fname_mode = FS_ENCRYPTION_MODE_AES_256_CTS,
 	}
 };
 
