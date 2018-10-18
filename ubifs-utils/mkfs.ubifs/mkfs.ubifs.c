@@ -1030,8 +1030,8 @@ static void set_lprops(int lnum, int offs, int flags)
  * @offs: node offset
  * @len: node length
  */
-static int add_to_index(union ubifs_key *key, char *name, int name_len, int lnum, int offs,
-			int len)
+static int add_to_index(union ubifs_key *key, char *name, int name_len,
+			int lnum, int offs, int len)
 {
 	struct idx_entry *e;
 
@@ -1102,11 +1102,12 @@ static int reserve_space(int len, int *lnum, int *offs)
  */
 static int add_node(union ubifs_key *key, char *name, int name_len, void *node, int len)
 {
-	int err, lnum, offs;
+	int err, lnum, offs, type = key_type(key);
 
-	if (key_type(key) == UBIFS_DENT_KEY || key_type(key) == UBIFS_XENT_KEY) {
+	if (type == UBIFS_DENT_KEY || type == UBIFS_XENT_KEY) {
 		if (!name)
-			return err_msg("Directory entry or xattr without name!");
+			return err_msg("Directory entry or xattr "
+					"without name!");
 	} else {
 		if (name)
 			return err_msg("Name given for non dir/xattr node!");
@@ -1126,8 +1127,9 @@ static int add_node(union ubifs_key *key, char *name, int name_len, void *node, 
 	return 0;
 }
 
-static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st, ino_t inum,
-		     char *name, const void *data, unsigned int data_len)
+static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st,
+		     ino_t inum, char *name, const void *data,
+		     unsigned int data_len)
 {
 	struct ubifs_ino_node *ino;
 	struct ubifs_dent_node *xent;
@@ -1399,9 +1401,12 @@ static int encrypt_symlink(void *dst, void *data, unsigned int data_len,
 {
 	struct fscrypt_symlink_data *sd;
 	void *outbuf;
-	unsigned int link_disk_len = fscrypt_fname_encrypted_size(fctx, data_len) + sizeof(struct fscrypt_symlink_data);
+	unsigned int link_disk_len;
 	unsigned int cryptlen;
 	int ret;
+
+	link_disk_len = sizeof(struct fscrypt_symlink_data);
+	link_disk_len += fscrypt_fname_encrypted_size(fctx, data_len);
 
 	ret = encrypt_path(&outbuf, data, data_len, UBIFS_MAX_INO_DATA, fctx);
 	if (ret < 0)
@@ -1622,8 +1627,11 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 		if (!kname)
 			return err_msg("cannot allocate memory");
 	} else {
-		unsigned int max_namelen = type == UBIFS_ITYPE_LNK ? UBIFS_MAX_INO_DATA : UBIFS_MAX_NLEN;
+		unsigned int max_namelen = UBIFS_MAX_NLEN;
 		int ret;
+
+		if (type == UBIFS_ITYPE_LNK)
+			max_namelen = UBIFS_MAX_INO_DATA;
 
 		ret = encrypt_path((void **)&kname, dname.name, dname.len,
 				   max_namelen, fctx);
@@ -1984,7 +1992,8 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 			nlink += 1;
 			type = UBIFS_ITYPE_DIR;
 		} else {
-			err = add_non_dir(name, &inum, 0, &type, &dent_st, new_fctx);
+			err = add_non_dir(name, &inum, 0, &type,
+					  &dent_st, new_fctx);
 			if (err)
 				goto out_free;
 		}
@@ -2045,7 +2054,8 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 			nlink += 1;
 			type = UBIFS_ITYPE_DIR;
 		} else {
-			err = add_non_dir(name, &inum, 0, &type, &fake_st, new_fctx);
+			err = add_non_dir(name, &inum, 0, &type,
+					  &fake_st, new_fctx);
 			if (err)
 				goto out_free;
 		}
@@ -2065,7 +2075,8 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 
 	creat_sqnum = dir_creat_sqnum;
 
-	err = add_dir_inode(dir ? dir_name : NULL, dir, dir_inum, size, nlink, st, fctx);
+	err = add_dir_inode(dir ? dir_name : NULL, dir, dir_inum, size,
+			    nlink, st, fctx);
 	if (err)
 		goto out_free;
 
