@@ -42,20 +42,6 @@ int crypto_init(void);
 
 void crypto_cleanup(void);
 
-ssize_t encrypt_block_aes128_cbc(const void *plaintext, size_t size,
-				 const void *key, uint64_t block_index,
-				 void *ciphertext);
-
-ssize_t encrypt_block_aes256_xts(const void *plaintext, size_t size,
-				 const void *key, uint64_t block_index,
-				 void *ciphertext);
-
-ssize_t encrypt_aes128_cbc_cts(const void *plaintext, size_t size,
-			       const void *key, void *ciphertext);
-
-ssize_t encrypt_aes256_cbc_cts(const void *plaintext, size_t size,
-			       const void *key, void *ciphertext);
-
 ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
 		       size_t source_key_len, void *derived_key);
 

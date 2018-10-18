@@ -27,21 +27,6 @@
 #include "common.h"
 #include "mtd_swab.h"
 
-
-static struct cipher ciphers[] = {
-	{
-		.name = "AES-128-CBC",
-		.encrypt_block = encrypt_block_aes128_cbc,
-		.encrypt_fname = encrypt_aes128_cbc_cts,
-	}, {
-		.name = "AES-256-XTS",
-		.encrypt_block = encrypt_block_aes256_xts,
-		.encrypt_fname = encrypt_aes256_cbc_cts,
-	}
-};
-
-
-
 static int do_sha256(const unsigned char *in, size_t len, unsigned char *out)
 {
 	unsigned int out_len;
@@ -168,9 +153,9 @@ static ssize_t encrypt_block(const void *plaintext, size_t size,
 	return ret;
 }
 
-ssize_t encrypt_block_aes128_cbc(const void *plaintext, size_t size,
-				 const void *key, uint64_t block_index,
-				 void *ciphertext)
+static ssize_t encrypt_block_aes128_cbc(const void *plaintext, size_t size,
+					const void *key, uint64_t block_index,
+					void *ciphertext)
 {
 	const EVP_CIPHER *cipher = EVP_aes_128_cbc();
 
@@ -182,9 +167,9 @@ ssize_t encrypt_block_aes128_cbc(const void *plaintext, size_t size,
 			     ciphertext, cipher);
 }
 
-ssize_t encrypt_block_aes256_xts(const void *plaintext, size_t size,
-				 const void *key, uint64_t block_index,
-				 void *ciphertext)
+static ssize_t encrypt_block_aes256_xts(const void *plaintext, size_t size,
+					const void *key, uint64_t block_index,
+					void *ciphertext)
 {
 	const EVP_CIPHER *cipher = EVP_aes_256_xts();
 
@@ -252,8 +237,8 @@ static ssize_t encrypt_cbc_cts(const void *plaintext, size_t size,
 	return size;
 }
 
-ssize_t encrypt_aes128_cbc_cts(const void *plaintext, size_t size,
-				const void *key, void *ciphertext)
+static ssize_t encrypt_aes128_cbc_cts(const void *plaintext, size_t size,
+				      const void *key, void *ciphertext)
 {
 	const EVP_CIPHER *cipher = EVP_aes_128_cbc();
 	if (!cipher) {
@@ -264,8 +249,8 @@ ssize_t encrypt_aes128_cbc_cts(const void *plaintext, size_t size,
 	return encrypt_cbc_cts(plaintext, size, key, ciphertext, cipher);
 }
 
-ssize_t encrypt_aes256_cbc_cts(const void *plaintext, size_t size,
-				const void *key, void *ciphertext)
+static ssize_t encrypt_aes256_cbc_cts(const void *plaintext, size_t size,
+				      const void *key, void *ciphertext)
 {
 	const EVP_CIPHER *cipher = EVP_aes_256_cbc();
 	if (!cipher) {
@@ -292,6 +277,18 @@ ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
 	return do_encrypt(cipher, source_key, source_key_len, deriving_key,
 			  aes_key_len, NULL, 0, derived_key);
 }
+
+static struct cipher ciphers[] = {
+	{
+		.name = "AES-128-CBC",
+		.encrypt_block = encrypt_block_aes128_cbc,
+		.encrypt_fname = encrypt_aes128_cbc_cts,
+	}, {
+		.name = "AES-256-XTS",
+		.encrypt_block = encrypt_block_aes256_xts,
+		.encrypt_fname = encrypt_aes256_cbc_cts,
+	}
+};
 
 int crypto_init(void)
 {
