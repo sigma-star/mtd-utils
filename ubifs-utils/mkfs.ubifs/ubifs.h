@@ -330,6 +330,7 @@ struct ubifs_znode
  * @nhead_offs: offset of LPT head
  * @big_lpt: flag that LPT is too big to write whole during commit
  * @space_fixup: flag indicating that free space in LEBs needs to be cleaned up
+ * @double_hash: flag indicating that we can do lookups by hash
  * @lpt_sz: LPT size
  *
  * @ltab_lnum: LEB number of LPT's own lprops table
@@ -408,6 +409,7 @@ struct ubifs_info
 	int nhead_offs;
 	int big_lpt;
 	int space_fixup;
+	int double_hash;
 	long long lpt_sz;
 
 	int ltab_lnum;

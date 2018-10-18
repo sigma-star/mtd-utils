@@ -1436,6 +1436,14 @@ static int add_symlink_inode(const char *path_name, struct stat *st, ino_t inum,
 	return add_inode(st, inum, buf, len, flags, path_name);
 }
 
+static void set_dent_cookie(struct ubifs_dent_node *dent)
+{
+	if (c->double_hash)
+		RAND_bytes((void *)&dent->cookie, sizeof(dent->cookie));
+	else
+		dent->cookie = 0;
+}
+
 /**
  * add_dent_node - write a directory entry node.
  * @dir_inum: target inode number of directory
@@ -1469,6 +1477,7 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	dent->nlen = cpu_to_le16(dname.len);
 	memcpy(dent->name, dname.name, dname.len);
 	dent->name[dname.len] = '\0';
+	set_dent_cookie(dent);
 
 	len = UBIFS_DENT_NODE_SZ + dname.len + 1;
 
@@ -2268,6 +2277,8 @@ static int write_super(void)
 		sup.flags |= cpu_to_le32(UBIFS_FLG_BIGLPT);
 	if (c->space_fixup)
 		sup.flags |= cpu_to_le32(UBIFS_FLG_SPACE_FIXUP);
+	if (c->double_hash)
+		sup.flags |= cpu_to_le32(UBIFS_FLG_DOUBLE_HASH);
 
 	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM);
 }
@@ -2629,6 +2640,8 @@ int main(int argc, char *argv[])
 
 	if (crypto_init())
 		return -1;
+
+	RAND_poll();
 
 	err = get_options(argc, argv);
 	if (err)

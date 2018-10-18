@@ -46,6 +46,8 @@
 #include <uuid.h>
 #include <sys/file.h>
 
+#include <openssl/rand.h>
+
 #include <mtd/ubifs-media.h>
 
 /* common.h requires the PROGRAM_NAME macro */
