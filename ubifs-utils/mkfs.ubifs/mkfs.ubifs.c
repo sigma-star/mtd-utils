@@ -1253,7 +1253,7 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st, ino_t inu
 	if (data_len)
 		memcpy(&ino->data, data, data_len);
 
-	ret = add_node(&nkey, nm.name, nm.len, ino, UBIFS_INO_NODE_SZ + data_len) ;
+	ret = add_node(&nkey, NULL, 0, ino, UBIFS_INO_NODE_SZ + data_len);
 
 out:
 	free(xent);
@@ -1447,7 +1447,7 @@ static int set_fscrypt_context(struct ubifs_ino_node *host_ino, ino_t inum,
 			       struct fscrypt_context *fctx)
 {
 	return add_xattr(host_ino, host_st, inum,
-			 UBIFS_XATTR_NAME_ENCRYPTION_CONTEXT,
+			 xstrdup(UBIFS_XATTR_NAME_ENCRYPTION_CONTEXT),
 			 fctx, sizeof(*fctx));
 }
 
@@ -2470,8 +2470,10 @@ static int write_index(void)
 	}
 
 	/* Free stuff */
-	for (i = 0; i < idx_cnt; i++)
+	for (i = 0; i < idx_cnt; i++) {
+		free(idx_ptr[i]->name);
 		free(idx_ptr[i]);
+	}
 	free(idx_ptr);
 	free(idx);
 
