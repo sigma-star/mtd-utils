@@ -64,9 +64,8 @@ static inline uint32_t key_r5_hash(const char *s, int len)
 {
 	uint32_t a = 0;
 	const signed char *str = (const signed char *)s;
-	(void)len;
 
-	while (*str) {
+	while (len--) {
 		a += *str << 4;
 		a += *str >> 4;
 		a *= 11;
