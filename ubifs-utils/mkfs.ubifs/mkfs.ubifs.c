@@ -186,6 +186,7 @@ int yes;
 static char *root;
 static int root_len;
 static struct fscrypt_context *root_fctx;
+static struct cipher *fscrypt_cipher;
 static struct stat root_st;
 static char *output;
 static int out_fd;
@@ -217,7 +218,7 @@ static struct inum_mapping **hash_table;
 /* Inode creation sequence number */
 static unsigned long long creat_sqnum;
 
-static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqaK:b:P:";
+static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqaK:b:P:C:";
 
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
@@ -246,6 +247,7 @@ static const struct option longopts[] = {
 	{"key",                1, NULL, 'K'},
 	{"key-descriptor",     1, NULL, 'b'},
 	{"padding",            1, NULL, 'P'},
+	{"cipher",             1, NULL, 'C'},
 	{NULL, 0, NULL, 0}
 };
 
@@ -294,6 +296,8 @@ static const char *helptext =
 "-b, --key-descriptor=HEX specify the key descriptor as a hex string.\n"
 "-P, --padding=NUM        specify padding policy for encrypting filenames\n"
 "                         (default = 4).\n"
+"-C, --cipher=NAME        Specify cipher to use for file level encryption\n"
+"                         (default is \"AES-128-CBC\").\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
@@ -718,7 +722,7 @@ static int get_options(int argc, char**argv)
 {
 	int opt, i, fscrypt_flags = FS_POLICY_FLAGS_PAD_4;
 	const char *key_file = NULL, *key_desc = NULL;
-	const char *tbl_file = NULL;
+	const char *tbl_file = NULL, *cipher_name = "AES-128-CBC";
 	struct stat st;
 	char *endp;
 
@@ -797,6 +801,8 @@ static int get_options(int argc, char**argv)
 			exit(EXIT_SUCCESS);
 		case '?':
 			printf("%s", helptext);
+			printf("\n\nSupported ciphers:\n");
+			list_ciphers(stdout);
 			exit(-1);
 		case 'v':
 			verbose = 1;
@@ -936,6 +942,9 @@ static int get_options(int argc, char**argv)
 			}
 			break;
 		}
+		case 'C':
+			cipher_name = optarg;
+			break;
 		}
 	}
 
@@ -967,6 +976,15 @@ static int get_options(int argc, char**argv)
 						key_file, key_desc);
 		if (!root_fctx)
 			return -1;
+
+		fscrypt_cipher = get_cipher(cipher_name);
+		if (!fscrypt_cipher) {
+			fprintf(stderr, "Cannot find cipher '%s'\n"
+				"Try `%s --help' for more information\n",
+				cipher_name, PROGRAM_NAME);
+			return -1;
+		}
+
 		print_fscrypt_master_key_descriptor(root_fctx);
 	}
 
@@ -1604,6 +1622,7 @@ static int encrypt_path(void **outbuf, void *data, unsigned int data_len,
 	void *inbuf, *crypt_key;
 	unsigned int padding = 4 << (fctx->flags & FS_POLICY_FLAGS_PAD_MASK);
 	unsigned int cryptlen;
+	int ret;
 
 	cryptlen = max_t(unsigned int, data_len, FS_CRYPTO_BLOCK_SIZE);
 	cryptlen = round_up(cryptlen, padding);
@@ -1619,7 +1638,10 @@ static int encrypt_path(void **outbuf, void *data, unsigned int data_len,
 	crypt_key = calc_fscrypt_subkey(fctx);
 	if (!crypt_key)
 		return err_msg("could not compute subkey");
-	if (encrypt_aes128_cbc_cts(inbuf, cryptlen, crypt_key, *outbuf) < 0)
+
+	ret = fscrypt_cipher->encrypt_fname(inbuf, cryptlen,
+					    crypt_key, *outbuf);
+	if (ret < 0)
 		return err_msg("could not encrypt filename");
 
 	free(crypt_key);
@@ -2003,10 +2025,13 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 			if (!crypt_key)
 				return err_msg("could not compute subkey");
 
-			ret = encrypt_block_aes128_cbc(inbuf, pad_len, crypt_key, block_no,
-						       outbuf);
-			if (ret != pad_len)
-				return err_msg("encrypt_block_aes128_cbc returned %zi instead of %zi", ret, pad_len);
+			ret = fscrypt_cipher->encrypt_block(inbuf, pad_len,
+							    crypt_key, block_no,
+							    outbuf);
+			if (ret != pad_len) {
+				return err_msg("encrypt_block returned %zi "
+						"instead of %zi", ret, pad_len);
+			}
 
 			memcpy(&dn->data, outbuf, pad_len);
 
