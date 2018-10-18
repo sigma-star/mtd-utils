@@ -202,7 +202,7 @@ static int load_master_key(const char *key_file, struct cipher *fsc)
 		return -1;
 	}
 
-	keysize = read(kf, fscrypt_masterkey, fsc->key_length);
+	keysize = read(kf, fscrypt_masterkey, FS_MAX_KEY_SIZE);
 	if (keysize < 0) {
 		sys_errmsg("read '%s'", key_file);
 		goto fail;
