@@ -73,6 +73,7 @@ struct idx_entry {
 	struct idx_entry *prev;
 	union ubifs_key key;
 	char *name;
+	int name_len;
 	int lnum;
 	int offs;
 	int len;
@@ -1069,7 +1070,7 @@ static void set_lprops(int lnum, int offs, int flags)
  * @offs: node offset
  * @len: node length
  */
-static int add_to_index(union ubifs_key *key, char *name, int lnum, int offs,
+static int add_to_index(union ubifs_key *key, char *name, int name_len, int lnum, int offs,
 			int len)
 {
 	struct idx_entry *e;
@@ -1080,6 +1081,7 @@ static int add_to_index(union ubifs_key *key, char *name, int lnum, int offs,
 	e->prev = idx_list_last;
 	e->key = *key;
 	e->name = name;
+	e->name_len = name_len;
 	e->lnum = lnum;
 	e->offs = offs;
 	e->len = len;
@@ -1138,7 +1140,7 @@ static int reserve_space(int len, int *lnum, int *offs)
  * @node: node
  * @len: node length
  */
-static int add_node(union ubifs_key *key, char *name, void *node, int len)
+static int add_node(union ubifs_key *key, char *name, int name_len, void *node, int len)
 {
 	int err, lnum, offs;
 
@@ -1151,7 +1153,7 @@ static int add_node(union ubifs_key *key, char *name, void *node, int len)
 	memcpy(leb_buf + offs, node, len);
 	memset(leb_buf + offs + len, 0xff, ALIGN(len, 8) - len);
 
-	add_to_index(key, name, lnum, offs, len);
+	add_to_index(key, name, name_len, lnum, offs, len);
 
 	return 0;
 }
@@ -1194,7 +1196,7 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st, ino_t inu
 
 	xent->inum = cpu_to_le64(inum);
 
-	ret = add_node(&xkey, nm.name, xent, len);
+	ret = add_node(&xkey, nm.name, nm.len, xent, len);
 	if (ret)
 		goto out;
 
@@ -1226,7 +1228,7 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st, ino_t inu
 	if (data_len)
 		memcpy(&ino->data, data, data_len);
 
-	ret = add_node(&nkey, nm.name, ino, UBIFS_INO_NODE_SZ + data_len) ;
+	ret = add_node(&nkey, nm.name, nm.len, ino, UBIFS_INO_NODE_SZ + data_len) ;
 
 out:
 	free(xent);
@@ -1499,7 +1501,7 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 			return ret;
 	}
 
-	return add_node(&key, NULL, ino, len);
+	return add_node(&key, NULL, 0, ino, len);
 }
 
 /**
@@ -1621,7 +1623,7 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	if (!kname)
 		return err_msg("cannot allocate memory");
 
-	return add_node(&key, kname, dent, len);
+	return add_node(&key, kname, dname.len, dent, len);
 }
 
 /**
@@ -1732,9 +1734,10 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		compr_type = compress_data(buf, bytes_read, &dn->data,
 					   &out_len, use_compr);
 		dn->compr_type = cpu_to_le16(compr_type);
+		//TODO: encrypt
 		dn_len = UBIFS_DATA_NODE_SZ + out_len;
 		/* Add data node to file system */
-		err = add_node(&key, NULL, dn, dn_len);
+		err = add_node(&key, NULL, 0, dn, dn_len);
 		if (err) {
 			close(fd);
 			return err;
@@ -2121,13 +2124,13 @@ static int write_data(void)
 	return flush_nodes();
 }
 
-static int namecmp(const char *name1, const char *name2)
+static int namecmp(const struct idx_entry *e1, const struct idx_entry *e2)
 {
-	size_t len1 = strlen(name1), len2 = strlen(name2);
+	size_t len1 = e1->name_len, len2 = e2->name_len;
 	size_t clen = (len1 < len2) ? len1 : len2;
 	int cmp;
 
-	cmp = memcmp(name1, name2, clen);
+	cmp = memcmp(e1->name, e2->name, clen);
 	if (cmp)
 		return cmp;
 	return (len1 < len2) ? -1 : 1;
@@ -2142,7 +2145,7 @@ static int cmp_idx(const void *a, const void *b)
 	cmp = keys_cmp(&e1->key, &e2->key);
 	if (cmp)
 		return cmp;
-	return namecmp(e1->name, e2->name);
+	return namecmp(e1, e2);
 }
 
 /**
