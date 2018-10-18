@@ -1443,6 +1443,46 @@ static int set_fscrypt_context(struct ubifs_ino_node *host_ino, ino_t inum,
 			 fctx, sizeof(*fctx));
 }
 
+static int encrypt_symlink(void *dst, void *data, unsigned int data_len,
+			   struct fscrypt_context *fctx)
+{
+	struct fscrypt_symlink_data *sd;
+	void *inbuf, *outbuf, *crypt_key;
+	unsigned int max_namelen = UBIFS_MAX_INO_DATA;
+	unsigned int padding = 4 << (fctx->flags & FS_POLICY_FLAGS_PAD_MASK);
+	unsigned int cryptlen;
+	unsigned int link_disk_len = fscrypt_fname_encrypted_size(fctx, data_len) + sizeof(struct fscrypt_symlink_data);
+
+	cryptlen = max_t(unsigned int, data_len, FS_CRYPTO_BLOCK_SIZE);
+	cryptlen = round_up(cryptlen, padding);
+	cryptlen = min(cryptlen, max_namelen);
+
+	sd = xzalloc(link_disk_len);
+	inbuf = xmalloc(cryptlen);
+	/* CTS mode needs a block size aligned buffer */
+	outbuf = xmalloc(round_up(cryptlen, FS_CRYPTO_BLOCK_SIZE));
+
+	memset(inbuf, 0, cryptlen);
+	memcpy(inbuf, data, data_len);
+
+	crypt_key = calc_fscrypt_subkey(fctx);
+	if (!crypt_key)
+		return err_msg("could not compute subkey");
+	if (encrypt_aes128_cbc_cts(inbuf, cryptlen, crypt_key, outbuf) < 0)
+		return err_msg("could not encrypt filename");
+
+	memcpy(sd->encrypted_path, outbuf, cryptlen);
+	sd->len = cpu_to_le16(cryptlen);
+	memcpy(dst, sd, link_disk_len);
+	((char *)dst)[link_disk_len - 1] = '\0';
+
+	free(crypt_key);
+	free(inbuf);
+	free(outbuf);
+	free(sd);
+	return link_disk_len;
+}
+
 /**
  * add_inode - write an inode.
  * @st: stat information of source inode
@@ -1503,43 +1543,10 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 		if (!fctx) {
 			memcpy(&ino->data, data, data_len);
 		} else {
-			//TODO turn this into a common helper
-			struct fscrypt_symlink_data *sd;
-			void *inbuf, *outbuf, *crypt_key;
-			unsigned int max_namelen = UBIFS_MAX_INO_DATA;
-			unsigned int padding = 4 << (fctx->flags & FS_POLICY_FLAGS_PAD_MASK);
-			unsigned int cryptlen;
-			unsigned int link_disk_len = fscrypt_fname_encrypted_size(fctx, data_len) + sizeof(struct fscrypt_symlink_data);
-
-			cryptlen = max_t(unsigned int, data_len, FS_CRYPTO_BLOCK_SIZE);
-			cryptlen = round_up(cryptlen, padding);
-			cryptlen = min(cryptlen, max_namelen);
-
-			sd = xzalloc(link_disk_len);
-			inbuf = xmalloc(cryptlen);
-			/* CTS mode needs a block size aligned buffer */
-			outbuf = xmalloc(round_up(cryptlen, FS_CRYPTO_BLOCK_SIZE));
-
-			memset(inbuf, 0, cryptlen);
-			memcpy(inbuf, data, data_len);
-
-			crypt_key = calc_fscrypt_subkey(fctx);
-			if (!crypt_key)
-				return err_msg("could not compute subkey");
-			if (encrypt_aes128_cbc_cts(inbuf, cryptlen, crypt_key, outbuf) < 0)
-				return err_msg("could not encrypt filename");
-
-			memcpy(sd->encrypted_path, outbuf, cryptlen);
-			sd->len = cpu_to_le16(cryptlen);
-			memcpy(&ino->data, sd, link_disk_len);
-			((char *)&ino->data)[link_disk_len - 1] = '\0';
-
-			data_len = link_disk_len;
-
-			free(crypt_key);
-			free(inbuf);
-			free(outbuf);
-			free(sd);
+			ret = encrypt_symlink(&ino->data, data, data_len, fctx);
+			if (ret < 0)
+				return ret;
+			data_len = ret;
 		}
 	}
 	ino->data_len   = cpu_to_le32(data_len);
