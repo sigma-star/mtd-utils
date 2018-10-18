@@ -65,13 +65,13 @@ void free_fscrypt_context(struct fscrypt_context *fctx)
 	free(fctx);
 }
 
-void print_fscrypt_master_key_descriptor(struct fscrypt_context *fctx)
+static void print_fscrypt_master_key_descriptor(__u8 *master_key_descriptor)
 {
 	int i;
 
 	normsg_cont("fscrypt master key descriptor: 0x");
 	for (i = 0; i < FS_KEY_DESCRIPTOR_SIZE; i++) {
-		printf("%02x", fctx->master_key_descriptor[i]);
+		printf("%02x", master_key_descriptor[i]);
 	}
 	printf("\n");
 }
@@ -248,6 +248,7 @@ struct fscrypt_context *init_fscrypt_context(const char *cipher_name,
 	if (!key_descriptor) {
 		if (derive_key_descriptor(fscrypt_masterkey, master_key_descriptor))
 			return NULL;
+		print_fscrypt_master_key_descriptor(master_key_descriptor);
 	} else {
 		if (parse_key_descriptor(key_descriptor, master_key_descriptor))
 			return NULL;

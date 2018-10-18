@@ -101,7 +101,6 @@ struct fscrypt_symlink_data {
 unsigned char *calc_fscrypt_subkey(struct fscrypt_context *fctx);
 struct fscrypt_context *inherit_fscrypt_context(struct fscrypt_context *fctx);
 void free_fscrypt_context(struct fscrypt_context *fctx);
-void print_fscrypt_master_key_descriptor(struct fscrypt_context *fctx);
 unsigned int fscrypt_fname_encrypted_size(struct fscrypt_context *fctx,
 					  unsigned int ilen);
 int encrypt_path(void **outbuf, void *data, unsigned int data_len,

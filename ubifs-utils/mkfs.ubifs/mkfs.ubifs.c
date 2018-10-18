@@ -772,8 +772,6 @@ static int get_options(int argc, char**argv)
 						key_file, key_desc);
 		if (!root_fctx)
 			return -1;
-
-		print_fscrypt_master_key_descriptor(root_fctx);
 #else
 		return err_msg("mkfs.ubifs was built without crypto support.");
 #endif
