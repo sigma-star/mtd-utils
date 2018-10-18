@@ -10,15 +10,19 @@ mkfs_ubifs_SOURCES = \
 	ubifs-utils/mkfs.ubifs/crc16.c \
 	ubifs-utils/mkfs.ubifs/lpt.c \
 	ubifs-utils/mkfs.ubifs/compr.c \
-	ubifs-utils/mkfs.ubifs/crypto.c \
-	ubifs-utils/mkfs.ubifs/fscrypt.c \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_itr.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_private.h \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable.c \
 	ubifs-utils/mkfs.ubifs/hashtable/hashtable_itr.c \
 	ubifs-utils/mkfs.ubifs/devtable.c
-mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) -lm -lssl -lcrypto
+
+if WITH_CRYPTO
+mkfs_ubifs_SOURCES += ubifs-utils/mkfs.ubifs/crypto.c \
+		ubifs-utils/mkfs.ubifs/fscrypt.c
+endif
+
+mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) $(OPENSSL_LIBS) -lm
 mkfs_ubifs_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS) $(UUID_CFLAGS) $(LIBSELINUX_CFLAGS)\
 	-I$(top_srcdir)/ubi-utils/include -I$(top_srcdir)/ubifs-utils/mkfs.ubifs/
 

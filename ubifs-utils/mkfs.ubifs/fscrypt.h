@@ -97,27 +97,76 @@ struct fscrypt_symlink_data {
 #define FS_IV_SIZE 16
 #endif
 
+#ifdef WITH_CRYPTO
 unsigned char *calc_fscrypt_subkey(struct fscrypt_context *fctx);
-
 struct fscrypt_context *inherit_fscrypt_context(struct fscrypt_context *fctx);
-
 void free_fscrypt_context(struct fscrypt_context *fctx);
-
 void print_fscrypt_master_key_descriptor(struct fscrypt_context *fctx);
-
 unsigned int fscrypt_fname_encrypted_size(struct fscrypt_context *fctx,
 					  unsigned int ilen);
-
 int encrypt_path(void **outbuf, void *data, unsigned int data_len,
 		 unsigned int max_namelen, struct fscrypt_context *fctx);
-
 int encrypt_data_node(struct fscrypt_context *fctx, unsigned int block_no,
 		      struct ubifs_data_node *dn, size_t length);
-
 struct fscrypt_context *init_fscrypt_context(const char *cipher_name,
 					     unsigned int flags,
 					     const char *key_file,
 					     const char *key_descriptor);
+#else
+static inline struct fscrypt_context *init_fscrypt_context(
+					const char *cipher_name,
+					unsigned int flags,
+					const char *key_file,
+					const char *key_descriptor)
+{
+	(void)cipher_name;
+	(void)flags;
+	(void)key_file;
+	(void)key_descriptor;
 
+	assert(0);
+	return NULL;
+}
+
+static inline void free_fscrypt_context(struct fscrypt_context *fctx)
+{
+	(void)fctx;
+
+	assert(0);
+}
+
+static inline int encrypt_path(void **outbuf, void *data, unsigned int data_len,
+		 unsigned int max_namelen, struct fscrypt_context *fctx)
+{
+	(void)outbuf;
+	(void)data;
+	(void)data_len;
+	(void)max_namelen;
+	(void)fctx;
+
+	assert(0);
+	return -1;
+}
+
+static inline int encrypt_data_node(struct fscrypt_context *fctx, unsigned int block_no,
+		      struct ubifs_data_node *dn, size_t length)
+{
+	(void)fctx;
+	(void)block_no;
+	(void)dn;
+	(void)length;
+
+	assert(0);
+	return -1;
+}
+
+static inline struct fscrypt_context *inherit_fscrypt_context(struct fscrypt_context *fctx)
+{
+	(void)fctx;
+
+	assert(0);
+	return NULL;
+}
+#endif /* WITH_CRYPTO */
 #endif /* FSCRYPT_H */
 

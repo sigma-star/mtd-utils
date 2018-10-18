@@ -508,9 +508,12 @@ static int get_options(int argc, char**argv)
 {
 	int opt, i, fscrypt_flags = FS_POLICY_FLAGS_PAD_4;
 	const char *key_file = NULL, *key_desc = NULL;
-	const char *tbl_file = NULL, *cipher_name = "AES-128-CBC";
+	const char *tbl_file = NULL;
 	struct stat st;
 	char *endp;
+#ifdef WITH_CRYPTO
+	const char *cipher_name;
+#endif
 
 	c->fanout = 8;
 	c->orph_lebs = 1;
@@ -587,8 +590,10 @@ static int get_options(int argc, char**argv)
 			exit(EXIT_SUCCESS);
 		case '?':
 			printf("%s", helptext);
+#ifdef WITH_CRYPTO
 			printf("\n\nSupported ciphers:\n");
 			list_ciphers(stdout);
+#endif
 			exit(-1);
 		case 'v':
 			verbose = 1;
@@ -729,7 +734,11 @@ static int get_options(int argc, char**argv)
 			break;
 		}
 		case 'C':
+#ifdef WITH_CRYPTO
 			cipher_name = optarg;
+#else
+			return err_msg("mkfs.ubifs was built without crypto support.");
+#endif
 			break;
 		}
 	}
@@ -748,13 +757,16 @@ static int get_options(int argc, char**argv)
 		if (c->max_leb_cnt == -1)
 			c->max_leb_cnt = c->vi.rsvd_lebs;
 	}
-
 	if (key_file || key_desc) {
+#ifdef WITH_CRYPTO
 		if (!key_file)
 			return err_msg("no key file specified");
 
 		c->double_hash = 1;
 		c->encrypted = 1;
+
+		if (cipher_name == NULL)
+			cipher_name = "AES-128-CBC";
 
 		root_fctx = init_fscrypt_context(cipher_name, fscrypt_flags,
 						key_file, key_desc);
@@ -762,6 +774,9 @@ static int get_options(int argc, char**argv)
 			return -1;
 
 		print_fscrypt_master_key_descriptor(root_fctx);
+#else
+		return err_msg("mkfs.ubifs was built without crypto support.");
+#endif
 	}
 
 	if (c->min_io_size == -1)
@@ -1385,6 +1400,7 @@ static inline int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
 }
 #endif
 
+#ifdef WITH_CRYPTO
 static int set_fscrypt_context(struct ubifs_ino_node *host_ino, ino_t inum,
 			       struct stat *host_st,
 			       struct fscrypt_context *fctx)
@@ -1421,6 +1437,31 @@ static int encrypt_symlink(void *dst, void *data, unsigned int data_len,
 	free(sd);
 	return link_disk_len;
 }
+#else
+static int set_fscrypt_context(struct ubifs_ino_node *host_ino, ino_t inum,
+			       struct stat *host_st,
+			       struct fscrypt_context *fctx)
+{
+	(void)host_ino;
+	(void)inum;
+	(void)host_st;
+	(void)fctx;
+
+	assert(0);
+	return -1;
+}
+static int encrypt_symlink(void *dst, void *data, unsigned int data_len,
+			   struct fscrypt_context *fctx)
+{
+	(void)dst;
+	(void)data;
+	(void)data_len;
+	(void)fctx;
+
+	assert(0);
+	return -1;
+}
+#endif
 
 /**
  * add_inode - write an inode.
@@ -1582,9 +1623,11 @@ static int add_symlink_inode(const char *path_name, struct stat *st, ino_t inum,
 
 static void set_dent_cookie(struct ubifs_dent_node *dent)
 {
+#ifdef WITH_CRYPTO
 	if (c->double_hash)
 		RAND_bytes((void *)&dent->cookie, sizeof(dent->cookie));
 	else
+#endif
 		dent->cookie = 0;
 }
 
@@ -1981,7 +2024,8 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 
 		inum = ++c->highest_inum;
 
-		new_fctx = inherit_fscrypt_context(fctx);
+		if (fctx)
+			new_fctx = inherit_fscrypt_context(fctx);
 
 		if (S_ISDIR(dent_st.st_mode)) {
 			err = add_directory(name, inum, &dent_st, 1, new_fctx);
@@ -2006,7 +2050,8 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		size += ALIGN(UBIFS_DENT_NODE_SZ + strlen(entry->d_name) + 1,
 			      8);
 
-		free_fscrypt_context(new_fctx);
+		if (new_fctx)
+			free_fscrypt_context(new_fctx);
 	}
 
 	/*
@@ -2068,7 +2113,8 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		size += ALIGN(UBIFS_DENT_NODE_SZ + strlen(nh_elt->name) + 1, 8);
 
 		nh_elt = next_name_htbl_element(ph_elt, &itr);
-		free_fscrypt_context(new_fctx);
+		if (new_fctx)
+			free_fscrypt_context(new_fctx);
 	}
 
 	creat_sqnum = dir_creat_sqnum;
