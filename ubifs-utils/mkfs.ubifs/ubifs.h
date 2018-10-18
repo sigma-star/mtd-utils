@@ -410,6 +410,7 @@ struct ubifs_info
 	int big_lpt;
 	int space_fixup;
 	int double_hash;
+	int encrypted;
 	long long lpt_sz;
 
 	int ltab_lnum;

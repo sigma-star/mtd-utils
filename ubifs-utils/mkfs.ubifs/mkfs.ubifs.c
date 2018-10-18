@@ -2357,6 +2357,15 @@ static int finalize_leb_cnt(void)
 	return 0;
 }
 
+static int ubifs_format_version(void)
+{
+	if (c->double_hash || c->encrypted)
+		return 5;
+
+	/* Default */
+	return 4;
+}
+
 /**
  * write_super - write the super block.
  */
@@ -2379,7 +2388,7 @@ static int write_super(void)
 	sup.jhead_cnt     = cpu_to_le32(c->jhead_cnt);
 	sup.fanout        = cpu_to_le32(c->fanout);
 	sup.lsave_cnt     = cpu_to_le32(c->lsave_cnt);
-	sup.fmt_version   = cpu_to_le32(UBIFS_FORMAT_VERSION);
+	sup.fmt_version   = cpu_to_le32(ubifs_format_version());
 	sup.default_compr = cpu_to_le16(c->default_compr);
 	sup.rp_size       = cpu_to_le64(c->rp_size);
 	sup.time_gran     = cpu_to_le32(DEFAULT_TIME_GRAN);
@@ -2396,6 +2405,8 @@ static int write_super(void)
 		sup.flags |= cpu_to_le32(UBIFS_FLG_SPACE_FIXUP);
 	if (c->double_hash)
 		sup.flags |= cpu_to_le32(UBIFS_FLG_DOUBLE_HASH);
+	if (c->encrypted)
+		sup.flags |= cpu_to_le32(UBIFS_FLG_ENCRYPTION);
 
 	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM);
 }
