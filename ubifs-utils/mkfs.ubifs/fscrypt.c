@@ -69,11 +69,11 @@ void print_fscrypt_master_key_descriptor(struct fscrypt_context *fctx)
 {
 	int i;
 
-	normsg_cont("fscrypt master key descriptor: ");
+	normsg_cont("fscrypt master key descriptor: 0x");
 	for (i = 0; i < FS_KEY_DESCRIPTOR_SIZE; i++) {
-		normsg_cont("%02x", fctx->master_key_descriptor[i]);
+		printf("%02x", fctx->master_key_descriptor[i]);
 	}
-	normsg("");
+	printf("\n");
 }
 
 unsigned int fscrypt_fname_encrypted_size(struct fscrypt_context *fctx,
