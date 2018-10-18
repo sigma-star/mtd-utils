@@ -581,16 +581,20 @@ static void print_fscrypt_master_key_descriptor(struct fscrypt_context *fctx)
 	normsg("");
 }
 
-static struct fscrypt_context *init_fscrypt_context(void)
+static struct fscrypt_context *init_fscrypt_context(unsigned int flags,
+						void *master_key_descriptor,
+						void *nonce)
 {
 	struct fscrypt_context *new_fctx = xmalloc(sizeof(*new_fctx));
 
 	new_fctx->format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
 	new_fctx->contents_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CBC;
 	new_fctx->filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CTS;
-	new_fctx->flags = FS_POLICY_FLAGS_PAD_4;
-	RAND_bytes((void *)&new_fctx->nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+	new_fctx->flags = flags;
 
+	memcpy(&new_fctx->nonce, nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+	memcpy(&new_fctx->master_key_descriptor, master_key_descriptor,
+		FS_KEY_DESCRIPTOR_SIZE);
 	return new_fctx;
 }
 
@@ -2779,6 +2783,8 @@ static int close_target(void)
  */
 static int init(void)
 {
+	__u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
+	__u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
 	int err, i, main_lebs, big_lpt = 0, sz;
 
 	c->highest_inum = UBIFS_FIRST_INO;
@@ -2821,7 +2827,11 @@ static int init(void)
 	hash_table = xzalloc(sz);
 
 	//TODO make this a parameter
-	root_fctx = init_fscrypt_context();
+	RAND_bytes((void *)master_key_descriptor, FS_KEY_DESCRIPTOR_SIZE);
+	RAND_bytes((void *)nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+
+	root_fctx = init_fscrypt_context(FS_POLICY_FLAGS_PAD_4,
+					master_key_descriptor, nonce);
 	print_fscrypt_master_key_descriptor(root_fctx);
 	c->double_hash = 1;
 	c->encrypted = 1;
