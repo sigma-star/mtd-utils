@@ -1596,6 +1596,7 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	union ubifs_key key;
 	struct qstr dname;
 	char *kname;
+	int kname_len;
 	int len;
 
 	dbg_msg(3, "%s ino %lu type %u dir ino %lu", name, (unsigned long)inum,
@@ -1607,23 +1608,61 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 
 	dent->ch.node_type = UBIFS_DENT_NODE;
 
-	dent_key_init(c, &key, dir_inum, &dname);
-	key_write(&key, dent->key);
 	dent->inum = cpu_to_le64(inum);
 	dent->padding1 = 0;
 	dent->type = type;
-	dent->nlen = cpu_to_le16(dname.len);
-	memcpy(dent->name, dname.name, dname.len);
-	dent->name[dname.len] = '\0';
 	set_dent_cookie(dent);
 
-	len = UBIFS_DENT_NODE_SZ + dname.len + 1;
+	if (!fctx) {
+		dent_key_init(c, &key, dir_inum, dname.name, dname.len);
+		dent->nlen = cpu_to_le16(dname.len);
+		memcpy(dent->name, dname.name, dname.len);
+		dent->name[dname.len] = '\0';
+		len = UBIFS_DENT_NODE_SZ + dname.len + 1;
 
-	kname = strdup(name);
-	if (!kname)
-		return err_msg("cannot allocate memory");
+		kname_len = dname.len;
+		kname = strdup(name);
+		if (!kname)
+			return err_msg("cannot allocate memory");
+	} else {
+		void *inbuf, *outbuf, *crypt_key;
+		unsigned int max_namelen = type == UBIFS_ITYPE_LNK ? UBIFS_MAX_INO_DATA : UBIFS_MAX_NLEN;
+		unsigned int padding = 4 << (fctx->flags & FS_POLICY_FLAGS_PAD_MASK);
+		unsigned int cryptlen;
 
-	return add_node(&key, kname, dname.len, dent, len);
+		cryptlen = max_t(unsigned int, dname.len, FS_CRYPTO_BLOCK_SIZE);
+		cryptlen = round_up(cryptlen, padding);
+		cryptlen = min(cryptlen, max_namelen);
+
+		inbuf = xmalloc(cryptlen);
+		outbuf = xmalloc(cryptlen + 32);
+
+		memset(inbuf, 0, cryptlen);
+		memcpy(inbuf, dname.name, dname.len);
+
+		crypt_key = calc_fscrypt_subkey(fctx);
+		if (!crypt_key)
+			return err_msg("could not compute subkey");
+		if (encrypt_aes128_cbc_cts(inbuf, cryptlen, crypt_key, outbuf) < 0)
+			return err_msg("could not encrypt filename");
+
+		dent->nlen = cpu_to_le16(cryptlen);
+		memcpy(dent->name, outbuf, cryptlen);
+		dent->name[cryptlen] = '\0';
+		len = UBIFS_DENT_NODE_SZ + cryptlen + 1;
+
+		dent_key_init(c, &key, dir_inum, outbuf, cryptlen);
+
+		kname_len = cryptlen;
+		kname = xmalloc(cryptlen);
+		memcpy(kname, outbuf, cryptlen);
+		free(crypt_key);
+		free(inbuf);
+		free(outbuf);
+	}
+	key_write(&key, dent->key);
+
+	return add_node(&key, kname, kname_len, dent, len);
 }
 
 /**
