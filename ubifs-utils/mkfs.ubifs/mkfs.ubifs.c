@@ -155,6 +155,16 @@ struct fscrypt_context {
 	__u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
 } __attribute__((packed));
 
+/**
+ * For encrypted symlinks, the ciphertext length is stored at the beginning
+ * of the string in little-endian format.
+ */
+struct fscrypt_symlink_data {
+	__le16 len;
+	char encrypted_path[1];
+} __attribute__((packed));
+
+
 #ifndef FS_MAX_KEY_SIZE
 #define FS_MAX_KEY_SIZE	64
 #endif
@@ -578,14 +588,21 @@ static struct fscrypt_context *init_fscrypt_context(void)
 	new_fctx->format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
 	new_fctx->contents_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CBC;
 	new_fctx->filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CTS;
-	//TODO  accept padding via a parameter
 	new_fctx->flags = FS_POLICY_FLAGS_PAD_4;
-	//TODO  accept descriptor via a parameter
-	RAND_bytes((void *)&new_fctx->master_key_descriptor, FS_KEY_DESCRIPTOR_SIZE);
 	RAND_bytes((void *)&new_fctx->nonce, FS_KEY_DERIVATION_NONCE_SIZE);
 
 	return new_fctx;
 }
+
+unsigned int fscrypt_fname_encrypted_size(struct fscrypt_context *fctx, unsigned int ilen)
+{
+	int padding;
+
+	padding = 4 << (fctx->flags & FS_POLICY_FLAGS_PAD_MASK);
+	ilen = max_t(unsigned int, ilen, FS_CRYPTO_BLOCK_SIZE);
+	return round_up(ilen, padding);
+}
+
 
 /**
  * open_ubi - open the UBI volume.
@@ -1478,11 +1495,54 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 	ino->gid        = cpu_to_le32(st->st_gid);
 	ino->mode       = cpu_to_le32(st->st_mode);
 	ino->flags      = cpu_to_le32(use_flags);
-	ino->data_len   = cpu_to_le32(data_len);
 	ino->compr_type = cpu_to_le16(c->default_compr);
-	if (data_len)
-		memcpy(&ino->data, data, data_len);
+	if (data_len) {
+		if (!S_ISLNK(st->st_mode))
+			return err_msg("Expected symlink");
 
+		if (!fctx) {
+			memcpy(&ino->data, data, data_len);
+		} else {
+			//TODO turn this into a common helper
+			struct fscrypt_symlink_data *sd;
+			void *inbuf, *outbuf, *crypt_key;
+			unsigned int max_namelen = UBIFS_MAX_INO_DATA;
+			unsigned int padding = 4 << (fctx->flags & FS_POLICY_FLAGS_PAD_MASK);
+			unsigned int cryptlen;
+			unsigned int link_disk_len = fscrypt_fname_encrypted_size(fctx, data_len) + sizeof(struct fscrypt_symlink_data);
+
+			cryptlen = max_t(unsigned int, data_len, FS_CRYPTO_BLOCK_SIZE);
+			cryptlen = round_up(cryptlen, padding);
+			cryptlen = min(cryptlen, max_namelen);
+
+			sd = xzalloc(link_disk_len);
+			inbuf = xmalloc(cryptlen);
+			/* CTS mode needs a block size aligned buffer */
+			outbuf = xmalloc(round_up(cryptlen, FS_CRYPTO_BLOCK_SIZE));
+
+			memset(inbuf, 0, cryptlen);
+			memcpy(inbuf, data, data_len);
+
+			crypt_key = calc_fscrypt_subkey(fctx);
+			if (!crypt_key)
+				return err_msg("could not compute subkey");
+			if (encrypt_aes128_cbc_cts(inbuf, cryptlen, crypt_key, outbuf) < 0)
+				return err_msg("could not encrypt filename");
+
+			memcpy(sd->encrypted_path, outbuf, cryptlen);
+			sd->len = cpu_to_le16(cryptlen);
+			memcpy(&ino->data, sd, link_disk_len);
+			((char *)&ino->data)[link_disk_len - 1] = '\0';
+
+			data_len = link_disk_len;
+
+			free(crypt_key);
+			free(inbuf);
+			free(outbuf);
+			free(sd);
+		}
+	}
+	ino->data_len   = cpu_to_le32(data_len);
 	len = UBIFS_INO_NODE_SZ + data_len;
 
 	if (xattr_path) {
@@ -1635,7 +1695,8 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 		cryptlen = min(cryptlen, max_namelen);
 
 		inbuf = xmalloc(cryptlen);
-		outbuf = xmalloc(cryptlen + 32);
+		/* CTS mode needs a block size aligned buffer */
+		outbuf = xmalloc(round_up(cryptlen, FS_CRYPTO_BLOCK_SIZE));
 
 		memset(inbuf, 0, cryptlen);
 		memcpy(inbuf, dname.name, dname.len);
