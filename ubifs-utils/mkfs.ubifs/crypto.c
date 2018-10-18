@@ -91,6 +91,13 @@ static ssize_t do_encrypt(const EVP_CIPHER *cipher,
 
 	ciphertext_len = len;
 
+	if (cipher == EVP_aes_256_xts()) {
+		if (EVP_EncryptFinal(ctx, ciphertext + ciphertext_len, &len) != 1)
+			goto fail_ctx;
+
+		ciphertext_len += len;
+	}
+
 	EVP_CIPHER_CTX_free(ctx);
 	return ciphertext_len;
 fail_ctx:
@@ -128,28 +135,32 @@ static size_t gen_essiv_salt(const void *iv, size_t iv_len, const void *key, siz
 	return ret;
 }
 
-
 static ssize_t encrypt_block(const void *plaintext, size_t size,
 			     const void *key, uint64_t block_index,
 			     void *ciphertext, const EVP_CIPHER *cipher)
 {
-	size_t key_len, ret, ivsize;
-	void *essiv_salt, *iv;
+	size_t key_len, ivsize;
+	void *tweak;
+	struct {
+		uint64_t index;
+		uint8_t padding[FS_IV_SIZE - sizeof(uint64_t)];
+	} iv;
 
 	ivsize = EVP_CIPHER_iv_length(cipher);
 	key_len = EVP_CIPHER_key_length(cipher);
 
-	iv = alloca(ivsize);
-	essiv_salt = alloca(ivsize);
+	iv.index = cpu_to_le64(block_index);
+	memset(iv.padding, 0, sizeof(iv.padding));
 
-	memset(iv, 0, ivsize);
-	*((uint64_t *)iv) = cpu_to_le64(block_index);
+	if (cipher == EVP_aes_256_cbc()) {
+		tweak = alloca(ivsize);
+		gen_essiv_salt(&iv, FS_IV_SIZE, key, key_len, tweak);
+	} else {
+		tweak = &iv;
+	}
 
-	gen_essiv_salt(iv, ivsize, key, key_len, essiv_salt);
-
-	ret = do_encrypt(cipher, plaintext, size, key, key_len,
-			 essiv_salt, ivsize, ciphertext);
-	return ret;
+	return do_encrypt(cipher, plaintext, size, key, key_len, tweak,
+			  ivsize, ciphertext);
 }
 
 static ssize_t encrypt_block_aes128_cbc(const void *plaintext, size_t size,

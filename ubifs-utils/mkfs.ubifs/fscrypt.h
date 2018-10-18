@@ -93,6 +93,10 @@ struct fscrypt_symlink_data {
 #define FS_MAX_KEY_SIZE	64
 #endif
 
+#ifndef FS_IV_SIZE
+#define FS_IV_SIZE 16
+#endif
+
 unsigned char *calc_fscrypt_subkey(struct fscrypt_context *fctx);
 
 struct fscrypt_context *inherit_fscrypt_context(struct fscrypt_context *fctx);
