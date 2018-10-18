@@ -26,7 +26,7 @@
 #include "fscrypt.h"
 #include "common.h"
 
-static int do_sha256(const unsigned char *in, size_t len, unsigned char *out)
+static int do_hash(const EVP_MD *md, const unsigned char *in, size_t len, unsigned char *out)
 {
 	unsigned int out_len;
 	EVP_MD_CTX *mdctx = EVP_MD_CTX_create();
@@ -34,7 +34,7 @@ static int do_sha256(const unsigned char *in, size_t len, unsigned char *out)
 	if (!mdctx)
 		return -1;
 
-	if (EVP_DigestInit_ex(mdctx, EVP_sha256(), NULL) != 1)
+	if (EVP_DigestInit_ex(mdctx, md, NULL) != 1)
 		return -1;
 
 	if(EVP_DigestUpdate(mdctx, in, len) != 1)
@@ -121,7 +121,7 @@ static size_t gen_essiv_salt(const void *iv, size_t iv_len, const void *key, siz
 		return -1;
 	}
 
-	if (do_sha256(key, key_len, sha256) != 0) {
+	if (do_hash(EVP_sha256(), key, key_len, sha256) != 0) {
 		errmsg("sha256 failed");
 		return -1;
 	}
@@ -286,6 +286,27 @@ ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
 
 	return do_encrypt(cipher, source_key, source_key_len, deriving_key,
 			  aes_key_len, NULL, 0, derived_key);
+}
+
+int derive_key_descriptor(const void *source_key, void *descriptor)
+{
+	int ret = -1;
+	void *hash1 = xzalloc(EVP_MD_size(EVP_sha512()));
+	void *hash2 = xzalloc(EVP_MD_size(EVP_sha512()));
+
+	if (do_hash(EVP_sha512(), source_key, FS_MAX_KEY_SIZE, hash1) != 0)
+		goto out;
+
+	if (do_hash(EVP_sha512(), hash1, EVP_MD_size(EVP_sha512()), hash2) != 0)
+		goto out;
+
+	memcpy(descriptor, hash2, FS_KEY_DESCRIPTOR_SIZE);
+
+	ret = 0;
+out:
+	free(hash1);
+	free(hash2);
+	return ret;
 }
 
 static struct cipher ciphers[] = {

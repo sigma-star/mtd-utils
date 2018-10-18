@@ -752,8 +752,6 @@ static int get_options(int argc, char**argv)
 	if (key_file || key_desc) {
 		if (!key_file)
 			return err_msg("no key file specified");
-		if (!key_desc)
-			return err_msg("no key descriptor specified");
 
 		c->double_hash = 1;
 		c->encrypted = 1;

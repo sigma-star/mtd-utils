@@ -49,6 +49,7 @@ void crypto_cleanup(void);
 ssize_t derive_key_aes(const void *deriving_key, const void *source_key,
 		       size_t source_key_len, void *derived_key);
 
+int derive_key_descriptor(const void *source_key, void *descriptor);
 
 struct cipher *get_cipher(const char *name);
 

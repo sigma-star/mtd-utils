@@ -242,11 +242,16 @@ struct fscrypt_context *init_fscrypt_context(const char *cipher_name,
 		return NULL;
 	}
 
-	if (parse_key_descriptor(key_descriptor, master_key_descriptor))
-		return NULL;
-
 	if (load_master_key(key_file, fscrypt_cipher))
 		return NULL;
+
+	if (!key_descriptor) {
+		if (derive_key_descriptor(fscrypt_masterkey, master_key_descriptor))
+			return NULL;
+	} else {
+		if (parse_key_descriptor(key_descriptor, master_key_descriptor))
+			return NULL;
+	}
 
 	RAND_bytes((void *)nonce, FS_KEY_DERIVATION_NONCE_SIZE);
 
