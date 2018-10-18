@@ -518,6 +518,73 @@ static long long get_bytes(const char *str)
 
 	return bytes;
 }
+
+static unsigned char *calc_fscrypt_subkey(struct fscrypt_context *fctx)
+{
+	int ret;
+	unsigned char *new_key = xmalloc(FS_MAX_KEY_SIZE);
+
+	ret = derive_key_aes(fctx->nonce, fscrypt_masterkey, new_key);
+	if (ret < 0) {
+		err_msg("derive_key_aes failed: %i\n", ret);
+
+		free(new_key);
+		new_key = NULL;
+	}
+
+	return new_key;
+}
+
+static struct fscrypt_context *inherit_fscrypt_context(struct fscrypt_context *fctx)
+{
+	struct fscrypt_context *new_fctx = NULL;
+
+	if (fctx) {
+		new_fctx = xmalloc(sizeof(*new_fctx));
+		new_fctx->format = fctx->format;
+		new_fctx->contents_encryption_mode = fctx->contents_encryption_mode;
+		new_fctx->filenames_encryption_mode = fctx->filenames_encryption_mode;
+		new_fctx->flags = fctx->flags;
+		memcpy(new_fctx->master_key_descriptor, fctx->master_key_descriptor,
+		       FS_KEY_DESCRIPTOR_SIZE);
+		RAND_bytes((void *)&new_fctx->nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+	}
+
+	return new_fctx;
+}
+
+static void free_fscrypt_context(struct fscrypt_context *fctx)
+{
+	free(fctx);
+}
+
+static void print_fscrypt_master_key_descriptor(struct fscrypt_context *fctx)
+{
+	int i;
+
+	normsg_cont("fscrypt master key descriptor: ");
+	for (i = 0; i < FS_KEY_DESCRIPTOR_SIZE; i++) {
+		normsg_cont("%02x", fctx->master_key_descriptor[i]);
+	}
+	normsg("");
+}
+
+static struct fscrypt_context *init_fscrypt_context(void)
+{
+	struct fscrypt_context *new_fctx = xmalloc(sizeof(*new_fctx));
+
+	new_fctx->format = FS_ENCRYPTION_CONTEXT_FORMAT_V1;
+	new_fctx->contents_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CBC;
+	new_fctx->filenames_encryption_mode = FS_ENCRYPTION_MODE_AES_128_CTS;
+	//TODO  accept padding via a parameter
+	new_fctx->flags = FS_POLICY_FLAGS_PAD_4;
+	//TODO  accept descriptor via a parameter
+	RAND_bytes((void *)&new_fctx->master_key_descriptor, FS_KEY_DESCRIPTOR_SIZE);
+	RAND_bytes((void *)&new_fctx->nonce, FS_KEY_DERIVATION_NONCE_SIZE);
+
+	return new_fctx;
+}
+
 /**
  * open_ubi - open the UBI volume.
  * @node: name of the UBI volume character device to fetch information about
