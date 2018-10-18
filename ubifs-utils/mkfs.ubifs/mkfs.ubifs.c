@@ -1156,36 +1156,45 @@ static int add_node(union ubifs_key *key, char *name, void *node, int len)
 	return 0;
 }
 
-static int add_xattr(struct stat *st, ino_t inum, const void *data,
-		     unsigned int data_len, struct qstr *nm)
+static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st, ino_t inum,
+		     char *name, const void *data, unsigned int data_len)
 {
 	struct ubifs_ino_node *ino;
 	struct ubifs_dent_node *xent;
+	struct qstr nm;
 	union ubifs_key xkey, nkey;
 	int len, ret;
 
-	xent = xzalloc(sizeof(*xent) + nm->len + 1);
+	nm.name = name;
+	nm.len = strlen(name);
+
+	host_ino->xattr_cnt++;
+	host_ino->xattr_size += CALC_DENT_SIZE(nm.len);
+	host_ino->xattr_size += CALC_XATTR_BYTES(data_len);
+	host_ino->xattr_names += nm.len;
+
+	xent = xzalloc(sizeof(*xent) + nm.len + 1);
 	ino = xzalloc(sizeof(*ino) + data_len);
 
-	xent_key_init(c, &xkey, inum, nm);
+	xent_key_init(c, &xkey, inum, &nm);
 	xent->ch.node_type = UBIFS_XENT_NODE;
 	key_write(&xkey, &xent->key);
 
-	len = UBIFS_XENT_NODE_SZ + nm->len + 1;
+	len = UBIFS_XENT_NODE_SZ + nm.len + 1;
 
 	xent->ch.len = len;
 	xent->padding1 = 0;
 	xent->type = UBIFS_ITYPE_DIR;
-	xent->nlen = cpu_to_le16(nm->len);
+	xent->nlen = cpu_to_le16(nm.len);
 
-	memcpy(xent->name, nm->name, nm->len + 1);
+	memcpy(xent->name, nm.name, nm.len + 1);
 
 	inum = ++c->highest_inum;
 	creat_sqnum = ++c->max_sqnum;
 
 	xent->inum = cpu_to_le64(inum);
 
-	ret = add_node(&xkey, nm->name, xent, len);
+	ret = add_node(&xkey, nm.name, xent, len);
 	if (ret)
 		goto out;
 
@@ -1217,7 +1226,7 @@ static int add_xattr(struct stat *st, ino_t inum, const void *data,
 	if (data_len)
 		memcpy(&ino->data, data, data_len);
 
-	ret = add_node(&nkey, nm->name, ino, UBIFS_INO_NODE_SZ + data_len) ;
+	ret = add_node(&nkey, nm.name, ino, UBIFS_INO_NODE_SZ + data_len) ;
 
 out:
 	free(xent);
@@ -1270,7 +1279,6 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 			   const char *path_name, struct stat *st, ino_t inum)
 {
 	int ret;
-	struct qstr nm;
 	void *buf = NULL;
 	ssize_t len;
 	ssize_t pos = 0;
@@ -1327,15 +1335,7 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 			continue;
 		}
 
-		nm.name = name;
-		nm.len = strlen(name);
-
-		host_ino->xattr_cnt++;
-		host_ino->xattr_size += CALC_DENT_SIZE(nm.len);
-		host_ino->xattr_size += CALC_XATTR_BYTES(attrsize);
-		host_ino->xattr_names += nm.len;
-
-		ret = add_xattr(st, inum, attrbuf, attrsize, &nm);
+		ret = add_xattr(host_ino, st, inum, name, attrbuf, attrsize);
 		if (ret < 0)
 			goto out_free;
 	}
@@ -1415,6 +1415,15 @@ static inline int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
 }
 #endif
 
+static int set_fscrypt_context(struct ubifs_ino_node *host_ino, ino_t inum,
+			       struct stat *host_st,
+			       struct fscrypt_context *fctx)
+{
+	return add_xattr(host_ino, host_st, inum,
+			 UBIFS_XATTR_NAME_ENCRYPTION_CONTEXT,
+			 fctx, sizeof(*fctx));
+}
+
 /**
  * add_inode - write an inode.
  * @st: stat information of source inode
@@ -1480,6 +1489,12 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 #else
 		ret = inode_add_xattr(ino, xattr_path, st, inum);
 #endif
+		if (ret < 0)
+			return ret;
+	}
+
+	if (fctx) {
+		ret = set_fscrypt_context(ino, inum, st, fctx);
 		if (ret < 0)
 			return ret;
 	}
