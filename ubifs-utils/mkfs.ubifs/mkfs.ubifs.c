@@ -1451,24 +1451,20 @@ static int set_fscrypt_context(struct ubifs_ino_node *host_ino, ino_t inum,
 			 fctx, sizeof(*fctx));
 }
 
-static int encrypt_symlink(void *dst, void *data, unsigned int data_len,
-			   struct fscrypt_context *fctx)
+static int encrypt_path(void **outbuf, void *data, unsigned int data_len,
+			unsigned int max_namelen, struct fscrypt_context *fctx)
 {
-	struct fscrypt_symlink_data *sd;
-	void *inbuf, *outbuf, *crypt_key;
-	unsigned int max_namelen = UBIFS_MAX_INO_DATA;
+	void *inbuf, *crypt_key;
 	unsigned int padding = 4 << (fctx->flags & FS_POLICY_FLAGS_PAD_MASK);
 	unsigned int cryptlen;
-	unsigned int link_disk_len = fscrypt_fname_encrypted_size(fctx, data_len) + sizeof(struct fscrypt_symlink_data);
 
 	cryptlen = max_t(unsigned int, data_len, FS_CRYPTO_BLOCK_SIZE);
 	cryptlen = round_up(cryptlen, padding);
 	cryptlen = min(cryptlen, max_namelen);
 
-	sd = xzalloc(link_disk_len);
 	inbuf = xmalloc(cryptlen);
 	/* CTS mode needs a block size aligned buffer */
-	outbuf = xmalloc(round_up(cryptlen, FS_CRYPTO_BLOCK_SIZE));
+	*outbuf = xmalloc(round_up(cryptlen, FS_CRYPTO_BLOCK_SIZE));
 
 	memset(inbuf, 0, cryptlen);
 	memcpy(inbuf, data, data_len);
@@ -1476,16 +1472,34 @@ static int encrypt_symlink(void *dst, void *data, unsigned int data_len,
 	crypt_key = calc_fscrypt_subkey(fctx);
 	if (!crypt_key)
 		return err_msg("could not compute subkey");
-	if (encrypt_aes128_cbc_cts(inbuf, cryptlen, crypt_key, outbuf) < 0)
+	if (encrypt_aes128_cbc_cts(inbuf, cryptlen, crypt_key, *outbuf) < 0)
 		return err_msg("could not encrypt filename");
 
+	free(crypt_key);
+	free(inbuf);
+	return cryptlen;
+}
+
+static int encrypt_symlink(void *dst, void *data, unsigned int data_len,
+			   struct fscrypt_context *fctx)
+{
+	struct fscrypt_symlink_data *sd;
+	void *outbuf;
+	unsigned int link_disk_len = fscrypt_fname_encrypted_size(fctx, data_len) + sizeof(struct fscrypt_symlink_data);
+	unsigned int cryptlen;
+	int ret;
+
+	ret = encrypt_path(&outbuf, data, data_len, UBIFS_MAX_INO_DATA, fctx);
+	if (ret < 0)
+		return ret;
+	cryptlen = ret;
+
+	sd = xzalloc(link_disk_len);
 	memcpy(sd->encrypted_path, outbuf, cryptlen);
 	sd->len = cpu_to_le16(cryptlen);
 	memcpy(dst, sd, link_disk_len);
 	((char *)dst)[link_disk_len - 1] = '\0';
 
-	free(crypt_key);
-	free(inbuf);
 	free(outbuf);
 	free(sd);
 	return link_disk_len;
