@@ -115,6 +115,7 @@ AC_ARG_ENABLE([lsmtd],
 	esac],
 	[AM_CONDITIONAL([BUILD_LSMTD], [true])])
 
+AC_CHECK_HEADER(openssl/rand.h)
 
 AC_ARG_WITH([jffs],
 	[AS_HELP_STRING([--without-jffs], [Disable jffsX utilities])],

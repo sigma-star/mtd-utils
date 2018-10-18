@@ -35,6 +35,8 @@
 #include <selinux/label.h>
 #endif
 
+#include "crypto.h"
+
 /* Size (prime number) of hash table for link counting */
 #define HASH_TABLE_SIZE 10099
 
@@ -2625,6 +2627,9 @@ int main(int argc, char *argv[])
 {
 	int err;
 
+	if (crypto_init())
+		return -1;
+
 	err = get_options(argc, argv);
 	if (err)
 		return err;
@@ -2646,5 +2651,6 @@ int main(int argc, char *argv[])
 	if (verbose)
 		printf("Success!\n");
 
+	crypto_cleanup();
 	return 0;
 }
