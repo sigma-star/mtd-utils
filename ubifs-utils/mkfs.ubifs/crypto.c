@@ -119,7 +119,7 @@ static size_t gen_essiv_salt(const void *iv, size_t iv_len, const void *key, siz
 		return -1;
 	}
 
-	ret = do_encrypt(cipher, iv, iv_len, sha256, EVP_CIPHER_key_length(cipher), NULL, 0, salt);
+	ret = do_encrypt(cipher, iv, iv_len, sha256, EVP_MD_size(EVP_sha256()), NULL, 0, salt);
 	if (ret != iv_len)
 		errmsg("Unable to compute ESSIV salt, return value %zi instead of %zi", ret, iv_len);
 

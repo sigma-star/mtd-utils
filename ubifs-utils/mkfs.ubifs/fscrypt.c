@@ -31,7 +31,7 @@ unsigned char *calc_fscrypt_subkey(struct fscrypt_context *fctx)
 	int ret;
 	unsigned char *new_key = xmalloc(FS_MAX_KEY_SIZE);
 
-	ret = derive_key_aes(fctx->nonce, fscrypt_masterkey, FS_MAX_KEY_SIZE, new_key);
+	ret = derive_key_aes(fctx->nonce, fscrypt_masterkey, fscrypt_cipher->key_length, new_key);
 	if (ret < 0) {
 		err_msg("derive_key_aes failed: %i\n", ret);
 
@@ -202,7 +202,7 @@ static int load_master_key(const char *key_file, struct cipher *fsc)
 		return -1;
 	}
 
-	keysize = read(kf, fscrypt_masterkey, sizeof(fscrypt_masterkey));
+	keysize = read(kf, fscrypt_masterkey, fsc->key_length);
 	if (keysize < 0) {
 		sys_errmsg("read '%s'", key_file);
 		goto fail;
