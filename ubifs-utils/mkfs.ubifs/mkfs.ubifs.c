@@ -504,6 +504,20 @@ static int open_ubi(const char *node)
 	return 0;
 }
 
+static void select_default_compr(void)
+{
+	if (c->encrypted) {
+		c->default_compr = UBIFS_COMPR_NONE;
+		return;
+	}
+
+#ifdef WITHOUT_LZO
+	c->default_compr = UBIFS_COMPR_ZLIB;
+#else
+	c->default_compr = UBIFS_COMPR_LZO;
+#endif
+}
+
 static int get_options(int argc, char**argv)
 {
 	int opt, i, fscrypt_flags = FS_POLICY_FLAGS_PAD_4;
@@ -519,11 +533,6 @@ static int get_options(int argc, char**argv)
 	c->orph_lebs = 1;
 	c->key_hash = key_r5_hash;
 	c->key_len = UBIFS_SK_LEN;
-#ifdef WITHOUT_LZO
-	c->default_compr = UBIFS_COMPR_ZLIB;
-#else
-	c->default_compr = UBIFS_COMPR_LZO;
-#endif
 	c->favor_percent = 20;
 	c->lsave_cnt = 256;
 	c->leb_size = -1;
@@ -533,6 +542,7 @@ static int get_options(int argc, char**argv)
 	c->log_lebs = -1;
 	c->double_hash = 0;
 	c->encrypted = 0;
+	c->default_compr = -1;
 
 	while (1) {
 		opt = getopt_long(argc, argv, optstring, longopts, &i);
@@ -645,12 +655,14 @@ static int get_options(int argc, char**argv)
 			else if (strcmp(optarg, "zlib") == 0)
 				c->default_compr = UBIFS_COMPR_ZLIB;
 #ifndef WITHOUT_LZO
-			else if (strcmp(optarg, "favor_lzo") == 0)
+			else if (strcmp(optarg, "favor_lzo") == 0) {
+				c->default_compr = UBIFS_COMPR_LZO;
 				c->favor_lzo = 1;
-			else if (strcmp(optarg, "lzo") != 0)
-#else
-			else
+			} else if (strcmp(optarg, "lzo") == 0) {
+				c->default_compr = UBIFS_COMPR_LZO;
+			}
 #endif
+			else
 				return err_msg("bad compressor name");
 			break;
 		case 'X':
@@ -776,6 +788,9 @@ static int get_options(int argc, char**argv)
 		return err_msg("mkfs.ubifs was built without crypto support.");
 #endif
 	}
+
+	if (c->default_compr == -1)
+		select_default_compr();
 
 	if (c->min_io_size == -1)
 		return err_msg("min. I/O unit was not specified "
@@ -1787,7 +1802,7 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		key_write(&key, &dn->key);
 		out_len = NODE_BUFFER_SIZE - UBIFS_DATA_NODE_SZ;
 		if (c->default_compr == UBIFS_COMPR_NONE &&
-		    (flags & FS_COMPR_FL))
+		    !c->encrypted && (flags & FS_COMPR_FL))
 #ifdef WITHOUT_LZO
 			use_compr = UBIFS_COMPR_ZLIB;
 #else
