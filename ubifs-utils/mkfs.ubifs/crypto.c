@@ -152,7 +152,7 @@ static ssize_t encrypt_block(const void *plaintext, size_t size,
 	iv.index = cpu_to_le64(block_index);
 	memset(iv.padding, 0, sizeof(iv.padding));
 
-	if (cipher == EVP_aes_256_cbc()) {
+	if (cipher == EVP_aes_128_cbc()) {
 		tweak = alloca(ivsize);
 		gen_essiv_salt(&iv, FS_IV_SIZE, key, key_len, tweak);
 	} else {
