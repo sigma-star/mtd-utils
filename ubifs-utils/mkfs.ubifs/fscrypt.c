@@ -125,7 +125,7 @@ int encrypt_data_node(struct fscrypt_context *fctx, unsigned int block_no,
 	void *inbuf, *outbuf, *crypt_key;
 	size_t ret, pad_len = round_up(length, FS_CRYPTO_BLOCK_SIZE);
 
-	dn->compr_size = length;
+	dn->compr_size = cpu_to_le16(length);
 
 	inbuf = xzalloc(pad_len);
 	outbuf = xzalloc(pad_len);
