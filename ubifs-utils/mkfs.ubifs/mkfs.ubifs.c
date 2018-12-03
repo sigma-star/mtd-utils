@@ -237,7 +237,7 @@ static const char *helptext =
 "-P, --padding=NUM        specify padding policy for encrypting filenames\n"
 "                         (default = 4).\n"
 "-C, --cipher=NAME        Specify cipher to use for file level encryption\n"
-"                         (default is \"AES-128-CBC\").\n"
+"                         (default is \"AES-256-XTS\").\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
