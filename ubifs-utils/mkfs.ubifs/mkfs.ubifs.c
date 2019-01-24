@@ -1163,8 +1163,9 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st,
 	union ubifs_key xkey, nkey;
 	int len, ret;
 
-	nm.name = name;
 	nm.len = strlen(name);
+	nm.name = xmalloc(nm.len + 1);
+	memcpy(nm.name, name, nm.len + 1);
 
 	host_ino->xattr_cnt++;
 	host_ino->xattr_size += CALC_DENT_SIZE(nm.len);
