@@ -542,7 +542,7 @@ out_close:
 
 static int format(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 		  const struct ubigen_info *ui, struct ubi_scan_info *si,
-		  int start_eb)
+		  int start_eb, int novtbl)
 {
 	int eb, err, write_size;
 	struct ubi_ec_hdr *hdr;
@@ -597,7 +597,7 @@ static int format(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 			continue;
 		}
 
-		if (eb1 == -1 || eb2 == -1) {
+		if ((eb1 == -1 || eb2 == -1) && !novtbl) {
 			if (eb1 == -1) {
 				eb1 = eb;
 				ec1 = ec;
@@ -641,6 +641,9 @@ static int format(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 
 	if (!args.quiet && !args.verbose)
 		printf("\n");
+
+	if (novtbl)
+		goto out_free;
 
 	if (eb1 == -1 || eb2 == -1) {
 		errmsg("no eraseblocks for volume table");
@@ -902,11 +905,15 @@ int main(int argc, char * const argv[])
 		if (err < 0)
 			goto out_free;
 
-		err = format(libmtd, &mtd, &ui, si, err);
+		/*
+		 * ubinize has create a UBI_LAYOUT_VOLUME_ID volume for image.
+		 * So, we don't need to create again.
+		 */
+		err = format(libmtd, &mtd, &ui, si, err, 1);
 		if (err)
 			goto out_free;
 	} else {
-		err = format(libmtd, &mtd, &ui, si, 0);
+		err = format(libmtd, &mtd, &ui, si, 0, 0);
 		if (err)
 			goto out_free;
 	}
