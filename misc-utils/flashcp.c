@@ -357,7 +357,7 @@ int main (int argc,char *argv[])
 		if (size < BUFSIZE) i = size;
 		if (flags & FLAG_VERBOSE)
 			log_printf (LOG_NORMAL,
-					"\rVerifying data: %dk/%lluk (%lu%%)",
+					"\rVerifying data: %dk/%lluk (%llu%%)",
 					KB (written + i),
 					KB ((unsigned long long)filestat.st_size),
 					PERCENTAGE (written + i,(unsigned long long)filestat.st_size));
