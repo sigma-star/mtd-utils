@@ -46,7 +46,9 @@
 #include <uuid.h>
 #include <sys/file.h>
 
+#ifdef WITH_CRYPTO
 #include <openssl/rand.h>
+#endif
 
 #include <mtd/ubifs-media.h>
 
