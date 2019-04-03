@@ -1531,12 +1531,13 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 	ino->flags      = cpu_to_le32(use_flags);
 	ino->compr_type = cpu_to_le16(c->default_compr);
 	if (data_len) {
-		if (!S_ISLNK(st->st_mode))
-			return err_msg("Expected symlink");
-
 		if (!fctx) {
 			memcpy(&ino->data, data, data_len);
 		} else {
+			/* TODO: what about device files? */
+			if (!S_ISLNK(st->st_mode))
+				return err_msg("Expected symlink");
+
 			ret = encrypt_symlink(&ino->data, data, data_len, fctx);
 			if (ret < 0)
 				return ret;
