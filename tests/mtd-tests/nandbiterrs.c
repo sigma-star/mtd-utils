@@ -333,7 +333,7 @@ static int insert_biterror(void)
 	int bit, mask, byte;
 
 	for (byte = 0; byte < pagesize; ++byte) {
-		for (bit = 7, mask = 0x80; bit >= 0; bit--, mask>>=0) {
+		for (bit = 7, mask = 0x80; bit >= 0; bit--, mask >>= 1) {
 			if (wbuffer[byte] & mask) {
 				wbuffer[byte] &= ~mask;
 				printf("Inserted biterror @ %u/%u\n", byte, bit);
