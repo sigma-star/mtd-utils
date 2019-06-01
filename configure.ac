@@ -66,6 +66,7 @@ need_pthread="no"
 need_uuid="no"
 need_zlib="no"
 need_lzo="no"
+need_zstd="no"
 need_xattr="no"
 need_cmocka="no"
 need_selinux="no"
@@ -138,6 +139,7 @@ AM_COND_IF([BUILD_UBIFS], [
 	need_xattr="yes"
 	need_zlib="yes"
 	need_lzo="yes"
+	need_zstd="yes"
 	need_openssl="yes"
 ])
 
@@ -162,6 +164,14 @@ AC_ARG_WITH([lzo],
 	yes) ;;
 	no) need_lzo="no" ;;
 	*) AC_MSG_ERROR([bad value ${withval} for --without-lzo]) ;;
+	esac])
+
+AC_ARG_WITH([zstd],
+	[AS_HELP_STRING([--without-zstd], [Disable support for ZSTD compression])],
+	[case "${withval}" in
+	yes) ;;
+	no) need_zstd="no" ;;
+	*) AC_MSG_ERROR([bad value ${withval} for --without-zstd]) ;;
 	esac])
 
 AC_ARG_WITH([selinux],
@@ -189,6 +199,7 @@ pthread_missing="no"
 uuid_missing="no"
 zlib_missing="no"
 lzo_missing="no"
+zstd_missing="no"
 xattr_missing="no"
 cmocka_missing="no"
 selinux_missing="no"
@@ -223,6 +234,10 @@ if test "x$need_lzo" = "xyes"; then
 			[lzo_missing="yes"]
 		)]
 	)
+fi
+
+if test "x$need_zstd" = "xyes"; then
+	PKG_CHECK_MODULES([ZSTD], [libzstd],, zstd_missing="yes")
 fi
 
 if test "x$need_xattr" = "xyes"; then
@@ -283,6 +298,13 @@ if test "x$lzo_missing" = "xyes"; then
 	dep_missing="yes"
 fi
 
+if test "x$zstd_missing" = "xyes"; then
+	AC_MSG_WARN([cannot find ZSTD library required for mkfs program])
+	AC_MSG_NOTICE([mtd-utils can optionally be built without mkfs.ubifs])
+	AC_MSG_NOTICE([mtd-utils can optionally be built without ZSTD support])
+	dep_missing="yes"
+fi
+
 if test "x$xattr_missing" = "xyes"; then
 	AC_MSG_WARN([cannot find headers for extended attributes])
 	AC_MSG_WARN([disabling XATTR support])
@@ -314,6 +336,7 @@ fi
 ##### generate output #####
 
 AM_CONDITIONAL([WITHOUT_LZO], [test "x$need_lzo" != "xyes"])
+AM_CONDITIONAL([WITHOUT_ZSTD], [test "x$need_zstd" != "xyes"])
 AM_CONDITIONAL([WITHOUT_XATTR], [test "x$need_xattr" != "xyes"])
 AM_CONDITIONAL([WITH_SELINUX], [test "x$need_selinux" == "xyes"])
 AM_CONDITIONAL([WITH_CRYPTO], [test "x$need_openssl" == "xyes"])

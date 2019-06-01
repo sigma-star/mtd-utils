@@ -35,6 +35,10 @@
 #include <selinux/label.h>
 #endif
 
+#ifndef WITHOUT_ZSTD
+#include <zstd.h>
+#endif
+
 #include "crypto.h"
 #include "fscrypt.h"
 
@@ -209,8 +213,8 @@ static const char *helptext =
 "-o, --output=FILE        output to FILE\n"
 "-j, --jrn-size=SIZE      journal size\n"
 "-R, --reserved=SIZE      how much space should be reserved for the super-user\n"
-"-x, --compr=TYPE         compression type - \"lzo\", \"favor_lzo\", \"zlib\" or\n"
-"                         \"none\" (default: \"lzo\")\n"
+"-x, --compr=TYPE         compression type - \"lzo\", \"favor_lzo\", \"zlib\"\n"
+"                         \"zstd\" or \"none\" (default: \"lzo\")\n"
 "-X, --favor-percent      may only be used with favor LZO compression and defines\n"
 "                         how many percent better zlib should compress to make\n"
 "                         mkfs.ubifs use zlib instead of LZO (default 20%)\n"
@@ -654,6 +658,10 @@ static int get_options(int argc, char**argv)
 				c->default_compr = UBIFS_COMPR_NONE;
 			else if (strcmp(optarg, "zlib") == 0)
 				c->default_compr = UBIFS_COMPR_ZLIB;
+#ifndef WITHOUT_ZSTD
+			else if (strcmp(optarg, "zstd") == 0)
+				c->default_compr = UBIFS_COMPR_ZSTD;
+#endif
 #ifndef WITHOUT_LZO
 			else if (strcmp(optarg, "favor_lzo") == 0) {
 				c->default_compr = UBIFS_COMPR_LZO;
