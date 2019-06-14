@@ -74,6 +74,7 @@ static int test_static(void)
 	req.bytes = dev_info.avail_bytes;
 	req.vol_type = UBI_STATIC_VOLUME;
 	req.name = name;
+	req.flags = 0;
 
 	if (ubi_mkvol(libubi, node, &req)) {
 		failed("ubi_mkvol");
@@ -329,6 +330,7 @@ static int test_read(int type)
 		req.vol_id = UBI_VOL_NUM_AUTO;
 		req.vol_type = type;
 		req.name = name;
+		req.flags = 0;
 
 		req.alignment = alignments[i];
 		req.alignment -= req.alignment % dev_info.min_io_size;

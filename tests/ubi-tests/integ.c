@@ -467,6 +467,7 @@ static void operate_on_ubi_device(struct ubi_device_info *ubi_device)
 		req.vol_id = UBI_VOL_NUM_AUTO;
 		req.alignment = 1; /* TODO: What is this? */
 		req.bytes = ubi_device->info.leb_size * max_ebs_per_vol;
+		req.flags = 0;
 		if (req.bytes == 0 || req.bytes > ubi_device->info.avail_bytes)
 			req.bytes = ubi_device->info.avail_bytes;
 		req.vol_type = UBI_DYNAMIC_VOLUME;

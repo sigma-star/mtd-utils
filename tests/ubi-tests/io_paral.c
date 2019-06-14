@@ -266,6 +266,7 @@ int main(int argc, char * const argv[])
 		sprintf(vol_name[i], PROGRAM_NAME":%d", i);
 		reqests[i].name = vol_name[i];
 		reqests[i].vol_type = UBI_DYNAMIC_VOLUME;
+		reqests[i].flags = 0;
 		if (i == THREADS_NUM)
 			reqests[i].vol_type = UBI_STATIC_VOLUME;
 		sprintf(vol_nodes[i], UBI_VOLUME_PATTERN, dev_info.dev_num, i);

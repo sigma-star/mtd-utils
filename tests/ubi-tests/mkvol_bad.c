@@ -48,6 +48,7 @@ static int test_mkvol(void)
 	req.bytes = dev_info.avail_bytes;
 	req.vol_type = UBI_DYNAMIC_VOLUME;
 	req.name = name;
+	req.flags = 0;
 
 	/* Bad volume ID */
 	req.vol_id = -2;
@@ -251,6 +252,7 @@ static int test_rmvol(void)
 	req.bytes = dev_info.avail_bytes;
 	req.vol_type = UBI_DYNAMIC_VOLUME;
 	req.name = name;
+	req.flags = 0;
 	if (ubi_mkvol(libubi, node, &req)) {
 		failed("ubi_mkvol");
 		return -1;
