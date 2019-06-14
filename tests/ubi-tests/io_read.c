@@ -228,6 +228,10 @@ static int test_read2(const struct ubi_vol_info *vol_info, int len)
 				  vol_info->data_bytes);
 
 	for (i = 0; i < sizeof(offsets)/sizeof(off_t); i++) {
+		/* Filter invalid offset value */
+		if (offsets[i] < 0 || offsets[i] > vol_info->data_bytes)
+			continue;
+
 		if (test_read3(vol_info, len, offsets[i])) {
 			errorm("offset = %d", offsets[i]);
 			return -1;
