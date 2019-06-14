@@ -117,7 +117,7 @@ run_test()
 		fm_param=
 	elif [ "$fm_supported" = "yes" ]; then
 		fastmap="disabled"
-		fm_param="fm_auto"
+		fm_param="fm_autoconvert"
 	else
 		echo "Fastmap is not supported, skip"
 		return 0
