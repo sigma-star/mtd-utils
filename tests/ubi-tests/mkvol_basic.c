@@ -178,7 +178,7 @@ static int mkvol_multiple(void)
 		req.name = nm;
 
 		if (ubi_mkvol(libubi, node, &req)) {
-			if (errno == ENFILE) {
+			if (errno == ENFILE || errno == ENOSPC) {
 				max = i;
 				break;
 			}

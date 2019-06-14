@@ -200,7 +200,7 @@ static int test_mkvol(void)
 			 * Note, because of gluebi we may be unable to create
 			 * dev_info.max_vol_count devices (MTD restrictions).
 			 */
-			if (errno == ENFILE)
+			if (errno == ENFILE || errno == ENOSPC)
 				break;
 			failed("ubi_mkvol");
 			errorm("vol_id %d", i);
