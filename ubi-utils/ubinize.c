@@ -442,11 +442,14 @@ int main(int argc, char * const argv[])
 	verbose(args.verbose, "UBI image sequence number: %u", ui.image_seq);
 
 	vtbl = ubigen_create_empty_vtbl(&ui);
-	if (!vtbl)
+	if (!vtbl) {
+		err = -1;
 		goto out;
+	}
 
 	args.dict = iniparser_load(args.f_in);
 	if (!args.dict) {
+		err = -1;
 		errmsg("cannot load the input ini file \"%s\"", args.f_in);
 		goto out_vtbl;
 	}
@@ -456,17 +459,20 @@ int main(int argc, char * const argv[])
 	/* Each section describes one volume */
 	sects = iniparser_getnsec(args.dict);
 	if (sects == -1) {
+		err = -1;
 		errmsg("ini-file parsing error (iniparser_getnsec)");
 		goto out_dict;
 	}
 
 	verbose(args.verbose, "count of sections: %d", sects);
 	if (sects == 0) {
+		err = -1;
 		errmsg("no sections found the ini-file \"%s\"", args.f_in);
 		goto out_dict;
 	}
 
 	if (sects > ui.max_volumes) {
+		err = -1;
 		errmsg("too many sections (%d) in the ini-file \"%s\"",
 		       sects, args.f_in);
 		normsg("each section corresponds to an UBI volume, maximum "
@@ -476,6 +482,7 @@ int main(int argc, char * const argv[])
 
 	vi = calloc(sizeof(struct ubigen_vol_info), sects);
 	if (!vi) {
+		err = -1;
 		errmsg("cannot allocate memory");
 		goto out_dict;
 	}
