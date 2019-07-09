@@ -120,8 +120,7 @@ static int zstd_compress(void *in_buf, size_t in_len, void *out_buf,
 {
 	size_t ret;
 
-	ret = ZSTD_compressCCtx(zctx, out_buf, *out_len, in_buf, in_len,
-				ZSTD_CLEVEL_DEFAULT);
+	ret = ZSTD_compressCCtx(zctx, out_buf, *out_len, in_buf, in_len, 0);
 	if (ZSTD_isError(ret)) {
 		errcnt += 1;
 		return -1;
