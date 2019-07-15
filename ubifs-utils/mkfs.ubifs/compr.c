@@ -28,7 +28,7 @@
 #include <lzo/lzo1x.h>
 #endif
 #include <linux/types.h>
-#ifndef WITHOUT_ZSTSD
+#ifndef WITHOUT_ZSTD
 #include <zstd.h>
 #endif
 
