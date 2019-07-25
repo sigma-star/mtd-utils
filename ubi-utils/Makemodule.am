@@ -37,9 +37,13 @@ ubirsvol_LDADD = libmtd.a libubi.a
 ubiblock_SOURCES = ubi-utils/ubiblock.c
 ubiblock_LDADD = libmtd.a libubi.a
 
+ubihealthd_SOURCES = ubi-utils/ubihealthd.c
+ubihealthd_LDADD = libmtd.a libubi.a
+
 UBI_BINS = \
 	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
-	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock
+	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock \
+	ubihealthd
 
 UBI_MAN = \
 	ubi-utils/ubinize.8
