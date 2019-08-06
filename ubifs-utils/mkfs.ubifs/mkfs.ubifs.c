@@ -68,6 +68,7 @@ static char *secontext;
  * @lnum: LEB number
  * @offs: offset
  * @len: length
+ * @hash: hash of the node
  *
  * The index is recorded as a linked list which is sorted and used to create
  * the bottom level of the on-flash index tree. The remaining levels of the
@@ -82,6 +83,7 @@ struct idx_entry {
 	int lnum;
 	int offs;
 	int len;
+	uint8_t hash[UBIFS_MAX_HASH_LEN];
 };
 
 /**
@@ -164,6 +166,12 @@ static unsigned long long creat_sqnum;
 
 static const char *optstring = "d:r:m:o:D:yh?vVe:c:g:f:Fp:k:x:X:j:R:l:j:UQqaK:b:P:C:";
 
+enum {
+	HASH_ALGO_OPTION = CHAR_MAX + 1,
+	AUTH_KEY_OPTION,
+	AUTH_CERT_OPTION,
+};
+
 static const struct option longopts[] = {
 	{"root",               1, NULL, 'r'},
 	{"min-io-size",        1, NULL, 'm'},
@@ -192,6 +200,9 @@ static const struct option longopts[] = {
 	{"key-descriptor",     1, NULL, 'b'},
 	{"padding",            1, NULL, 'P'},
 	{"cipher",             1, NULL, 'C'},
+	{"hash-algo",          1, NULL, HASH_ALGO_OPTION},
+	{"auth-key",           1, NULL, AUTH_KEY_OPTION},
+	{"auth-cert",          1, NULL, AUTH_CERT_OPTION},
 	{NULL, 0, NULL, 0}
 };
 
@@ -242,6 +253,12 @@ static const char *helptext =
 "                         (default = 4).\n"
 "-C, --cipher=NAME        Specify cipher to use for file level encryption\n"
 "                         (default is \"AES-256-XTS\").\n"
+"    --hash-algo=NAME     hash algorithm to use for signed images\n"
+"                         (Valid options include sha1, sha256, sha512)\n"
+"    --auth-key=FILE      filename or PKCS #11 uri containing the authentication key\n"
+"                         for signing\n"
+"    --auth-cert=FILE     Authentication certificate filename for signing. Unused\n"
+"                         when certificate is provided via PKCS #11\n"
 "-h, --help               display this help text\n\n"
 "Note, SIZE is specified in bytes, but it may also be specified in Kilobytes,\n"
 "Megabytes, and Gigabytes if a KiB, MiB, or GiB suffix is used.\n\n"
@@ -261,7 +278,15 @@ static const char *helptext =
 "when flashing the image and the second time when UBIFS is mounted and writes useful\n"
 "data there. A proper UBI-aware flasher should skip such NAND pages, though. Note, this\n"
 "flag may make the first mount very slow, because the \"free space fixup\" procedure\n"
-"takes time. This feature is supported by the Linux kernel starting from version 3.0.\n";
+"takes time. This feature is supported by the Linux kernel starting from version 3.0.\n"
+"\n"
+"mkfs.ubifs supports building signed images. For this the \"--hash-algo\",\n"
+"\"--auth-key\" and \"--auth-cert\" options have to be specified.\n";
+
+static inline uint8_t *ubifs_branch_hash(struct ubifs_branch *br)
+{
+	return (void *)br + sizeof(*br) + c->key_len;
+}
 
 /**
  * make_path - make a path name from a directory and a name.
@@ -753,14 +778,27 @@ static int get_options(int argc, char**argv)
 			}
 			break;
 		}
-		case 'C':
 #ifdef WITH_CRYPTO
+		case 'C':
 			cipher_name = optarg;
-#else
-			return err_msg("mkfs.ubifs was built without crypto support.");
-#endif
+			break;
+		case HASH_ALGO_OPTION:
+			c->hash_algo_name = xstrdup(optarg);
+			break;
+		case AUTH_KEY_OPTION:
+			c->auth_key_filename = xstrdup(optarg);
+			break;
+		case AUTH_CERT_OPTION:
+			c->auth_cert_filename = xstrdup(optarg);
 			break;
 		}
+#else
+		case 'C':
+		case HASH_ALGO_OPTION:
+		case AUTH_KEY_OPTION:
+		case X509_OPTION:
+			return err_msg("mkfs.ubifs was built without crypto support.");
+#endif
 	}
 
 	if (optind != argc && !output)
@@ -1063,9 +1101,10 @@ static void set_lprops(int lnum, int offs, int flags)
  * @lnum: node LEB number
  * @offs: node offset
  * @len: node length
+ * @hash: hash of the node
  */
 static int add_to_index(union ubifs_key *key, char *name, int name_len,
-			int lnum, int offs, int len)
+			int lnum, int offs, int len, const uint8_t *hash)
 {
 	struct idx_entry *e;
 
@@ -1079,6 +1118,8 @@ static int add_to_index(union ubifs_key *key, char *name, int name_len,
 	e->lnum = lnum;
 	e->offs = offs;
 	e->len = len;
+	memcpy(e->hash, hash, c->hash_len);
+
 	if (!idx_list_first)
 		idx_list_first = e;
 	if (idx_list_last)
@@ -1137,6 +1178,7 @@ static int reserve_space(int len, int *lnum, int *offs)
 static int add_node(union ubifs_key *key, char *name, int name_len, void *node, int len)
 {
 	int err, lnum, offs, type = key_type(key);
+	uint8_t hash[UBIFS_MAX_HASH_LEN];
 
 	if (type == UBIFS_DENT_KEY || type == UBIFS_XENT_KEY) {
 		if (!name)
@@ -1156,7 +1198,9 @@ static int add_node(union ubifs_key *key, char *name, int name_len, void *node, 
 	memcpy(leb_buf + offs, node, len);
 	memset(leb_buf + offs + len, 0xff, ALIGN(len, 8) - len);
 
-	add_to_index(key, name, name_len, lnum, offs, len);
+	ubifs_node_calc_hash(node, hash);
+
+	add_to_index(key, name, name_len, lnum, offs, len, hash);
 
 	return 0;
 }
@@ -2298,6 +2342,7 @@ static int write_index(void)
 	struct ubifs_idx_node *idx;
 	struct ubifs_branch *br;
 	int child_cnt = 0, j, level, blnum, boffs, blen, blast_len, err;
+	uint8_t *hashes;
 
 	dbg_msg(1, "leaf node count: %zd", idx_cnt);
 
@@ -2321,6 +2366,9 @@ static int write_index(void)
 	cnt = idx_cnt / c->fanout;
 	if (idx_cnt % c->fanout)
 		cnt += 1;
+
+	hashes = xmalloc(c->hash_len * cnt);
+
 	p = idx_ptr;
 	blnum = head_lnum;
 	boffs = head_offs;
@@ -2345,8 +2393,11 @@ static int write_index(void)
 			br->lnum = cpu_to_le32((*p)->lnum);
 			br->offs = cpu_to_le32((*p)->offs);
 			br->len = cpu_to_le32((*p)->len);
+			memcpy(ubifs_branch_hash(br), (*p)->hash, c->hash_len);
 		}
 		add_idx_node(idx, child_cnt);
+
+		ubifs_node_calc_hash(idx, hashes + i * c->hash_len);
 	}
 	/* Write level 1 index nodes and above */
 	level = 0;
@@ -2423,10 +2474,17 @@ static int write_index(void)
 				 */
 				boffs += ALIGN(blen, 8);
 				p += pstep;
+
+				memcpy(ubifs_branch_hash(br),
+				       hashes + bn * c->hash_len,
+				       c->hash_len);
 			}
 			add_idx_node(idx, child_cnt);
+			ubifs_node_calc_hash(idx, hashes + i * c->hash_len);
 		}
 	}
+
+	memcpy(c->root_idx_hash, hashes, c->hash_len);
 
 	/* Free stuff */
 	for (i = 0; i < idx_cnt; i++) {
@@ -2512,44 +2570,75 @@ static int ubifs_format_version(void)
  */
 static int write_super(void)
 {
-	struct ubifs_sb_node sup;
+	void *buf;
+	struct ubifs_sb_node *sup;
+	struct ubifs_sig_node *sig;
+	int err, len;
 
-	memset(&sup, 0, UBIFS_SB_NODE_SZ);
+	buf = xzalloc(c->leb_size);
 
-	sup.ch.node_type  = UBIFS_SB_NODE;
-	sup.key_hash      = c->key_hash_type;
-	sup.min_io_size   = cpu_to_le32(c->min_io_size);
-	sup.leb_size      = cpu_to_le32(c->leb_size);
-	sup.leb_cnt       = cpu_to_le32(c->leb_cnt);
-	sup.max_leb_cnt   = cpu_to_le32(c->max_leb_cnt);
-	sup.max_bud_bytes = cpu_to_le64(c->max_bud_bytes);
-	sup.log_lebs      = cpu_to_le32(c->log_lebs);
-	sup.lpt_lebs      = cpu_to_le32(c->lpt_lebs);
-	sup.orph_lebs     = cpu_to_le32(c->orph_lebs);
-	sup.jhead_cnt     = cpu_to_le32(c->jhead_cnt);
-	sup.fanout        = cpu_to_le32(c->fanout);
-	sup.lsave_cnt     = cpu_to_le32(c->lsave_cnt);
-	sup.fmt_version   = cpu_to_le32(ubifs_format_version());
-	sup.default_compr = cpu_to_le16(c->default_compr);
-	sup.rp_size       = cpu_to_le64(c->rp_size);
-	sup.time_gran     = cpu_to_le32(DEFAULT_TIME_GRAN);
-	uuid_generate_random(sup.uuid);
+	sup = buf;
+	sig = buf + UBIFS_SB_NODE_SZ;
+
+	sup->ch.node_type  = UBIFS_SB_NODE;
+	sup->key_hash      = c->key_hash_type;
+	sup->min_io_size   = cpu_to_le32(c->min_io_size);
+	sup->leb_size      = cpu_to_le32(c->leb_size);
+	sup->leb_cnt       = cpu_to_le32(c->leb_cnt);
+	sup->max_leb_cnt   = cpu_to_le32(c->max_leb_cnt);
+	sup->max_bud_bytes = cpu_to_le64(c->max_bud_bytes);
+	sup->log_lebs      = cpu_to_le32(c->log_lebs);
+	sup->lpt_lebs      = cpu_to_le32(c->lpt_lebs);
+	sup->orph_lebs     = cpu_to_le32(c->orph_lebs);
+	sup->jhead_cnt     = cpu_to_le32(c->jhead_cnt);
+	sup->fanout        = cpu_to_le32(c->fanout);
+	sup->lsave_cnt     = cpu_to_le32(c->lsave_cnt);
+	sup->fmt_version   = cpu_to_le32(ubifs_format_version());
+	sup->default_compr = cpu_to_le16(c->default_compr);
+	sup->rp_size       = cpu_to_le64(c->rp_size);
+	sup->time_gran     = cpu_to_le32(DEFAULT_TIME_GRAN);
+	sup->hash_algo     = cpu_to_le16(c->hash_algo);
+	uuid_generate_random(sup->uuid);
+
 	if (verbose) {
 		char s[40];
 
-		uuid_unparse_upper(sup.uuid, s);
+		uuid_unparse_upper(sup->uuid, s);
 		printf("\tUUID:         %s\n", s);
 	}
 	if (c->big_lpt)
-		sup.flags |= cpu_to_le32(UBIFS_FLG_BIGLPT);
+		sup->flags |= cpu_to_le32(UBIFS_FLG_BIGLPT);
 	if (c->space_fixup)
-		sup.flags |= cpu_to_le32(UBIFS_FLG_SPACE_FIXUP);
+		sup->flags |= cpu_to_le32(UBIFS_FLG_SPACE_FIXUP);
 	if (c->double_hash)
-		sup.flags |= cpu_to_le32(UBIFS_FLG_DOUBLE_HASH);
+		sup->flags |= cpu_to_le32(UBIFS_FLG_DOUBLE_HASH);
 	if (c->encrypted)
-		sup.flags |= cpu_to_le32(UBIFS_FLG_ENCRYPTION);
+		sup->flags |= cpu_to_le32(UBIFS_FLG_ENCRYPTION);
+	if (authenticated()) {
+		sup->flags |= cpu_to_le32(UBIFS_FLG_AUTHENTICATION);
+		memcpy(sup->hash_mst, c->mst_hash, c->hash_len);
+	}
 
-	return write_node(&sup, UBIFS_SB_NODE_SZ, UBIFS_SB_LNUM);
+	prepare_node(sup, UBIFS_SB_NODE_SZ);
+
+	err = sign_superblock_node(sup);
+	if (err)
+		goto out;
+
+	sig = (void *)(sup + 1);
+	prepare_node(sig, UBIFS_SIG_NODE_SZ + le32_to_cpu(sig->len));
+
+	len = do_pad(sig, UBIFS_SIG_NODE_SZ + le32_to_cpu(sig->len));
+
+	err = write_leb(UBIFS_SB_LNUM, UBIFS_SB_NODE_SZ + len, sup);
+	if (err)
+		goto out;
+
+	err = 0;
+out:
+	free(buf);
+
+	return err;
 }
 
 /**
@@ -2592,6 +2681,11 @@ static int write_master(void)
 	mst.total_dark   = cpu_to_le64(c->lst.total_dark);
 	mst.leb_cnt      = cpu_to_le32(c->leb_cnt);
 
+	if (authenticated()) {
+		memcpy(mst.hash_root_idx, c->root_idx_hash, c->hash_len);
+		memcpy(mst.hash_lpt, c->lpt_hash, c->hash_len);
+	}
+
 	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM);
 	if (err)
 		return err;
@@ -2599,6 +2693,8 @@ static int write_master(void)
 	err = write_node(&mst, UBIFS_MST_NODE_SZ, UBIFS_MST_LNUM + 1);
 	if (err)
 		return err;
+
+	mst_node_calc_hash(&mst, c->mst_hash);
 
 	return 0;
 }
@@ -2864,6 +2960,10 @@ static int mkfs(void)
 	if (err)
 		goto out;
 
+	err = init_authentication();
+	if (err)
+		goto out;
+
 	err = write_data();
 	if (err)
 		goto out;
@@ -2884,11 +2984,11 @@ static int mkfs(void)
 	if (err)
 		goto out;
 
-	err = write_super();
+	err = write_master();
 	if (err)
 		goto out;
 
-	err = write_master();
+	err = write_super();
 	if (err)
 		goto out;
 

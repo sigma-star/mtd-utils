@@ -19,7 +19,8 @@ mkfs_ubifs_SOURCES = \
 
 if WITH_CRYPTO
 mkfs_ubifs_SOURCES += ubifs-utils/mkfs.ubifs/crypto.c \
-		ubifs-utils/mkfs.ubifs/fscrypt.c
+		ubifs-utils/mkfs.ubifs/fscrypt.c \
+		ubifs-utils/mkfs.ubifs/sign.c
 endif
 
 mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(ZSTD_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) $(OPENSSL_LIBS) -lm

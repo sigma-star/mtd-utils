@@ -63,6 +63,7 @@
 #include "key.h"
 #include "lpt.h"
 #include "compr.h"
+#include "sign.h"
 
 /*
  * Compression flags are duplicated so that compr.c can compile without ubifs.h.
