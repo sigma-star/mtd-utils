@@ -42,7 +42,7 @@ static int ubi_fd;
 static int interval_secs = 120;
 static int nodaemon;
 
-static const char opt_string[] = "d:i:f";
+static const char opt_string[] = "d:i:fh";
 static const struct option options[] = {
         {
                 .name = "device",
@@ -56,6 +56,12 @@ static const struct option options[] = {
                 .flag = NULL,
                 .val = 'i'
         },
+	{
+		.name = "help",
+		.has_arg = no_argument,
+		.flag = NULL,
+		.val = 'h'
+	},
 	{ /* sentinel */ }
 };
 
@@ -238,7 +244,7 @@ int main (int argc, char *argv[])
 			nodaemon = 1;
 			break;
 		}
-		case '?':
+		case 'h':
 		default:
 			fprintf(stderr, "Usage: %s [ -d UBI_DEVICE ] [-i INTERVAL_SEC ] [ -f ]\n", argv[0]);
 			exit(1);
