@@ -56,6 +56,7 @@ static const struct option options[] = {
                 .flag = NULL,
                 .val = 'i'
         },
+	{ /* sentinel */ }
 };
 
 static void dolog(const char *fmt, ...)
