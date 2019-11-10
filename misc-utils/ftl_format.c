@@ -191,6 +191,7 @@ static int format_partition(int fd, int quiet, int interrogate,
 				fflush(stdout);
 			}
 			perror("block erase failed");
+			free(bam);
 			return -1;
 		}
 		erase.start += erase.length;
@@ -246,6 +247,9 @@ static int format_partition(int fd, int quiet, int interrogate,
 			break;
 		}
 	}
+
+	free(bam);
+
 	if (i < le16_to_cpu(hdr.NumEraseUnits))
 		return -1;
 	else
