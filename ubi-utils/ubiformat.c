@@ -426,8 +426,8 @@ static int flash_image(libmtd_t libmtd, const struct mtd_dev_info *mtd,
 	}
 
 	if (st_size % mtd->eb_size) {
-		return sys_errmsg("file \"%s\" (size %lld bytes) is not multiple of ""eraseblock size (%d bytes)",
-				  args.image, (long long)st_size, mtd->eb_size);
+		sys_errmsg("file \"%s\" (size %lld bytes) is not multiple of ""eraseblock size (%d bytes)",
+			  args.image, (long long)st_size, mtd->eb_size);
 		goto out_close;
 	}
 
