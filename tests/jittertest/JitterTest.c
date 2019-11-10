@@ -462,14 +462,14 @@ static void doGrabKProfile(int jitterusec, char *fileName)
 
     (void)jitterusec;
 
-    if((fdSnapshot = open(fileName, O_WRONLY | O_CREAT, S_IRWXU)) <= 0)
+    if((fdSnapshot = open(fileName, O_WRONLY | O_CREAT, S_IRWXU)) < 0)
     {
         fprintf(stderr, "Could not open file %s.\n", fileName);
         perror("Error:");
         return;
     }
 
-    if((fdProfile = open("/proc/profile", O_RDWR)) <= 0)
+    if((fdProfile = open("/proc/profile", O_RDWR)) < 0)
     {
         fprintf(stderr, "Could not open file /proc/profile. Make sure you booted with profile=2\n");
         close(fdSnapshot);
@@ -509,7 +509,7 @@ static void clearProfileBuf(void){
   char readBuf[10];
 
 
-  if((fdProfile = open("/proc/profile", O_RDWR)) <= 0)
+  if((fdProfile = open("/proc/profile", O_RDWR)) < 0)
     {
       fprintf(stderr, "Could not open file /proc/profile. Make sure you booted with profile=2\n");
       return;
