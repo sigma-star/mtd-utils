@@ -2043,8 +2043,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 			if (errno == 0)
 				break;
 			sys_err_msg("error reading directory '%s'", dir_name);
-			err = -1;
-			break;
+			goto out_free;
 		}
 
 		if (strcmp(".", entry->d_name) == 0)
