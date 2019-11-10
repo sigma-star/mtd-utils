@@ -118,23 +118,26 @@ static ssize_t gen_essiv_salt(const void *iv, size_t iv_len, const void *key, si
 	cipher = EVP_aes_256_ecb();
 	if (!cipher) {
 		errmsg("OpenSSL: Cipher AES-256-ECB is not supported");
-		return -1;
+		goto fail;
 	}
 
 	if (do_hash(EVP_sha256(), key, key_len, sha256) != 0) {
 		errmsg("sha256 failed");
-		return -1;
+		goto fail;
 	}
 
 	ret = do_encrypt(cipher, iv, iv_len, sha256, EVP_MD_size(EVP_sha256()), NULL, 0, salt);
 	if (ret != iv_len) {
 		errmsg("Unable to compute ESSIV salt, return value %zi instead of %zi", ret, iv_len);
-		return -1;
+		goto fail;
 	}
 
 	free(sha256);
 
 	return ret;
+fail:
+	free(sha256);
+	return -1;
 }
 
 static ssize_t encrypt_block(const void *plaintext, size_t size,
