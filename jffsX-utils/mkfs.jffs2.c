@@ -151,6 +151,7 @@ static char *xreadlink(const char *path)
 		readsize = readlink(path, buf, bufsize); /* 1st try */
 		if (readsize == -1) {
 			sys_errmsg("%s:%s", PROGRAM_NAME, path);
+			free(buf);
 			return NULL;
 		}
 	}
