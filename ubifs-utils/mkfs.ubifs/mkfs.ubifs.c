@@ -2013,7 +2013,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 	unsigned int nlink = 2;
 	struct path_htbl_element *ph_elt;
 	struct name_htbl_element *nh_elt = NULL;
-	struct hashtable_itr *itr;
+	struct hashtable_itr *itr = NULL;
 	ino_t inum;
 	unsigned char type;
 	unsigned long long dir_creat_sqnum = ++c->max_sqnum;
@@ -2218,6 +2218,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 	return 0;
 
 out_free:
+	free(itr);
 	free(name);
 	if (existing)
 		closedir(dir);

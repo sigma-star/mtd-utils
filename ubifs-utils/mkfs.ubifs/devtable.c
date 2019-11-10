@@ -525,6 +525,7 @@ void free_devtable_info(void)
 			 */
 			hashtable_destroy(ph_elt->name_htbl, 1);
 		} while (hashtable_iterator_advance(ph_itr));
+		free(ph_itr);
 	}
 	hashtable_destroy(path_htbl, 1);
 }
