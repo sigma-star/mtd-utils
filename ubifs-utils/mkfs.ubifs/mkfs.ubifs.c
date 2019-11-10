@@ -2099,24 +2099,32 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 
 		if (S_ISDIR(dent_st.st_mode)) {
 			err = add_directory(name, inum, &dent_st, 1, new_fctx);
-			if (err)
+			if (err) {
+				free_fscrypt_context(new_fctx);
 				goto out_free;
+			}
 			nlink += 1;
 			type = UBIFS_ITYPE_DIR;
 		} else {
 			err = add_non_dir(name, &inum, 0, &type,
 					  &dent_st, new_fctx);
-			if (err)
+			if (err) {
+				free_fscrypt_context(new_fctx);
 				goto out_free;
+			}
 		}
 
 		err = create_inum_attr(inum, name);
-		if (err)
+		if (err) {
+			free_fscrypt_context(new_fctx);
 			goto out_free;
+		}
 
 		err = add_dent_node(dir_inum, entry->d_name, inum, type, fctx);
-		if (err)
+		if (err) {
+			free_fscrypt_context(new_fctx);
 			goto out_free;
+		}
 		size += ALIGN(UBIFS_DENT_NODE_SZ + strlen(entry->d_name) + 1,
 			      8);
 
@@ -2162,24 +2170,33 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 
 		if (S_ISDIR(nh_elt->mode)) {
 			err = add_directory(name, inum, &fake_st, 0, new_fctx);
-			if (err)
+			if (err) {
+				free_fscrypt_context(new_fctx);
 				goto out_free;
+			}
 			nlink += 1;
 			type = UBIFS_ITYPE_DIR;
 		} else {
 			err = add_non_dir(name, &inum, 0, &type,
 					  &fake_st, new_fctx);
-			if (err)
+			if (err) {
+				free_fscrypt_context(new_fctx);
 				goto out_free;
+			}
 		}
 
 		err = create_inum_attr(inum, name);
-		if (err)
+		if (err) {
+			free_fscrypt_context(new_fctx);
 			goto out_free;
+		}
 
 		err = add_dent_node(dir_inum, nh_elt->name, inum, type, fctx);
-		if (err)
+		if (err) {
+			free_fscrypt_context(new_fctx);
 			goto out_free;
+		}
+
 		size += ALIGN(UBIFS_DENT_NODE_SZ + strlen(nh_elt->name) + 1, 8);
 
 		nh_elt = next_name_htbl_element(ph_elt, &itr);
