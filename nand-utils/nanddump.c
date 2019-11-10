@@ -162,6 +162,7 @@ static void process_options(int argc, char * const argv[])
 				start_addr = simple_strtoll(optarg, &error);
 				break;
 			case 'f':
+				free(dumpfile);
 				dumpfile = xstrdup(optarg);
 				break;
 			case 'l':
