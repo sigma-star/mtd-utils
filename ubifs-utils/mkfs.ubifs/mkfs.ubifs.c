@@ -1873,8 +1873,10 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 			dn->compr_size = 0;
 		} else {
 			ret = encrypt_data_node(fctx, block_no, dn, out_len);
-			if (ret < 0)
+			if (ret < 0) {
+				close(fd);
 				return ret;
+			}
 			out_len = ret;
 		}
 
