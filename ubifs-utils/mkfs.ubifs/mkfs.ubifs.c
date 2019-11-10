@@ -580,6 +580,7 @@ static int get_options(int argc, char**argv)
 		switch (opt) {
 		case 'r':
 		case 'd':
+			free(root);
 			root_len = strlen(optarg);
 			root = xmalloc(root_len + 2);
 
@@ -726,6 +727,7 @@ static int get_options(int argc, char**argv)
 			do_create_inum_attr = 1;
 			break;
 		case 's':
+			free(context);
 			context_len = strlen(optarg);
 			context = (char *) xmalloc(context_len + 1);
 			if (!context)
