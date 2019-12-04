@@ -71,6 +71,7 @@ need_xattr="no"
 need_cmocka="no"
 need_selinux="no"
 need_openssl="no"
+need_getrandom="no"
 
 AM_COND_IF([UNIT_TESTS], [
 	need_cmocka="yes"
@@ -141,6 +142,7 @@ AM_COND_IF([BUILD_UBIFS], [
 	need_lzo="yes"
 	need_zstd="yes"
 	need_openssl="yes"
+	need_getrandom="yes"
 ])
 
 AM_COND_IF([BUILD_JFFSX], [
@@ -204,6 +206,7 @@ xattr_missing="no"
 cmocka_missing="no"
 selinux_missing="no"
 openssl_missing="no"
+getrandom_missing="no"
 
 if test "x$need_zlib" = "xyes"; then
 	PKG_CHECK_MODULES(ZLIB, [zlib], [], [zlib_missing="yes"])
@@ -253,6 +256,10 @@ fi
 if test "x$need_openssl" = "xyes"; then
 	AC_CHECK_HEADER(openssl/rand.h)
 	PKG_CHECK_MODULES(OPENSSL, [openssl], [], [openssl_missing="yes"])
+fi
+
+if test "x$need_getrandom" = "xyes"; then
+	AC_CHECK_HEADERS([sys/random.h], [], [getrandom_missing="yes"])
 fi
 
 if test "x$need_cmocka" = "xyes"; then
@@ -323,6 +330,12 @@ if test "x$openssl_missing" = "xyes"; then
 	need_openssl="no"
 fi
 
+if test "x$getrandom_missing" = "xyes"; then
+	AC_MSG_WARN([cannot find headers for getrandom() function])
+	AC_MSG_WARN([disabling UBIFS ubihealthd support])
+	need_getrandom="no"
+fi
+
 if test "x$cmocka_missing" = "xyes"; then
 	AC_MSG_WARN([cannot find CMocka library required for unit tests])
 	AC_MSG_NOTICE([unit tests can optionally be disabled])
@@ -340,6 +353,7 @@ AM_CONDITIONAL([WITHOUT_ZSTD], [test "x$need_zstd" != "xyes"])
 AM_CONDITIONAL([WITHOUT_XATTR], [test "x$need_xattr" != "xyes"])
 AM_CONDITIONAL([WITH_SELINUX], [test "x$need_selinux" == "xyes"])
 AM_CONDITIONAL([WITH_CRYPTO], [test "x$need_openssl" == "xyes"])
+AM_CONDITIONAL([WITH_GETRANDOM], [test "x$need_getrandom" == "xyes"])
 
 AC_CHECK_SIZEOF([off_t])
 AC_CHECK_SIZEOF([loff_t])
