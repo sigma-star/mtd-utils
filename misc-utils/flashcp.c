@@ -337,12 +337,12 @@ int main (int argc,char *argv[])
 			if (result < 0)
 			{
 				log_printf (LOG_ERROR,
-						"While writing data to 0x%.8x-0x%.8x on %s: %m\n",
+						"While writing data to 0x%.8lx-0x%.8lx on %s: %m\n",
 						written,written + i,device);
 				exit (EXIT_FAILURE);
 			}
 			log_printf (LOG_ERROR,
-					"Short write count returned while writing to x%.8x-0x%.8x on %s: %d/%llu bytes written to flash\n",
+					"Short write count returned while writing to x%.8zx-0x%.8zx on %s: %zu/%llu bytes written to flash\n",
 					written,written + i,device,written + result,(unsigned long long)filestat.st_size);
 			exit (EXIT_FAILURE);
 		}
@@ -372,7 +372,7 @@ int main (int argc,char *argv[])
 		if (size < BUFSIZE) i = size;
 		if (flags & FLAG_VERBOSE)
 			log_printf (LOG_NORMAL,
-					"\rVerifying data: %dk/%lluk (%llu%%)",
+					"\rVerifying data: %luk/%lluk (%llu%%)",
 					KB (written + i),
 					KB ((unsigned long long)filestat.st_size),
 					PERCENTAGE (written + i,(unsigned long long)filestat.st_size));
@@ -387,7 +387,7 @@ int main (int argc,char *argv[])
 		if (memcmp (src,dest,i))
 		{
 			log_printf (LOG_ERROR,
-					"File does not seem to match flash data. First mismatch at 0x%.8x-0x%.8x\n",
+					"File does not seem to match flash data. First mismatch at 0x%.8zx-0x%.8zx\n",
 					written,written + i);
 			exit (EXIT_FAILURE);
 		}
