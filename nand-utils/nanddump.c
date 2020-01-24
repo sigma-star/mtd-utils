@@ -362,8 +362,8 @@ int main(int argc, char * const argv[])
 		return errmsg("mtd_get_dev_info failed");
 
 	/* Allocate buffers */
-	oobbuf = xmalloc(sizeof(oobbuf) * mtd.oob_size);
-	readbuf = xmalloc(sizeof(readbuf) * mtd.min_io_size);
+	oobbuf = xmalloc(mtd.oob_size);
+	readbuf = xmalloc(mtd.min_io_size);
 
 	if (noecc)  {
 		if (ioctl(fd, MTDFILEMODE, MTD_FILE_MODE_RAW) != 0) {
