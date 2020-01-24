@@ -156,7 +156,8 @@ static int read_positive_int(const char *file, int *value)
  */
 static int read_data(const char *file, void *buf, int buf_len)
 {
-	int fd, rd, tmp, tmp1;
+	int fd, rd, tmp1;
+	char tmp;
 
 	fd = open(file, O_RDONLY);
 	if (fd == -1)
@@ -178,11 +179,11 @@ static int read_data(const char *file, void *buf, int buf_len)
 
 	/* Make sure all data is read */
 	tmp1 = read(fd, &tmp, 1);
-	if (tmp1 == 1) {
+	if (tmp1 < 0) {
 		sys_errmsg("cannot read \"%s\"", file);
 		goto out_error;
 	}
-	if (tmp1) {
+	if (tmp1 > 0) {
 		errmsg("file \"%s\" contains too much data (> %d bytes)",
 		       file, buf_len);
 		errno = EINVAL;
