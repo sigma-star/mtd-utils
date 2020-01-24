@@ -605,7 +605,8 @@ int main(int argc, char * const argv[])
 	failed = false;
 
 closeall:
-	close(ifd);
+	if (ifd > 0 && ifd != STDIN_FILENO)
+		close(ifd);
 	libmtd_close(mtd_desc);
 	free(filebuf);
 	close(fd);

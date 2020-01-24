@@ -324,7 +324,7 @@ int main(int argc, char *argv[])
 	return 0;
 
 err:
-	if (out_fd)
+	if (out_fd > 0)
 		close(out_fd);
 
 	close(fd);

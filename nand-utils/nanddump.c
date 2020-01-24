@@ -549,7 +549,8 @@ int main(int argc, char * const argv[])
 
 closeall:
 	close(fd);
-	close(ofd);
+	if (ofd > 0 && ofd != STDOUT_FILENO)
+		close(ofd);
 	free(oobbuf);
 	free(readbuf);
 	exit(EXIT_FAILURE);
