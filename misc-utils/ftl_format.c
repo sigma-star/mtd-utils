@@ -312,18 +312,20 @@ int main(int argc, char *argv[])
 		exit(errflg > 0 ? EXIT_SUCCESS : EXIT_FAILURE);
 	}
 
-	if (stat(argv[optind], &buf) != 0) {
+	fd = open(argv[optind], O_RDWR);
+	if (fd == -1) {
+		perror("open failed");
+		exit(EXIT_FAILURE);
+	}
+	if (fstat(fd, &buf) != 0) {
 		perror("status check failed");
+		close(fd);
 		exit(EXIT_FAILURE);
 	}
 	if (!(buf.st_mode & S_IFCHR)) {
 		fprintf(stderr, "%s is not a character special device\n",
 				argv[optind]);
-		exit(EXIT_FAILURE);
-	}
-	fd = open(argv[optind], O_RDWR);
-	if (fd == -1) {
-		perror("open failed");
+		close(fd);
 		exit(EXIT_FAILURE);
 	}
 

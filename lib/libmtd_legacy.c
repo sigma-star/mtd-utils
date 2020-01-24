@@ -221,17 +221,20 @@ int legacy_get_mtd_oobavail(const char *node)
 	struct nand_ecclayout_user usrlay;
 	int fd, ret;
 
-	if (stat(node, &st))
-		return sys_errmsg("cannot open \"%s\"", node);
-
-	if (!S_ISCHR(st.st_mode)) {
-		errno = EINVAL;
-		return errmsg("\"%s\" is not a character device", node);
-	}
-
 	fd = open(node, O_RDONLY);
 	if (fd == -1)
 		return sys_errmsg("cannot open \"%s\"", node);
+
+	if (fstat(fd, &st)) {
+		ret = sys_errmsg("cannot open \"%s\"", node);
+		goto out_close;
+	}
+
+	if (!S_ISCHR(st.st_mode)) {
+		errno = EINVAL;
+		ret = errmsg("\"%s\" is not a character device", node);
+		goto out_close;
+	}
 
 	ret = ioctl(fd, ECCGETLAYOUT, &usrlay);
 	if (ret < 0) {
@@ -273,15 +276,24 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	loff_t offs = 0;
 	struct proc_parse_info pi;
 
-	if (stat(node, &st)) {
+	fd = open(node, O_RDONLY);
+	if (fd == -1) {
 		sys_errmsg("cannot open \"%s\"", node);
 		if (errno == ENOENT)
 			normsg("MTD subsystem is old and does not support "
 			       "sysfs, so MTD character device nodes have "
 			       "to exist");
+		return -1;
+	}
+
+	if (fstat(fd, &st)) {
+		sys_errmsg("cannot stat \"%s\"", node);
+		close(fd);
+		return -1;
 	}
 
 	if (!S_ISCHR(st.st_mode)) {
+		close(fd);
 		errno = EINVAL;
 		return errmsg("\"%s\" is not a character device", node);
 	}
@@ -291,16 +303,13 @@ int legacy_get_dev_info(const char *node, struct mtd_dev_info *mtd)
 	mtd->minor = minor(st.st_rdev);
 
 	if (mtd->major != MTD_DEV_MAJOR) {
+		close(fd);
 		errno = EINVAL;
 		return errmsg("\"%s\" has major number %d, MTD devices have "
 			      "major %d", node, mtd->major, MTD_DEV_MAJOR);
 	}
 
 	mtd->mtd_num = mtd->minor / 2;
-
-	fd = open(node, O_RDONLY);
-	if (fd == -1)
-		return sys_errmsg("cannot open \"%s\"", node);
 
 	if (ioctl(fd, MEMGETINFO, &ui)) {
 		sys_errmsg("MEMGETINFO ioctl request failed");

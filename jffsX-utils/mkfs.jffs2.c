@@ -1772,9 +1772,7 @@ int main(int argc, char **argv)
 		}
 		out_fd = 1;
 	}
-	if (lstat(rootdir, &sb)) {
-		sys_errmsg_die("%s", rootdir);
-	}
+
 	if (chdir(rootdir))
 		sys_errmsg_die("%s", rootdir);
 
