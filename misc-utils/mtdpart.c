@@ -174,7 +174,9 @@ int main(int argc, char * const argv[])
 		case COMMAND_ADD:
 			part.start = start_addr;
 			part.length = length;
-			strncpy(part.devname, part_name, sizeof(part.devname));
+			strncpy(part.devname, part_name,
+				sizeof(part.devname) - 1);
+			part.devname[sizeof(part.devname) - 1] = '\0';
 			arg.op = BLKPG_ADD_PARTITION;
 			break;
 		case COMMAND_DEL:

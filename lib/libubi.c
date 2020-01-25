@@ -1008,7 +1008,8 @@ int ubi_mkvol(libubi_t desc, const char *node, struct ubi_mkvol_request *req)
 	if (n > UBI_MAX_VOLUME_NAME)
 		return -1;
 
-	strncpy(r.name, req->name, UBI_MAX_VOLUME_NAME + 1);
+	strncpy(r.name, req->name, UBI_MAX_VOLUME_NAME);
+	r.name[UBI_MAX_VOLUME_NAME] = '\0';
 	r.name_len = n;
 
 	fd = open(node, O_RDONLY);

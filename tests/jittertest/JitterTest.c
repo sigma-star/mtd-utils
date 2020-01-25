@@ -859,7 +859,8 @@ void HandleCmdLineArgs(
 	      /* Set the file to log console log on. */
 	      ++argNum;
 
-	      strncpy(LogFile, argv[argNum], sizeof(LogFile));
+	      strncpy(LogFile, argv[argNum], sizeof(LogFile) - 1);
+	      LogFile[sizeof(LogFile) - 1] = '\0';
             }
 
             else if ((strcmp(argv[argNum],"--grab_kprofile") ==
