@@ -149,7 +149,8 @@ static void process_options (int argc, char *argv[])
 				break;
 			case 'e':
 				convertendian = 1;
-				strcpy (cnvfile, optarg);
+				strncpy (cnvfile, optarg, sizeof(cnvfile) - 1);
+				cnvfile[sizeof(cnvfile) - 1] = '\0';
 				break;
 			case 'r':
 				recalccrc = 1;
