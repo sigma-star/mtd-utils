@@ -26,7 +26,6 @@
 #include <ctype.h>
 #include <stdint.h>
 #include <mtd/ubi-user.h>
-#include <mtd/ubi-media.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -37,6 +36,9 @@ extern "C" {
 
 /* Maximum physical eraseblock size in bytes */
 #define UBI_MAX_PEB_SZ (2*1024*1024)
+
+/* The maximum volume name length (from Linux's ubi-media.h) */
+#define UBI_VOL_NAME_MAX 127
 
 /* UBI library descriptor */
 typedef void * libubi_t;

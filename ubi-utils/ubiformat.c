@@ -38,6 +38,7 @@
 #include <getopt.h>
 #include <fcntl.h>
 
+#include <mtd/ubi-media.h>
 #include <libubi.h>
 #include <libmtd.h>
 #include <libscan.h>
