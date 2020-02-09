@@ -793,14 +793,14 @@ static int get_options(int argc, char**argv)
 		case AUTH_CERT_OPTION:
 			c->auth_cert_filename = xstrdup(optarg);
 			break;
-		}
 #else
 		case 'C':
 		case HASH_ALGO_OPTION:
 		case AUTH_KEY_OPTION:
-		case X509_OPTION:
+		case AUTH_CERT_OPTION:
 			return err_msg("mkfs.ubifs was built without crypto support.");
 #endif
+		}
 	}
 
 	if (optind != argc && !output)
