@@ -85,6 +85,7 @@ flash_stress
 flash_speed
 flash_readtest
 nandbiterrs
+nandflipbits
 nandpagetest
 nandsubpagetest
 ubiattach
