@@ -12,9 +12,11 @@ mkfs_jffs2_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 
 jffs2reader_SOURCES = jffsX-utils/jffs2reader.c
 jffs2reader_LDADD = libmtd.a $(ZLIB_LIBS) $(LZO_LIBS)
+jffs2reader_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 
 jffs2dump_SOURCES = jffsX-utils/jffs2dump.c
 jffs2dump_LDADD = libmtd.a $(ZLIB_LIBS) $(LZO_LIBS)
+jffs2dump_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 
 sumtool_SOURCES = jffsX-utils/sumtool.c
 sumtool_LDADD = libmtd.a
