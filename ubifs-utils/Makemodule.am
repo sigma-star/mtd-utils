@@ -7,6 +7,7 @@ mkfs_ubifs_SOURCES = \
 	ubifs-utils/mkfs.ubifs/key.h \
 	ubifs-utils/mkfs.ubifs/compr.h \
 	ubifs-utils/mkfs.ubifs/ubifs.h \
+	ubifs-utils/mkfs.ubifs/sign.h \
 	ubifs-utils/mkfs.ubifs/crc16.c \
 	ubifs-utils/mkfs.ubifs/lpt.c \
 	ubifs-utils/mkfs.ubifs/compr.c \
