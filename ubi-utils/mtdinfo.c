@@ -161,7 +161,7 @@ static void print_ubi_info(const struct mtd_info *mtd_info,
 	struct ubigen_info ui;
 
 	if (!mtd_info->sysfs_supported) {
-		errmsg("cannot provide UBI info, becasue sub-page size is "
+		errmsg("cannot provide UBI info, because sub-page size is "
 		       "not known");
 		return;
 	}
