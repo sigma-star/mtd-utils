@@ -1411,7 +1411,6 @@ static int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
 	int ret;
 	char *sepath = NULL;
 	char *name;
-	struct qstr nm;
 	unsigned int con_size;
 
 	if (!context || !sehnd) {
@@ -1442,14 +1441,7 @@ static int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
 	con_size = strlen(secontext) + 1;
 	name = strdup(XATTR_NAME_SELINUX);
 
-	nm.name = name;
-	nm.len = strlen(name);
-	host_ino->xattr_cnt++;
-	host_ino->xattr_size += CALC_DENT_SIZE(nm.len);
-	host_ino->xattr_size += CALC_XATTR_BYTES(con_size);
-	host_ino->xattr_names += nm.len;
-
-	ret = add_xattr(st, inum, secontext, con_size, &nm);
+	ret = add_xattr(host_ino, st, inum, name, secontext, con_size);
 	if (ret < 0)
 		dbg_msg(2, "add_xattr failed %d\n", ret);
 	return ret;
