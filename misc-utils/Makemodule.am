@@ -16,6 +16,9 @@ serve_image_LDADD = libmtd.a
 recv_image_SOURCES = misc-utils/recv_image.c
 recv_image_LDADD = libmtd.a
 
+fectest_SOURCES = misc-utils/fectest.c
+fectest_LDADD = libmtd.a
+
 flash_lock_SOURCES = misc-utils/flash_lock.c
 
 flash_unlock_SOURCES = misc-utils/flash_unlock.c
@@ -35,7 +38,7 @@ flash_erase_LDADD = libmtd.a
 
 MISC_BINS = \
 	ftl_format doc_loadbios ftl_check mtd_debug docfdisk \
-	serve_image recv_image flash_erase flash_lock \
+	serve_image recv_image fectest flash_erase flash_lock \
 	flash_unlock flash_otp_info flash_otp_dump flash_otp_lock \
 	flash_otp_write flashcp mtdpart
 

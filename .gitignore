@@ -20,6 +20,7 @@
 #
 doc_loadbios
 docfdisk
+fectest
 flash_erase
 flash_lock
 flash_otp_dump
