@@ -47,4 +47,6 @@ UBIFS_EXTRA = \
 
 EXTRA_DIST += $(UBIFS_HEADER) $(UBIFS_EXTRA)
 
+dist_sbin_SCRIPTS = ubifs-utils/mount.ubifs
+
 sbin_PROGRAMS += $(UBIFS_BINS)
