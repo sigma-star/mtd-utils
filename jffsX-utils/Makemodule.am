@@ -27,16 +27,7 @@ jffs2dump_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 sumtool_SOURCES = jffsX-utils/sumtool.c jffsX-utils/summary.h
 sumtool_LDADD = libmtd.a
 
-JFFSX_BINS = \
-	mkfs.jffs2 jffs2dump jffs2reader sumtool
+EXTRA_DIST += jffsX-utils/device_table.txt jffsX-utils/mkfs.jffs2.1
 
-JFFSX_MAN = \
-	jffsX-utils/mkfs.jffs2.1
-
-JFFSX_EXTRA = \
-	jffsX-utils/device_table.txt jffsX-utils/mkfs.jffs2.1
-
-EXTRA_DIST += $(JFFSX_EXTRA)
-
-dist_man1_MANS += $(JFFSX_MAN)
-sbin_PROGRAMS += $(JFFSX_BINS)
+dist_man1_MANS += jffsX-utils/mkfs.jffs2.1
+sbin_PROGRAMS += mkfs.jffs2 jffs2dump jffs2reader sumtool

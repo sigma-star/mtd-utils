@@ -10,10 +10,7 @@ JITTEREST_BINS = \
 JITTERTEST_SH = \
 	tests/jittertest/filljffs2.sh
 
-JITTERTEST_EXTRA = \
-	tests/jittertest/README
-
-EXTRA_DIST += $(JITTERTEST_EXTRA) $(JITTERTEST_SH)
+EXTRA_DIST += tests/jittertest/README $(JITTERTEST_SH)
 
 if INSTALL_TESTS
 pkglibexec_SCRIPTS += $(JITTERTEST_SH)

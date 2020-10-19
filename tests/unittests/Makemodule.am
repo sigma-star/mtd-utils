@@ -14,10 +14,7 @@ TEST_BINS = \
 	ubilib_test \
 	mtdlib_test
 
-UNITTEST_EXTRA = \
-	tests/unittests/sysfs_mock
-
-EXTRA_DIST += $(UNITTEST_EXTRA)
+EXTRA_DIST += tests/unittests/sysfs_mock
 
 TESTS += $(TEST_BINS)
 check_PROGRAMS += $(TEST_BINS)

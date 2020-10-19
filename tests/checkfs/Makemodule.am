@@ -8,10 +8,7 @@ makefiles_CPPFLAGS = $(AM_CPPFLAGS)
 CHECKFS_BINS = \
 	makefiles checkfs
 
-CHECKFS_EXTRA = \
-	tests/checkfs/README
-
-EXTRA_DIST += $(CHECKFS_EXTRA)
+EXTRA_DIST += tests/checkfs/README
 
 if INSTALL_TESTS
 pkglibexec_PROGRAMS += $(CHECKFS_BINS)

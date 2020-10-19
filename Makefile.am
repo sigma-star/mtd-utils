@@ -38,12 +38,7 @@ dist_man1_MANS =
 dist_man8_MANS =
 
 TESTS =
-EXTRA_DIST =
-
-GLOBAL_EXTRA = \
-	COPYING
-
-EXTRA_DIST += $(GLOBAL_EXTRA)
+EXTRA_DIST = COPYING
 
 include lib/Makemodule.am
 include ubi-utils/Makemodule.am

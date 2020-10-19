@@ -4,7 +4,4 @@ rfddump_LDADD = libmtd.a
 rfdformat_SOURCES = nor-utils/rfdformat.c
 rfdformat_LDADD = libmtd.a
 
-NOR_BINS = \
-	rfddump rfdformat
-
-sbin_PROGRAMS += $(NOR_BINS)
+sbin_PROGRAMS += rfddump rfdformat

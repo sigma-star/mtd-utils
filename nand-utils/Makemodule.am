@@ -18,15 +18,12 @@ nftl_format_LDADD = libmtd.a
 nandflipbits_SOURCES = nand-utils/nandflipbits.c
 nandflipbits_LDADD = libmtd.a
 
-NAND_BINS = \
-	nanddump nandwrite nandtest nftldump nftl_format nandflipbits
-
 NAND_SH = \
 	nand-utils/load_nandsim.sh
 
 EXTRA_DIST += $(NAND_SH)
 
-sbin_PROGRAMS += $(NAND_BINS)
+sbin_PROGRAMS += nanddump nandwrite nandtest nftldump nftl_format nandflipbits
 
 if BUILD_TESTS
 if INSTALL_TESTS
