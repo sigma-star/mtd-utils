@@ -26,9 +26,5 @@ EXTRA_DIST += $(NAND_SH)
 sbin_PROGRAMS += nanddump nandwrite nandtest nftldump nftl_format nandflipbits
 
 if BUILD_TESTS
-if INSTALL_TESTS
-pkglibexec_SCRIPTS += $(NAND_SH)
-else
-noinst_SCRIPTS += $(NAND_SH)
-endif
+test_SCRIPTS += $(NAND_SH)
 endif

@@ -54,17 +54,9 @@ rsvol_SOURCES += tests/ubi-tests/helpers.h
 rsvol_LDADD = libubi.a
 rsvol_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/ubi-utils/include
 
-UBITEST_BINS = \
+test_PROGRAMS += \
 	io_basic io_update io_paral io_read volrefcnt integ \
 	mkvol_basic mkvol_bad mkvol_paral rsvol
 
-UBITEST_SH = \
+test_SCRIPTS += \
 	tests/ubi-tests/runubitests.sh tests/ubi-tests/ubi-stress-test.sh
-
-if INSTALL_TESTS
-pkglibexec_SCRIPTS += $(UBITEST_SH)
-pkglibexec_PROGRAMS += $(UBITEST_BINS)
-else
-noinst_SCRIPTS += $(UBITEST_SH)
-noinst_PROGRAMS += $(UBITEST_BINS)
-endif

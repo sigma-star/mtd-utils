@@ -32,10 +32,12 @@ check_PROGRAMS =
 noinst_LIBRARIES =
 noinst_PROGRAMS =
 noinst_SCRIPTS =
-pkglibexec_PROGRAMS =
-pkglibexec_SCRIPTS =
 dist_man1_MANS =
 dist_man8_MANS =
+
+testdir = @TESTBINDIR@
+test_PROGRAMS =
+test_SCRIPTS =
 
 TESTS =
 EXTRA_DIST = COPYING

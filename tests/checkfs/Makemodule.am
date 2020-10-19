@@ -5,13 +5,6 @@ checkfs_CPPFLAGS = $(AM_CPPFLAGS)
 makefiles_SOURCES = tests/checkfs/makefiles.c
 makefiles_CPPFLAGS = $(AM_CPPFLAGS)
 
-CHECKFS_BINS = \
-	makefiles checkfs
-
 EXTRA_DIST += tests/checkfs/README
 
-if INSTALL_TESTS
-pkglibexec_PROGRAMS += $(CHECKFS_BINS)
-else
-noinst_PROGRAMS += $(CHECKFS_BINS)
-endif
+test_PROGRAMS += makefiles checkfs

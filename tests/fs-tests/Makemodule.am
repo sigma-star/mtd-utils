@@ -66,21 +66,13 @@ fstest_monitor_SOURCES = tests/fs-tests/utils/fstest_monitor.c
 
 free_space_SOURCES = tests/fs-tests/utils/free_space.c
 
-FSTEST_BINS = \
+test_PROGRAMS += \
 	integck test_1 test_2 ftrunc perf orph \
 	stress_1 stress_2 stress_3 pdfrun gcd_hupper \
 	rndwrite00 fwrite00 rmdir00 rndrm00 rndrm99 \
 	fstest_monitor free_space
 
-FSTEST_SH = \
+test_SCRIPTS += \
 	tests/fs-tests/fs_help_all.sh tests/fs-tests/fs_run_all.sh \
 	tests/fs-tests/stress/fs_stress00.sh \
 	tests/fs-tests/stress/fs_stress01.sh
-
-if INSTALL_TESTS
-pkglibexec_SCRIPTS += $(FSTEST_SH)
-pkglibexec_PROGRAMS += $(FSTEST_BINS)
-else
-noinst_SCRIPTS += $(FSTEST_SH)
-noinst_PROGRAMS += $(FSTEST_BINS)
-endif

@@ -91,20 +91,8 @@ AM_COND_IF([BUILD_TESTS], [
 	need_pthread="yes"
 ])
 
-
-AC_ARG_ENABLE([install-tests],
-	[AS_HELP_STRING([--enable-install-tests], [Install test programs])],
-	[case "${enableval}" in
-	yes) AM_CONDITIONAL([INSTALL_TESTS], [true]) ;;
-	no)  AM_CONDITIONAL([INSTALL_TESTS], [false]) ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --enable-install-tests]) ;;
-	esac],
-	[AM_CONDITIONAL([INSTALL_TESTS], [false])])
-
-
-AM_COND_IF([INSTALL_TESTS],
-	[AC_SUBST(testbindir, ["\$libexecpath"])],
-	[AC_SUBST(testbindir, ["\".\""])])
+AC_DEFINE_DIR(TESTBINDIR, libexecdir/mtd-utils,
+	      [Path where test and debug programs will be installed])
 
 AC_ARG_ENABLE([ubihealthd],
 	[AS_HELP_STRING([--enable-ubihealthd], [Build the ubihealthd program])],
