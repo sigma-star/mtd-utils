@@ -1,22 +1,25 @@
-ftl_format_SOURCES = misc-utils/ftl_format.c
+ftl_format_SOURCES = misc-utils/ftl_format.c include/mtd_swab.h
+ftl_format_SOURCES += include/mtd/ftl-user.h
 
 doc_loadbios_SOURCES = misc-utils/doc_loadbios.c
 
-ftl_check_SOURCES = misc-utils/ftl_check.c
+ftl_check_SOURCES = misc-utils/ftl_check.c include/mtd_swab.h
+ftl_check_SOURCES += include/mtd/ftl-user.h
 
 mtd_debug_SOURCES = misc-utils/mtd_debug.c
 
 mtdpart_SOURCES = misc-utils/mtdpart.c
 
-docfdisk_SOURCES = misc-utils/docfdisk.c
+docfdisk_SOURCES = misc-utils/docfdisk.c include/mtd_swab.h
+docfdisk_SOURCES += include/mtd/inftl-user.h include/mtd/ftl-user.h
 
-serve_image_SOURCES = misc-utils/serve_image.c
+serve_image_SOURCES = misc-utils/serve_image.c misc-utils/mcast_image.h
 serve_image_LDADD = libmtd.a
 
-recv_image_SOURCES = misc-utils/recv_image.c
+recv_image_SOURCES = misc-utils/recv_image.c misc-utils/mcast_image.h
 recv_image_LDADD = libmtd.a
 
-fectest_SOURCES = misc-utils/fectest.c
+fectest_SOURCES = misc-utils/fectest.c misc-utils/mcast_image.h
 fectest_LDADD = libmtd.a
 
 flash_lock_SOURCES = misc-utils/flash_lock.c
@@ -48,14 +51,10 @@ MISC_SH = \
 MISC_EXTRA = \
 	misc-utils/MAKEDEV
 
-MISC_HEADER = \
-	misc-utils/mcast_image.h \
-	misc-utils/lsmtd.h
-
 MISC_MAN =
 
 if BUILD_LSMTD
-lsmtd_SOURCES = misc-utils/lsmtd.c misc-utils/lsmtd_scan.c
+lsmtd_SOURCES = misc-utils/lsmtd.c misc-utils/lsmtd_scan.c misc-utils/lsmtd.h
 lsmtd_LDADD = libmtd.a libubi.a
 lsmtd_CPPFLAGS = $(AM_CPPFLAGS) -I$(top_srcdir)/misc-utils
 
@@ -63,7 +62,7 @@ MISC_BINS += lsmtd
 MISC_MAN += misc-utils/lsmtd.8
 endif
 
-EXTRA_DIST += $(MISC_HEADER) $(MISC_EXTRA) $(MISC_SH)
+EXTRA_DIST += $(MISC_EXTRA) $(MISC_SH)
 
 dist_man8_MANS += $(MISC_MAN)
 sbin_PROGRAMS += $(MISC_BINS)

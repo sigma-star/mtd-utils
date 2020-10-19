@@ -40,13 +40,10 @@ dist_man8_MANS =
 TESTS =
 EXTRA_DIST =
 
-GLOBAL_HEADER = \
-	include
-
 GLOBAL_EXTRA = \
 	COPYING
 
-EXTRA_DIST += $(GLOBAL_HEADER) $(GLOBAL_EXTRA)
+EXTRA_DIST += $(GLOBAL_EXTRA)
 
 include lib/Makemodule.am
 include ubi-utils/Makemodule.am

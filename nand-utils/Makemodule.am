@@ -7,10 +7,12 @@ nandwrite_LDADD = libmtd.a
 nandtest_SOURCES = nand-utils/nandtest.c
 nandtest_LDADD = libmtd.a
 
-nftldump_SOURCES = nand-utils/nftldump.c
+nftldump_SOURCES = nand-utils/nftldump.c include/mtd_swab.h
+nftldump_SOURCES += include/mtd/nftl-user.h include/mtd/ftl-user.h
 nftldump_LDADD = libmtd.a
 
-nftl_format_SOURCES = nand-utils/nftl_format.c
+nftl_format_SOURCES = nand-utils/nftl_format.c include/mtd_swab.h
+nftl_format_SOURCES += include/mtd/nftl-user.h include/mtd/ftl-user.h
 nftl_format_LDADD = libmtd.a
 
 nandflipbits_SOURCES = nand-utils/nandflipbits.c

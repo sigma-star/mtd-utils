@@ -7,18 +7,24 @@ mkfs_jffs2_SOURCES = \
 	jffsX-utils/compr_lzo.c \
 	jffsX-utils/compr.c \
 	jffsX-utils/compr_rtime.c
+	jffsX-utils/compr.h \
+	jffsX-utils/rbtree.h \
+	jffsX-utils/summary.h \
+	include/linux/jffs2.h \
+	include/mtd/jffs2-user.h
 mkfs_jffs2_LDADD = libmtd.a $(ZLIB_LIBS) $(LZO_LIBS)
 mkfs_jffs2_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 
-jffs2reader_SOURCES = jffsX-utils/jffs2reader.c
+jffs2reader_SOURCES = jffsX-utils/jffs2reader.c	include/mtd/jffs2-user.h
 jffs2reader_LDADD = libmtd.a $(ZLIB_LIBS) $(LZO_LIBS)
 jffs2reader_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 
-jffs2dump_SOURCES = jffsX-utils/jffs2dump.c
+jffs2dump_SOURCES = jffsX-utils/jffs2dump.c include/mtd/jffs2-user.h
+jffs2dump_SOURCES += jffsX-utils/summary.h
 jffs2dump_LDADD = libmtd.a $(ZLIB_LIBS) $(LZO_LIBS)
 jffs2dump_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 
-sumtool_SOURCES = jffsX-utils/sumtool.c
+sumtool_SOURCES = jffsX-utils/sumtool.c jffsX-utils/summary.h
 sumtool_LDADD = libmtd.a
 
 JFFSX_BINS = \
@@ -30,10 +36,7 @@ JFFSX_MAN = \
 JFFSX_EXTRA = \
 	jffsX-utils/device_table.txt jffsX-utils/mkfs.jffs2.1
 
-JFFSX_HEADER = \
-	jffsX-utils/compr.h jffsX-utils/rbtree.h jffsX-utils/summary.h
-
-EXTRA_DIST += $(JFFSX_HEADER) $(JFFSX_EXTRA)
+EXTRA_DIST += $(JFFSX_EXTRA)
 
 dist_man1_MANS += $(JFFSX_MAN)
 sbin_PROGRAMS += $(JFFSX_BINS)

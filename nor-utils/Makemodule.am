@@ -1,4 +1,4 @@
-rfddump_SOURCES = nor-utils/rfddump.c
+rfddump_SOURCES = nor-utils/rfddump.c include/mtd_swab.h
 rfddump_LDADD = libmtd.a
 
 rfdformat_SOURCES = nor-utils/rfdformat.c

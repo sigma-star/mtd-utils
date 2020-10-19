@@ -22,7 +22,7 @@ ubidetach_LDADD = libmtd.a libubi.a
 ubinize_SOURCES = ubi-utils/ubinize.c
 ubinize_LDADD = libubi.a libubigen.a libmtd.a libiniparser.a
 
-ubiformat_SOURCES = ubi-utils/ubiformat.c
+ubiformat_SOURCES = ubi-utils/ubiformat.c include/mtd_swab.h
 ubiformat_LDADD = libubi.a libubigen.a libmtd.a libscan.a
 
 ubirename_SOURCES = ubi-utils/ubirename.c
