@@ -71,7 +71,6 @@ need_xattr="no"
 need_cmocka="no"
 need_selinux="no"
 need_openssl="no"
-need_getrandom="no"
 
 AM_COND_IF([UNIT_TESTS], [
 	need_cmocka="yes"
@@ -107,6 +106,9 @@ AM_COND_IF([INSTALL_TESTS],
 	[AC_SUBST(testbindir, ["\$libexecpath"])],
 	[AC_SUBST(testbindir, ["\".\""])])
 
+AC_ARG_ENABLE([ubihealthd],
+	[AS_HELP_STRING([--enable-ubihealthd], [Build the ubihealthd program])],
+	[need_getrandom="${enableval}"],[need_getrandom="auto"])
 
 AC_ARG_ENABLE([lsmtd],
 	[AS_HELP_STRING([--disable-lsmtd], [Do not build the lsmtd program])],
@@ -142,7 +144,7 @@ AM_COND_IF([BUILD_UBIFS], [
 	need_lzo="yes"
 	need_zstd="yes"
 	need_openssl="yes"
-	need_getrandom="yes"
+	AS_VAR_IF([need_getrandom], [auto], [need_getrandom="yes"])
 ])
 
 AM_COND_IF([BUILD_JFFSX], [
