@@ -791,7 +791,10 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
 		return -1;
 	mtd->writable = !!(ret & MTD_WRITEABLE);
 
-	mtd->eb_cnt = mtd->size / mtd->eb_size;
+	if (ret & MTD_NO_ERASE)
+		mtd->eb_cnt = 1;
+	else
+		mtd->eb_cnt = mtd->size / mtd->eb_size;
 	mtd->type = type_str2int(mtd->type_str);
 	mtd->bb_allowed = !!(mtd->type == MTD_NANDFLASH ||
 				mtd->type == MTD_MLCNANDFLASH);
