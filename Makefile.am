@@ -1,6 +1,7 @@
 ACLOCAL_AMFLAGS = -I m4
 
-AM_CPPFLAGS = $(WARN_CFLAGS) -D_GNU_SOURCE -std=gnu99 -I$(top_srcdir)/include
+AM_CPPFLAGS = $(WARN_CFLAGS) -D_GNU_SOURCE -std=gnu99 -I$(top_srcdir)/include \
+		-include $(top_builddir)/include/config.h
 
 if WITHOUT_XATTR
 AM_CPPFLAGS += -DWITHOUT_XATTR

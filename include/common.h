@@ -31,8 +31,6 @@
 #include <unistd.h>
 #include <sys/sysmacros.h>
 
-#include "config.h"
-
 #ifndef PROGRAM_NAME
 # error "You must define PROGRAM_NAME before including this header"
 #endif

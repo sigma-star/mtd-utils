@@ -23,7 +23,7 @@ AC_PROG_LIBTOOL
 AC_DISABLE_STATIC
 AC_PROG_CC
 AC_PROG_INSTALL
-
+AC_SYS_LARGEFILE
 
 m4_ifndef([PKG_PROG_PKG_CONFIG],
   [m4_fatal([Could not locate the pkg-config autoconf
