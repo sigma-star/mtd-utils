@@ -66,7 +66,6 @@ need_clock_gettime="no"
 need_pthread="no"
 need_uuid="no"
 need_cmocka="no"
-need_openssl="no"
 
 AM_COND_IF([UNIT_TESTS], [
 	need_cmocka="yes"
@@ -123,7 +122,6 @@ AC_ARG_WITH([ubifs],
 
 AM_COND_IF([BUILD_UBIFS], [
 	need_uuid="yes"
-	need_openssl="yes"
 	AS_VAR_IF([need_getrandom], [auto], [need_getrandom="yes"])
 ])
 
@@ -149,13 +147,8 @@ AC_ARG_WITH([selinux],
 	[], [with_selinux="check"])
 
 AC_ARG_WITH([crypto],
-	[AS_HELP_STRING([--without-crypto],
-		[Disable support for UBIFS crypto features])],
-	[case "${withval}" in
-	yes) ;;
-	no) need_openssl="no";;
-	*) AC_MSG_ERROR([bad value ${withval} for --without-crypto]) ;;
-	esac])
+	[AS_HELP_STRING([--with-crypto], [Support for UBIFS crypto features])],
+	[], [with_crypto="check"])
 
 ##### search for dependencies #####
 
@@ -163,7 +156,6 @@ clock_gettime_missing="no"
 pthread_missing="no"
 uuid_missing="no"
 cmocka_missing="no"
-openssl_missing="no"
 getrandom_missing="no"
 
 AS_IF([test "x$with_zlib" != "xno"], [
@@ -233,10 +225,16 @@ AS_IF([test "x$with_selinux" != "xno"], [
 	      [with_selinux="$have_selinux"])
 ], [])
 
-if test "x$need_openssl" = "xyes"; then
-	AC_CHECK_HEADER(openssl/rand.h)
-	PKG_CHECK_MODULES(OPENSSL, [openssl], [], [openssl_missing="yes"])
-fi
+AS_IF([test "x$with_crypto" != "xno"], [
+	have_openssl="yes"
+
+	AC_CHECK_HEADERS([openssl/rand.h], [], [have_openssl="no"])
+	PKG_CHECK_MODULES(OPENSSL, [openssl], [], [have_openssl="no"])
+
+	AS_IF([test "x$with_crypto" != "xcheck" -a "x$have_openssl" = "xno"],
+	      [AC_MSG_ERROR([cannot find OpenSSL libraries])],
+	      [with_crypto="$have_openssl"])
+], [])
 
 if test "x$need_getrandom" = "xyes"; then
 	AC_CHECK_HEADERS([sys/random.h], [], [getrandom_missing="yes"])
@@ -270,12 +268,6 @@ if test "x$uuid_missing" = "xyes"; then
 	dep_missing="yes"
 fi
 
-if test "x$openssl_missing" = "xyes"; then
-	AC_MSG_WARN([cannot find headers for OpenSSL library])
-	AC_MSG_WARN([disabling OpenSSL support])
-	need_openssl="no"
-fi
-
 if test "x$getrandom_missing" = "xyes"; then
 	AC_MSG_WARN([cannot find headers for getrandom() function])
 	AC_MSG_WARN([disabling UBIFS ubihealthd support])
@@ -299,7 +291,7 @@ AM_CONDITIONAL([WITH_ZLIB], [test "x$with_zlib" = "xyes"])
 AM_CONDITIONAL([WITH_ZSTD], [test "x$with_zstd" = "xyes"])
 AM_CONDITIONAL([WITH_XATTR], [test "x$with_xattr" = "xyes"])
 AM_CONDITIONAL([WITH_SELINUX], [test "x$with_selinux" = "xyes"])
-AM_CONDITIONAL([WITH_CRYPTO], [test "x$need_openssl" = "xyes"])
+AM_CONDITIONAL([WITH_CRYPTO], [test "x$with_crypto" = "xyes"])
 AM_CONDITIONAL([WITH_GETRANDOM], [test "x$need_getrandom" = "xyes"])
 
 AC_CHECK_SIZEOF([off_t])
