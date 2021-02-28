@@ -292,3 +292,40 @@ AC_CONFIG_FILES([tests/fs-tests/fs_help_all.sh
 	tests/ubi-tests/ubi-stress-test.sh])
 
 AC_OUTPUT([Makefile])
+
+AC_MSG_RESULT([
+	${PACKAGE}  ${VERSION}
+
+	prefix:            ${prefix}
+	exec prefix:       ${exec_prefix}
+
+	runstatedir:       ${runstatedir}
+	bindir:            ${bindir}
+	sbindir:           ${sbindir}
+	libdir:            ${libdir}
+	includedir:        ${includedir}
+
+	compiler:          ${CC}
+	cflags:            ${CFLAGS}
+	ldflags:           ${LDFLAGS}
+
+	lzo support:       ${with_lzo}
+	zlib support:      ${with_zlib}
+	zstd support:      ${with_zstd}
+	xattr/acl support: ${with_xattr}
+	SELinux support:   ${with_selinux}
+	fscrypt support:   ${with_crypto}
+
+	Test programs:     ${with_tests}
+	Unit tests:        ${enable_unit_tests}
+	ubihealthd:        ${enable_ubihealthd}
+	lsmtd:             ${with_lsmtd}
+	jffs2 utils:       ${with_jffs}
+	ubifs utils:       ${with_ubifs}
+
+	warnings:
+
+${WARN_CFLAGS}
+
+	Type 'make' or 'make <utilname>' to compile.
+])
