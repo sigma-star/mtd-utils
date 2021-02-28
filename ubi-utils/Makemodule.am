@@ -40,16 +40,14 @@ ubirsvol_LDADD = libmtd.a libubi.a
 ubiblock_SOURCES = ubi-utils/ubiblock.c
 ubiblock_LDADD = libmtd.a libubi.a
 
-if WITH_GETRANDOM
 ubihealthd_SOURCES = ubi-utils/ubihealthd.c
 ubihealthd_LDADD = libmtd.a libubi.a
-endif
 
 sbin_PROGRAMS += \
 	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
 	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock ubiscan
 
-if WITH_GETRANDOM
+if WITH_UBIHEALTHD
 sbin_PROGRAMS += ubihealthd
 endif
 

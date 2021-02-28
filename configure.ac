@@ -6,14 +6,9 @@ AC_INIT([mtd-utils], [RELEASE], [linux-mtd@lists.infradead.org], mtd-utils)
 
 AC_ARG_ENABLE([unit-tests],
 	[AS_HELP_STRING([--enable-unit-tests], [Compile unit test programs])],
-	[case "${enableval}" in
-	yes) AM_CONDITIONAL([UNIT_TESTS], [true]) ;;
-	no)  AM_CONDITIONAL([UNIT_TESTS], [false]) ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --enable-unit-tests]) ;;
-	esac],
-	[AM_CONDITIONAL([UNIT_TESTS], [false])])
+	[], [enable_unit_tests="no"])
 
-AM_COND_IF([UNIT_TESTS], [: ${CFLAGS=""}], [])
+AS_IF([test "x$enable_unit_tests" = "xyes"], [: ${CFLAGS=""}], [])
 
 
 AC_CONFIG_MACRO_DIR([m4])
@@ -62,68 +57,28 @@ AC_SUBST([WARN_CFLAGS])
 
 ###### handle configure switches, select dependencies ######
 
-need_clock_gettime="no"
-need_pthread="no"
-need_uuid="no"
-need_cmocka="no"
-
-AM_COND_IF([UNIT_TESTS], [
-	need_cmocka="yes"
-])
-
-
-AC_ARG_ENABLE([tests],
-	[AS_HELP_STRING([--disable-tests], [Compile test programs])],
-	[case "${enableval}" in
-	yes) AM_CONDITIONAL([BUILD_TESTS], [true]) ;;
-	no)  AM_CONDITIONAL([BUILD_TESTS], [false]) ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --disable-tests]) ;;
-	esac],
-	[AM_CONDITIONAL([BUILD_TESTS], [true])])
-
-AM_COND_IF([BUILD_TESTS], [
-	need_clock_gettime="yes"
-	need_pthread="yes"
-])
+AC_ARG_WITH([tests],
+	[AS_HELP_STRING([--without-tests], [Compile test programs])],
+	[], [with_tests="yes"])
 
 AC_DEFINE_DIR(TESTBINDIR, libexecdir/mtd-utils,
 	      [Path where test and debug programs will be installed])
 
 AC_ARG_ENABLE([ubihealthd],
 	[AS_HELP_STRING([--enable-ubihealthd], [Build the ubihealthd program])],
-	[need_getrandom="${enableval}"],[need_getrandom="auto"])
+	[], [enable_ubihealthd="yes"])
 
-AC_ARG_ENABLE([lsmtd],
-	[AS_HELP_STRING([--disable-lsmtd], [Do not build the lsmtd program])],
-	[case "${enableval}" in
-	yes) AM_CONDITIONAL([BUILD_LSMTD], [true]) ;;
-	no)  AM_CONDITIONAL([BUILD_LSMTD], [false]) ;;
-	*) AC_MSG_ERROR([bad value ${enableval} for --disable-lsmtd]) ;;
-	esac],
-	[AM_CONDITIONAL([BUILD_LSMTD], [true])])
+AC_ARG_WITH([lsmtd],
+	[AS_HELP_STRING([--without-lsmtd], [Do not build the lsmtd program])],
+	[], [with_lsmtd="yes"])
 
 AC_ARG_WITH([jffs],
 	[AS_HELP_STRING([--without-jffs], [Disable jffsX utilities])],
-	[case "${withval}" in
-	yes) AM_CONDITIONAL([BUILD_JFFSX], [true]) ;;
-	no)  AM_CONDITIONAL([BUILD_JFFSX], [false]) ;;
-	*) AC_MSG_ERROR([bad value ${withval} for --without-jffs]) ;;
-	esac],
-	[AM_CONDITIONAL([BUILD_JFFSX], [true])])
+	[], [with_jffs="yes"])
 
 AC_ARG_WITH([ubifs],
 	[AS_HELP_STRING([--without-ubifs], [Disable ubifs utilities])],
-	[case "${withval}" in
-	yes) AM_CONDITIONAL([BUILD_UBIFS], [true]) ;;
-	no)  AM_CONDITIONAL([BUILD_UBIFS], [false]) ;;
-	*) AC_MSG_ERROR([bad value ${withval} for --without-ubifs]) ;;
-	esac],
-	[AM_CONDITIONAL([BUILD_UBIFS], [true])])
-
-AM_COND_IF([BUILD_UBIFS], [
-	need_uuid="yes"
-	AS_VAR_IF([need_getrandom], [auto], [need_getrandom="yes"])
-])
+	[], [with_ubifs="yes"])
 
 AC_ARG_WITH([zlib],
 	[AS_HELP_STRING([--with-zlib], [Support zlib deflate compression])],
@@ -152,11 +107,35 @@ AC_ARG_WITH([crypto],
 
 ##### search for dependencies #####
 
+need_clock_gettime="no"
+need_pthread="no"
+need_uuid="no"
+need_cmocka="no"
+need_getrandom="no"
+
 clock_gettime_missing="no"
 pthread_missing="no"
 uuid_missing="no"
 cmocka_missing="no"
 getrandom_missing="no"
+
+AS_IF([test "x$enable_unit_tests" = "xyes"], [
+	need_cmocka="yes"
+])
+
+AS_IF([test "x$with_tests" = "xyes"], [
+	need_clock_gettime="yes"
+	need_pthread="yes"
+])
+
+AS_IF([test "x$enable_ubihealthd" = "xyes"], [
+	need_getrandom="yes"
+])
+
+AS_IF([test "x$with_ubifs" = "xyes"], [
+	need_uuid="yes"
+	need_getrandom="yes"
+])
 
 AS_IF([test "x$with_zlib" != "xno"], [
 	PKG_CHECK_MODULES(ZLIB, [zlib], [with_zlib="yes"],
@@ -270,7 +249,7 @@ fi
 
 if test "x$getrandom_missing" = "xyes"; then
 	AC_MSG_WARN([cannot find headers for getrandom() function])
-	AC_MSG_WARN([disabling UBIFS ubihealthd support])
+	AC_MSG_NOTICE([mkfs.ubifs, ubihealthd can optionally be disabled])
 	need_getrandom="no"
 fi
 
@@ -292,7 +271,13 @@ AM_CONDITIONAL([WITH_ZSTD], [test "x$with_zstd" = "xyes"])
 AM_CONDITIONAL([WITH_XATTR], [test "x$with_xattr" = "xyes"])
 AM_CONDITIONAL([WITH_SELINUX], [test "x$with_selinux" = "xyes"])
 AM_CONDITIONAL([WITH_CRYPTO], [test "x$with_crypto" = "xyes"])
-AM_CONDITIONAL([WITH_GETRANDOM], [test "x$need_getrandom" = "xyes"])
+AM_CONDITIONAL([WITH_UBIHEALTHD], [test "x$enable_ubihealthd" = "xyes"])
+
+AM_CONDITIONAL([BUILD_UBIFS], [test "x$with_ubifs" = "xyes"])
+AM_CONDITIONAL([BUILD_JFFSX], [test "x$with_jffs" = "xyes"])
+AM_CONDITIONAL([BUILD_LSMTD], [test "x$with_lsmtd" = "xyes"])
+AM_CONDITIONAL([BUILD_TESTS], [test "x$with_tests" = "xyes"])
+AM_CONDITIONAL([UNIT_TESTS], [test "x$enable_unit_tests" = "xyes"])
 
 AC_CHECK_SIZEOF([off_t])
 AC_CHECK_SIZEOF([loff_t])
