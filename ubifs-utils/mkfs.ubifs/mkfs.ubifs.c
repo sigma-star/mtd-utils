@@ -26,7 +26,7 @@
 #include <crc32.h>
 #include "common.h"
 #include <sys/types.h>
-#ifndef WITHOUT_XATTR
+#ifdef WITH_XATTR
 #include <sys/xattr.h>
 #endif
 
@@ -35,7 +35,7 @@
 #include <selinux/label.h>
 #endif
 
-#ifndef WITHOUT_ZSTD
+#ifdef WITH_ZSTD
 #include <zstd.h>
 #endif
 
@@ -539,7 +539,7 @@ static void select_default_compr(void)
 		return;
 	}
 
-#ifdef WITHOUT_LZO
+#ifndef WITH_LZO
 	c->default_compr = UBIFS_COMPR_ZLIB;
 #else
 	c->default_compr = UBIFS_COMPR_LZO;
@@ -683,11 +683,11 @@ static int get_options(int argc, char**argv)
 				c->default_compr = UBIFS_COMPR_NONE;
 			else if (strcmp(optarg, "zlib") == 0)
 				c->default_compr = UBIFS_COMPR_ZLIB;
-#ifndef WITHOUT_ZSTD
+#ifdef WITH_ZSTD
 			else if (strcmp(optarg, "zstd") == 0)
 				c->default_compr = UBIFS_COMPR_ZSTD;
 #endif
-#ifndef WITHOUT_LZO
+#ifdef WITH_LZO
 			else if (strcmp(optarg, "favor_lzo") == 0) {
 				c->default_compr = UBIFS_COMPR_LZO;
 				c->favor_lzo = 1;
@@ -699,7 +699,7 @@ static int get_options(int argc, char**argv)
 				return err_msg("bad compressor name");
 			break;
 		case 'X':
-#ifdef WITHOUT_LZO
+#ifndef WITH_LZO
 			return err_msg("built without LZO support");
 #else
 			c->favor_percent = strtol(optarg, &endp, 0);
@@ -1288,7 +1288,7 @@ out:
 	return ret;
 }
 
-#ifdef WITHOUT_XATTR
+#ifndef WITH_XATTR
 static inline int create_inum_attr(ino_t inum, const char *name)
 {
 	(void)inum;
@@ -1858,7 +1858,7 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		out_len = NODE_BUFFER_SIZE - UBIFS_DATA_NODE_SZ;
 		if (c->default_compr == UBIFS_COMPR_NONE &&
 		    !c->encrypted && (flags & FS_COMPR_FL))
-#ifdef WITHOUT_LZO
+#ifndef WITH_LZO
 			use_compr = UBIFS_COMPR_ZLIB;
 #else
 			use_compr = UBIFS_COMPR_LZO;

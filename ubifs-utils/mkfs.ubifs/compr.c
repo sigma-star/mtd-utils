@@ -24,11 +24,11 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <string.h>
-#ifndef WITHOUT_LZO
+#ifdef WITH_LZO
 #include <lzo/lzo1x.h>
 #endif
 #include <linux/types.h>
-#ifndef WITHOUT_ZSTD
+#ifdef WITH_ZSTD
 #include <zstd.h>
 #endif
 
@@ -41,7 +41,7 @@
 
 static void *lzo_mem;
 static unsigned long long errcnt = 0;
-#ifndef WITHOUT_LZO
+#ifdef WITH_LZO
 static struct ubifs_info *c = &info_;
 #endif
 
@@ -92,7 +92,7 @@ static int zlib_deflate(void *in_buf, size_t in_len, void *out_buf,
 	return 0;
 }
 
-#ifndef WITHOUT_LZO
+#ifdef WITH_LZO
 static int lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 			size_t *out_len)
 {
@@ -112,7 +112,7 @@ static int lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 }
 #endif
 
-#ifndef WITHOUT_ZSTD
+#ifdef WITH_ZSTD
 static ZSTD_CCtx *zctx;
 
 static int zstd_compress(void *in_buf, size_t in_len, void *out_buf,
@@ -140,7 +140,7 @@ static int no_compress(void *in_buf, size_t in_len, void *out_buf,
 
 static char *zlib_buf;
 
-#ifndef WITHOUT_LZO
+#ifdef WITH_LZO
 static int favor_lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 			       size_t *out_len, int *type)
 {
@@ -198,7 +198,7 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 		return MKFS_UBIFS_COMPR_NONE;
 	}
 
-#ifdef WITHOUT_LZO
+#ifndef WITH_LZO
 	{
 		switch (type) {
 #else
@@ -213,7 +213,7 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 		case MKFS_UBIFS_COMPR_ZLIB:
 			ret = zlib_deflate(in_buf, in_len, out_buf, out_len);
 			break;
-#ifndef WITHOUT_ZSTD
+#ifdef WITH_ZSTD
 		case MKFS_UBIFS_COMPR_ZSTD:
 			ret = zstd_compress(in_buf, in_len, out_buf, out_len);
 			break;
@@ -236,7 +236,7 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 
 int init_compression(void)
 {
-#ifdef WITHOUT_LZO
+#ifndef WITH_LZO
 	lzo_mem = NULL;
 #else
 	lzo_mem = malloc(LZO1X_999_MEM_COMPRESS);
@@ -248,7 +248,7 @@ int init_compression(void)
 	if (!zlib_buf)
 		goto err;
 
-#ifndef WITHOUT_ZSTD
+#ifdef WITH_ZSTD
 	zctx = ZSTD_createCCtx();
 	if (!zctx)
 		goto err;
@@ -265,7 +265,7 @@ void destroy_compression(void)
 {
 	free(zlib_buf);
 	free(lzo_mem);
-#ifndef WITHOUT_ZSTD
+#ifdef WITH_ZSTD
 	ZSTD_freeCCtx(zctx);
 #endif
 	if (errcnt)

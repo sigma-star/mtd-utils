@@ -66,11 +66,7 @@ need_clock_gettime="no"
 need_pthread="no"
 need_uuid="no"
 need_zlib="no"
-need_lzo="no"
-need_zstd="no"
-need_xattr="no"
 need_cmocka="no"
-need_selinux="no"
 need_openssl="no"
 
 AM_COND_IF([UNIT_TESTS], [
@@ -128,53 +124,31 @@ AC_ARG_WITH([ubifs],
 
 AM_COND_IF([BUILD_UBIFS], [
 	need_uuid="yes"
-	need_xattr="yes"
 	need_zlib="yes"
-	need_lzo="yes"
-	need_zstd="yes"
 	need_openssl="yes"
 	AS_VAR_IF([need_getrandom], [auto], [need_getrandom="yes"])
 ])
 
 AM_COND_IF([BUILD_JFFSX], [
-	need_xattr="yes"
 	need_zlib="yes"
-	need_lzo="yes"
 ])
 
 AC_ARG_WITH([xattr],
-	[AS_HELP_STRING([--without-xattr],
-		[Disable support forextended file attributes])],
-	[case "${withval}" in
-	yes) ;;
-	no) need_xattr="no" ;;
-	*) AC_MSG_ERROR([bad value ${withval} for --without-xattr]) ;;
-	esac])
+	[AS_HELP_STRING([--with-xattr], [Support extended file attributes])],
+	[], [with_xattr="check"])
 
 AC_ARG_WITH([lzo],
-	[AS_HELP_STRING([--without-lzo], [Disable support for LZO compression])],
-	[case "${withval}" in
-	yes) ;;
-	no) need_lzo="no" ;;
-	*) AC_MSG_ERROR([bad value ${withval} for --without-lzo]) ;;
-	esac])
+	[AS_HELP_STRING([--with-lzo], [Support LZO compression])],
+	[], [with_lzo="check"])
 
 AC_ARG_WITH([zstd],
-	[AS_HELP_STRING([--without-zstd], [Disable support for ZSTD compression])],
-	[case "${withval}" in
-	yes) ;;
-	no) need_zstd="no" ;;
-	*) AC_MSG_ERROR([bad value ${withval} for --without-zstd]) ;;
-	esac])
+	[AS_HELP_STRING([--with-zstd], [Support for ZSTD compression])],
+	[], [with_zstd="check"])
 
 AC_ARG_WITH([selinux],
 	[AS_HELP_STRING([--with-selinux],
-		[Enable support for selinux extended attributes])],
-	[case "${withval}" in
-	yes) need_selinux="yes";;
-	no) ;;
-	*) AC_MSG_ERROR([bad value ${withval} for --with-selinux]) ;;
-	esac])
+		[Support for selinux extended attributes])],
+	[], [with_selinux="check"])
 
 AC_ARG_WITH([crypto],
 	[AS_HELP_STRING([--without-crypto],
@@ -191,20 +165,12 @@ clock_gettime_missing="no"
 pthread_missing="no"
 uuid_missing="no"
 zlib_missing="no"
-lzo_missing="no"
-zstd_missing="no"
-xattr_missing="no"
 cmocka_missing="no"
-selinux_missing="no"
 openssl_missing="no"
 getrandom_missing="no"
 
 if test "x$need_zlib" = "xyes"; then
 	PKG_CHECK_MODULES(ZLIB, [zlib], [], [zlib_missing="yes"])
-fi
-
-if test "x$need_selinux" = "xyes"; then
-	PKG_CHECK_MODULES(LIBSELINUX, [libselinux], [], [selinux_missing="yes"])
 fi
 
 if test "x$need_uuid" = "xyes"; then
@@ -220,29 +186,52 @@ if test "x$need_pthread" = "xyes"; then
 	AX_PTHREAD([], [pthread_missing="yes"])
 fi
 
-if test "x$need_lzo" = "xyes"; then
-	AC_ARG_VAR([LZO_CFLAGS], [C compiler flags for lzo])
-	AC_ARG_VAR([LZO_LIBS], [linker flags for lzo])
+AC_ARG_VAR([LZO_CFLAGS], [C compiler flags for lzo])
+AC_ARG_VAR([LZO_LIBS], [linker flags for lzo])
+
+AS_IF([test -z "$LZO_LIBS" -a "x$with_lzo" != "xno"], [
 	AC_CHECK_LIB([lzo2], [lzo1x_1_15_compress], [LZO_LIBS="-llzo2"],
-		[AC_CHECK_LIB([lzo],[lzo1x_1_15_compress],[LZO_LIBS="-llzo"],
-			[lzo_missing="yes"]
-		)]
-	)
-fi
+			     [AC_CHECK_LIB([lzo],[lzo1x_1_15_compress],
+				[LZO_LIBS="-llzo"],
+			     	[]
+			     )]
+		    )
+], [])
 
-if test "x$need_zstd" = "xyes"; then
-	PKG_CHECK_MODULES([ZSTD], [libzstd],, zstd_missing="yes")
-fi
+AS_IF([test -z "$LZO_LIBS"], [AS_IF([test "x$with_lzo" != "xcheck"],
+				    [AC_MSG_ERROR([cannot find liblzo])],
+				    [with_lzo="no"])],
+			     [with_lzo="yes"])
 
-if test "x$need_xattr" = "xyes"; then
-	AC_CHECK_HEADERS([sys/xattr.h], [], [xattr_missing="yes"])
-	AC_CHECK_HEADERS([sys/acl.h], [], [xattr_missing="yes"])
-fi
+AS_IF([test "x$with_zstd" != "xno"], [
+	PKG_CHECK_MODULES(ZSTD, [libzstd], [with_zstd="yes"],
+				[AS_IF([test "x$with_zstd" != "xcheck"],
+				       [AC_MSG_ERROR([cannot find zstd])],
+				       [with_zstd="no"])])
+], [])
 
-if test "x$need_selinux" = "xyes"; then
-	AC_CHECK_HEADERS([selinux/selinux.h], [], [selinux_missing="yes"])
-	AC_CHECK_HEADERS([selinux/label.h], [], [selinux_missing="yes"])
-fi
+AS_IF([test "x$with_xattr" != "xno"], [
+	have_xattr="yes"
+
+	AC_CHECK_HEADERS([sys/xattr.h], [], [have_xattr="no"])
+	AC_CHECK_HEADERS([sys/acl.h], [], [have_xattr="no"])
+
+	AS_IF([test "x$with_xattr" != "xcheck" -a "x$have_xattr" = "xno"],
+		      [AC_MSG_ERROR([cannot find xattr/acl headers])],
+		      [with_xattr="$have_xattr"])
+], [])
+
+AS_IF([test "x$with_selinux" != "xno"], [
+	have_selinux="yes"
+
+	PKG_CHECK_MODULES(LIBSELINUX, [libselinux], [], [have_selinux="no"])
+	AC_CHECK_HEADERS([selinux/selinux.h], [], [have_selinux="no"])
+	AC_CHECK_HEADERS([selinux/label.h], [], [have_selinux="no"])
+
+	AS_IF([test "x$with_selinux" != "xcheck" -a "x$have_selinux" = "xno"],
+	      [AC_MSG_ERROR([cannot find SELinux libraries])],
+	      [with_selinux="$have_selinux"])
+], [])
 
 if test "x$need_openssl" = "xyes"; then
 	AC_CHECK_HEADER(openssl/rand.h)
@@ -288,33 +277,6 @@ if test "x$zlib_missing" = "xyes"; then
 	dep_missing="yes"
 fi
 
-if test "x$lzo_missing" = "xyes"; then
-	AC_MSG_WARN([cannot find LZO library required for mkfs programs])
-	AC_MSG_NOTICE([mtd-utils can optionally be built without mkfs.ubifs])
-	AC_MSG_NOTICE([mtd-utils can optionally be built without mkfs.jffs2])
-	AC_MSG_NOTICE([mtd-utils can optionally be built without LZO support])
-	dep_missing="yes"
-fi
-
-if test "x$zstd_missing" = "xyes"; then
-	AC_MSG_WARN([cannot find ZSTD library required for mkfs program])
-	AC_MSG_NOTICE([mtd-utils can optionally be built without mkfs.ubifs])
-	AC_MSG_NOTICE([mtd-utils can optionally be built without ZSTD support])
-	dep_missing="yes"
-fi
-
-if test "x$xattr_missing" = "xyes"; then
-	AC_MSG_WARN([cannot find headers for extended attributes])
-	AC_MSG_WARN([disabling XATTR support])
-	need_xattr="no"
-fi
-
-if test "x$selinux_missing" = "xyes"; then
-	AC_MSG_WARN([cannot find headers for selinux library])
-	AC_MSG_WARN([disabling SELINUX support])
-	need_selinux="no"
-fi
-
 if test "x$openssl_missing" = "xyes"; then
 	AC_MSG_WARN([cannot find headers for OpenSSL library])
 	AC_MSG_WARN([disabling OpenSSL support])
@@ -339,10 +301,10 @@ fi
 
 ##### generate output #####
 
-AM_CONDITIONAL([WITHOUT_LZO], [test "x$need_lzo" != "xyes"])
-AM_CONDITIONAL([WITHOUT_ZSTD], [test "x$need_zstd" != "xyes"])
-AM_CONDITIONAL([WITHOUT_XATTR], [test "x$need_xattr" != "xyes"])
-AM_CONDITIONAL([WITH_SELINUX], [test "x$need_selinux" = "xyes"])
+AM_CONDITIONAL([WITH_LZO], [test "x$with_lzo" = "xyes"])
+AM_CONDITIONAL([WITH_ZSTD], [test "x$with_zstd" = "xyes"])
+AM_CONDITIONAL([WITH_XATTR], [test "x$with_xattr" = "xyes"])
+AM_CONDITIONAL([WITH_SELINUX], [test "x$with_selinux" = "xyes"])
 AM_CONDITIONAL([WITH_CRYPTO], [test "x$need_openssl" = "xyes"])
 AM_CONDITIONAL([WITH_GETRANDOM], [test "x$need_getrandom" = "xyes"])
 

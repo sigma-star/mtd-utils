@@ -65,7 +65,7 @@
 #include <ctype.h>
 #include <time.h>
 #include <getopt.h>
-#ifndef WITHOUT_XATTR
+#ifdef WITH_XATTR
 #include <sys/xattr.h>
 #include <sys/acl.h>
 #endif
@@ -978,7 +978,7 @@ static void write_special_file(struct filesystem_entry *e)
 	padword();
 }
 
-#ifndef WITHOUT_XATTR
+#ifdef WITH_XATTR
 typedef struct xattr_entry {
 	struct xattr_entry *next;
 	uint32_t xid;
@@ -1209,7 +1209,7 @@ static void write_xattr_entry(struct filesystem_entry *e)
 	}
 }
 
-#else /* WITHOUT_XATTR */
+#else /* WITH_XATTR */
 #define write_xattr_entry(x)
 #endif
 
@@ -1380,7 +1380,7 @@ static struct option long_options[] = {
 	{"test-compression", 0, NULL, 't'},
 	{"compressor-priority", 1, NULL, 'y'},
 	{"incremental", 1, NULL, 'i'},
-#ifndef WITHOUT_XATTR
+#ifdef WITH_XATTR
 	{"with-xattr", 0, NULL, 1000 },
 	{"with-selinux", 0, NULL, 1001 },
 	{"with-posix-acl", 0, NULL, 1002 },
@@ -1420,7 +1420,7 @@ static const char helptext[] =
 "  -q, --squash            Squash permissions and owners making all files be owned by root\n"
 "  -U, --squash-uids       Squash owners making all files be owned by root\n"
 "  -P, --squash-perms      Squash permissions on all files\n"
-#ifndef WITHOUT_XATTR
+#ifdef WITH_XATTR
 "      --with-xattr        stuff all xattr entries into image\n"
 "      --with-selinux      stuff only SELinux Labels into jffs2 image\n"
 "      --with-posix-acl    stuff only POSIX ACL entries into jffs2 image\n"
@@ -1745,7 +1745,7 @@ int main(int argc, char **argv)
 						  sys_errmsg_die("cannot open (incremental) file");
 					  }
 					  break;
-#ifndef WITHOUT_XATTR
+#ifdef WITH_XATTR
 			case 1000:	/* --with-xattr  */
 					  enable_xattr |= (1 << JFFS2_XPREFIX_USER)
 						  | (1 << JFFS2_XPREFIX_SECURITY)
