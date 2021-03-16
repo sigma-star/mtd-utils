@@ -24,6 +24,7 @@ fectest
 flash_erase
 flash_lock
 flash_otp_dump
+flash_otp_erase
 flash_otp_info
 flash_otp_lock
 flash_otp_write
