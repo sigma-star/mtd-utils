@@ -1,6 +1,7 @@
 /*
  * Copyright (c) International Business Machines Corp., 2006
  * Copyright (C) 2009 Nokia Corporation
+ * Copyright 2021 NXP
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -834,8 +835,8 @@ static int mtd_valid_erase_block(const struct mtd_dev_info *mtd, int eb)
 	return 0;
 }
 
-static int mtd_xlock(const struct mtd_dev_info *mtd, int fd, int eb, int req,
-		     const char *sreq)
+static int mtd_xlock(const struct mtd_dev_info *mtd, int fd, int eb,
+		     int blocks, int req, const char *sreq)
 {
 	int ret;
 	struct erase_info_user ei;
@@ -844,8 +845,14 @@ static int mtd_xlock(const struct mtd_dev_info *mtd, int fd, int eb, int req,
 	if (ret)
 		return ret;
 
+	if (blocks > 1) {
+		ret = mtd_valid_erase_block(mtd, eb + blocks - 1);
+		if (ret)
+			return ret;
+	}
+
 	ei.start = eb * mtd->eb_size;
-	ei.length = mtd->eb_size;
+	ei.length = mtd->eb_size * blocks;
 
 	ret = ioctl(fd, req, &ei);
 	if (ret < 0)
@@ -853,16 +860,23 @@ static int mtd_xlock(const struct mtd_dev_info *mtd, int fd, int eb, int req,
 
 	return 0;
 }
-#define mtd_xlock(mtd, fd, eb, req) mtd_xlock(mtd, fd, eb, req, #req)
+#define mtd_xlock(mtd, fd, eb, blocks, req) \
+	mtd_xlock(mtd, fd, eb, blocks, req, #req)
 
 int mtd_lock(const struct mtd_dev_info *mtd, int fd, int eb)
 {
-	return mtd_xlock(mtd, fd, eb, MEMLOCK);
+	return mtd_xlock(mtd, fd, eb, 1, MEMLOCK);
 }
 
 int mtd_unlock(const struct mtd_dev_info *mtd, int fd, int eb)
 {
-	return mtd_xlock(mtd, fd, eb, MEMUNLOCK);
+	return mtd_xlock(mtd, fd, eb, 1, MEMUNLOCK);
+}
+
+int mtd_unlock_multi(const struct mtd_dev_info *mtd, int fd, int eb,
+		     int blocks)
+{
+	return mtd_xlock(mtd, fd, eb, blocks, MEMUNLOCK);
 }
 
 int mtd_erase_multi(libmtd_t desc, const struct mtd_dev_info *mtd,

@@ -1,5 +1,6 @@
 /*
  * Copyright (C) 2008, 2009 Nokia Corporation
+ * Copyright 2021 NXP
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License as published by
@@ -173,6 +174,20 @@ int mtd_lock(const struct mtd_dev_info *mtd, int fd, int eb);
  * in case of failure.
  */
 int mtd_unlock(const struct mtd_dev_info *mtd, int fd, int eb);
+
+/**
+ * mtd_unlock_multi - unlock eraseblocks.
+ * @desc: MTD library descriptor
+ * @mtd: MTD device description object
+ * @fd: MTD device node file descriptor
+ * @eb: index of first eraseblock to unlock
+ * @blocks: the number of eraseblocks to unlock
+ *
+ * This function unlocks @blocks starting at eraseblock @eb.
+ * Returns %0 in case of success and %-1 in case of failure.
+ */
+int mtd_unlock_multi(const struct mtd_dev_info *mtd, int fd, int eb,
+		     int blocks);
 
 /**
  * mtd_erase - erase multiple eraseblocks.
