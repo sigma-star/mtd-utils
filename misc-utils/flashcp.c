@@ -67,6 +67,7 @@
 #define FLAG_FILENAME	0x04
 #define FLAG_DEVICE		0x08
 #define FLAG_ERASE_ALL	0x10
+#define FLAG_PARTITION	0x20
 
 /* error levels */
 #define LOG_NORMAL	1
@@ -96,6 +97,7 @@ static NORETURN void showusage(bool error)
 			"\n"
 			"   -h | --help      Show this help message\n"
 			"   -v | --verbose   Show progress reports\n"
+			"   -p | --partition Only copy different block from file to device\n"
 			"   -A | --erase-all Erases the whole device regardless of the image size\n"
 			"   -V | --version   Show version information and exit\n"
 			"   <filename>       File which you want to copy to flash\n"
@@ -181,10 +183,11 @@ int main (int argc,char *argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "hvAV";
+		static const char *short_options = "hvpAV";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 'h'},
 			{"verbose", no_argument, 0, 'v'},
+			{"partition", no_argument, 0, 'p'},
 			{"erase-all", no_argument, 0, 'A'},
 			{"version", no_argument, 0, 'V'},
 			{0, 0, 0, 0},
@@ -204,6 +207,10 @@ int main (int argc,char *argv[])
 			case 'v':
 				flags |= FLAG_VERBOSE;
 				DEBUG("Got FLAG_VERBOSE\n");
+				break;
+			case 'p':
+				flags |= FLAG_PARTITION;
+				DEBUG("Got FLAG_PARTITION");
 				break;
 			case 'A':
 				flags |= FLAG_ERASE_ALL;
@@ -255,6 +262,12 @@ int main (int argc,char *argv[])
 	{
 		log_printf (LOG_ERROR,"%s won't fit into %s!\n",filename,device);
 		exit (EXIT_FAILURE);
+	}
+
+	/* diff block flashcp */
+	if (flags & FLAG_PARTITION)
+	{
+		goto DIFF_BLOCKS;
 	}
 
 	/*****************************************************
@@ -401,6 +414,84 @@ int main (int argc,char *argv[])
 				KB ((unsigned long long)filestat.st_size),
 				KB ((unsigned long long)filestat.st_size));
 	DEBUG("Verified %d / %lluk bytes\n",written,(unsigned long long)filestat.st_size);
+
+	exit (EXIT_SUCCESS);
+
+	/*********************************************
+	 * Copy different blocks from file to device *
+	 ********************************************/
+DIFF_BLOCKS:
+	safe_rewind (fil_fd,filename);
+	safe_rewind (dev_fd,device);
+	size = filestat.st_size;
+	i = mtd.erasesize;
+	erase.start = 0;
+	erase.length = (filestat.st_size + mtd.erasesize - 1) / mtd.erasesize;
+	erase.length *= mtd.erasesize;
+	written = 0;
+	unsigned long current_dev_block = 0;
+	int diffBlock = 0;
+	int blocks = erase.length / mtd.erasesize;
+	erase.length = mtd.erasesize;
+
+	if (flags & FLAG_VERBOSE)
+		log_printf (LOG_NORMAL,
+				"\rProcessing blocks: 0/%d (%d%%)", blocks, PERCENTAGE (0,blocks));
+	for (int s = 1; s <= blocks; s++)
+	{
+		if (size < mtd.erasesize) i = size;
+		if (flags & FLAG_VERBOSE)
+			log_printf (LOG_NORMAL,
+					"\rProcessing blocks: %d/%d (%d%%)", s, blocks, PERCENTAGE (s,blocks));
+
+		/* read from filename */
+		safe_read (fil_fd,filename,src,i,flags & FLAG_VERBOSE);
+
+		/* read from device */
+		current_dev_block = lseek(dev_fd, 0, SEEK_CUR);
+		safe_read (dev_fd,device,dest,i,flags & FLAG_VERBOSE);
+
+		/* compare buffers, if not the same, erase and write the block */
+		if (memcmp (src,dest,i))
+		{
+			diffBlock++;
+			/* erase block */
+			lseek(dev_fd, current_dev_block, SEEK_SET);
+			if (ioctl (dev_fd,MEMERASE,&erase) < 0)
+			{
+				log_printf (LOG_NORMAL,"\n");
+				log_printf (LOG_ERROR,
+						"While erasing blocks 0x%.8x-0x%.8x on %s: %m\n",
+						(unsigned int) erase.start,(unsigned int) (erase.start + erase.length),device);
+				exit (EXIT_FAILURE);
+			}
+
+			/* write to device */
+			lseek(dev_fd, current_dev_block, SEEK_SET);
+			result = write (dev_fd,src,i);
+			if (i != result)
+			{
+				if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL,"\n");
+				if (result < 0)
+				{
+					log_printf (LOG_ERROR,
+							"While writing data to 0x%.8lx-0x%.8lx on %s: %m\n",
+							written,written + i,device);
+					exit (EXIT_FAILURE);
+				}
+				log_printf (LOG_ERROR,
+						"Short write count returned while writing to x%.8zx-0x%.8zx on %s: %zu/%llu bytes written to flash\n",
+						written,written + i,device,written + result,(unsigned long long)filestat.st_size);
+				exit (EXIT_FAILURE);
+			}
+		}
+
+		erase.start += i;
+		written += i;
+		size -= i;
+	}
+
+	if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL, "\ndiff blocks: %d\n", diffBlock);
 
 	exit (EXIT_SUCCESS);
 }
