@@ -8,4 +8,4 @@ test_PROGRAMS += JitterTest plotJittervsFill
 
 test_SCRIPTS += tests/jittertest/filljffs2.sh
 
-EXTRA_DIST += tests/jittertest/README $(JITTERTEST_SH)
+EXTRA_DIST += tests/jittertest/README tests/jittertest/filljffs2.sh
