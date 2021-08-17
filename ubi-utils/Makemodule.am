@@ -25,6 +25,9 @@ ubinize_LDADD = libubi.a libubigen.a libmtd.a libiniparser.a
 ubiformat_SOURCES = ubi-utils/ubiformat.c include/mtd_swab.h
 ubiformat_LDADD = libubi.a libubigen.a libmtd.a libscan.a
 
+ubiscan_SOURCES = ubi-utils/ubiscan.c include/mtd_swab.h
+ubiscan_LDADD = libubi.a libubigen.a libscan.a libmtd.a
+
 ubirename_SOURCES = ubi-utils/ubirename.c
 ubirename_LDADD = libmtd.a libubi.a
 
@@ -44,7 +47,7 @@ endif
 
 sbin_PROGRAMS += \
 	ubiupdatevol ubimkvol ubirmvol ubicrc32 ubinfo ubiattach \
-	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock
+	ubidetach ubinize ubiformat ubirename mtdinfo ubirsvol ubiblock ubiscan
 
 if WITH_GETRANDOM
 sbin_PROGRAMS += ubihealthd
