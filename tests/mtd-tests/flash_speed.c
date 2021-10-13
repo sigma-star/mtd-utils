@@ -343,7 +343,7 @@ int main(int argc, char **argv)
 		puts("not NAND flash, assume page size is 512 bytes.");
 		pgsize = 512;
 	} else {
-		pgsize = mtd.subpage_size;
+		pgsize = mtd.min_io_size;
 	}
 
 	pgcnt = mtd.eb_size / pgsize;
