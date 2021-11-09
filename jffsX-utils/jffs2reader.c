@@ -336,8 +336,9 @@ static void printdir(char *o, size_t size, struct dir *d, const char *path,
 			d = d->next;
 			continue;
 		}
-
-		filetime = ctime((const time_t *) &(ri->ctime));
+		time_t _ctime;
+		memcpy(&_ctime, &(ri->ctime), sizeof(time_t));
+		filetime = ctime(&_ctime);
 		age = time(NULL) - je32_to_cpu(ri->ctime);
 		mode.v32 = ri->mode.m;
 		printf("%s %-4d %-8d %-8d ", mode_string(je32_to_cpu(mode)),
