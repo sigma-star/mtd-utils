@@ -6,7 +6,7 @@ mkfs_jffs2_SOURCES = \
 	jffsX-utils/rbtree.c \
 	jffsX-utils/compr_lzo.c \
 	jffsX-utils/compr.c \
-	jffsX-utils/compr_rtime.c
+	jffsX-utils/compr_rtime.c \
 	jffsX-utils/compr.h \
 	jffsX-utils/rbtree.h \
 	jffsX-utils/summary.h \
