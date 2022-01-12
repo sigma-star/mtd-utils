@@ -341,9 +341,9 @@ fi
 AM_CONDITIONAL([WITHOUT_LZO], [test "x$need_lzo" != "xyes"])
 AM_CONDITIONAL([WITHOUT_ZSTD], [test "x$need_zstd" != "xyes"])
 AM_CONDITIONAL([WITHOUT_XATTR], [test "x$need_xattr" != "xyes"])
-AM_CONDITIONAL([WITH_SELINUX], [test "x$need_selinux" == "xyes"])
-AM_CONDITIONAL([WITH_CRYPTO], [test "x$need_openssl" == "xyes"])
-AM_CONDITIONAL([WITH_GETRANDOM], [test "x$need_getrandom" == "xyes"])
+AM_CONDITIONAL([WITH_SELINUX], [test "x$need_selinux" = "xyes"])
+AM_CONDITIONAL([WITH_CRYPTO], [test "x$need_openssl" = "xyes"])
+AM_CONDITIONAL([WITH_GETRANDOM], [test "x$need_getrandom" = "xyes"])
 
 AC_CHECK_SIZEOF([off_t])
 AC_CHECK_SIZEOF([loff_t])
