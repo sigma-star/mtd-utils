@@ -256,7 +256,7 @@ int main(int argc, char *argv[])
 	if (!rfd.sector_map) {
 		perror(PROGRAM_NAME);
 		close(fd);
-		free(rfd.sector_map);
+		free(rfd.header);
 		return 2;
 	}
 
