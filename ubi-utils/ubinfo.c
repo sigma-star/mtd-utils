@@ -417,12 +417,9 @@ int main(int argc, char * const argv[])
 		goto out_libubi;
 	}
 
-	if (args.devn != -1 && args.vol_id != -1) {
-		print_vol_info(libubi, args.devn, args.vol_id);
-		goto out;
-	}
-
-	if (args.devn == -1 && args.vol_id == -1)
+	if (args.devn != -1 && args.vol_id != -1)
+		err = print_vol_info(libubi, args.devn, args.vol_id);
+	else if (args.devn == -1 && args.vol_id == -1)
 		err = print_general_info(libubi, args.all);
 	else if (args.devn != -1 && args.vol_id == -1)
 		err = print_dev_info(libubi, args.devn, args.all);
