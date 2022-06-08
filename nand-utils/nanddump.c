@@ -499,7 +499,7 @@ int main(int argc, char * const argv[])
 			}
 		} else {
 			/* Write requested length if oob is omitted */
-			size_t size_left = end_addr - ofs;
+			long long size_left = end_addr - ofs;
 			if (omitoob && (size_left < bs))
 				err = ofd_write(ofd, readbuf, size_left);
 			else
