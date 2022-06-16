@@ -249,7 +249,9 @@ int main(int argc, char **argv)
 
 			bufoffs += mtd.min_io_size;
 
-			ret = mtd_read_oob(mtd_desc, &mtd, fd, blkoffs,
+			ret = mtd_read_oob(mtd_desc, &mtd, fd,
+					   bit_to_flip->block * mtd.eb_size +
+					   blkoffs,
 					   mtd.oob_size, buffer + bufoffs);
 			if (ret) {
 				fprintf(stderr, "MTD OOB read failure\n");
