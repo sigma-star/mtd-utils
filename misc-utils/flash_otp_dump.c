@@ -20,7 +20,7 @@ int main(int argc,char *argv[])
 	int offset = 0;
 	unsigned char buf[16];
 
-	if (argc <= 3 || (strcmp(argv[1], "-f") && strcmp(argv[1], "-u"))) {
+	if (argc < 3 || (strcmp(argv[1], "-f") && strcmp(argv[1], "-u"))) {
 		fprintf(stderr,"Usage: %s [ -f | -u ] <device> [<offset>]\n", PROGRAM_NAME);
 		return EINVAL;
 	}
