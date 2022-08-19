@@ -792,7 +792,7 @@ int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd)
 		return -1;
 	mtd->writable = !!(ret & MTD_WRITEABLE);
 
-	if (ret & MTD_NO_ERASE)
+	if ((ret & MTD_NO_ERASE) && (mtd->eb_size == 0))
 		mtd->eb_cnt = 1;
 	else
 		mtd->eb_cnt = mtd->size / mtd->eb_size;
