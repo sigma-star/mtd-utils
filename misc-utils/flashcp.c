@@ -189,6 +189,18 @@ static void safe_rewind (int fd,const char *filename)
 	safe_lseek(fd,0L,SEEK_SET,filename);
 }
 
+static void safe_memerase (int fd,const char *device,struct erase_info_user *erase,bool verbose)
+{
+	if (ioctl (fd,MEMERASE,erase) < 0)
+	{
+		if (verbose) log_printf (LOG_NORMAL,"\n");
+		log_printf (LOG_ERROR,
+				"While erasing blocks 0x%.8x-0x%.8x on %s: %m\n",
+				(unsigned int) erase->start,(unsigned int) (erase->start + erase->length),device);
+		exit (EXIT_FAILURE);
+	}
+}
+
 /******************************************************************************/
 
 static int dev_fd = -1,fil_fd = -1;
@@ -329,14 +341,7 @@ int main (int argc,char *argv[])
 		for (i = 1; i <= blocks; i++)
 		{
 			log_printf (LOG_NORMAL,"\rErasing blocks: %d/%d (%d%%)",i,blocks,PERCENTAGE (i,blocks));
-			if (ioctl (dev_fd,MEMERASE,&erase) < 0)
-			{
-				log_printf (LOG_NORMAL,"\n");
-				log_printf (LOG_ERROR,
-						"While erasing blocks 0x%.8x-0x%.8x on %s: %m\n",
-						(unsigned int) erase.start,(unsigned int) (erase.start + erase.length),device);
-				exit (EXIT_FAILURE);
-			}
+			safe_memerase(dev_fd,device,&erase,flags & FLAG_VERBOSE);
 			erase.start += mtd.erasesize;
 		}
 		log_printf (LOG_NORMAL,"\rErasing blocks: %d/%d (100%%)\n",blocks,blocks);
@@ -344,13 +349,7 @@ int main (int argc,char *argv[])
 	else
 	{
 		/* if not, erase the whole chunk in one shot */
-		if (ioctl (dev_fd,MEMERASE,&erase) < 0)
-		{
-			log_printf (LOG_ERROR,
-					"While erasing blocks from 0x%.8x-0x%.8x on %s: %m\n",
-					(unsigned int) erase.start,(unsigned int) (erase.start + erase.length),device);
-			exit (EXIT_FAILURE);
-		}
+		safe_memerase(dev_fd,device,&erase,flags & FLAG_VERBOSE);
 	}
 	DEBUG("Erased %u / %luk bytes\n",erase.length,filestat.st_size);
 
@@ -474,14 +473,7 @@ DIFF_BLOCKS:
 			diffBlock++;
 			/* erase block */
 			safe_lseek(dev_fd, current_dev_block, SEEK_SET, device);
-			if (ioctl (dev_fd,MEMERASE,&erase) < 0)
-			{
-				log_printf (LOG_NORMAL,"\n");
-				log_printf (LOG_ERROR,
-						"While erasing blocks 0x%.8x-0x%.8x on %s: %m\n",
-						(unsigned int) erase.start,(unsigned int) (erase.start + erase.length),device);
-				exit (EXIT_FAILURE);
-			}
+			safe_memerase(dev_fd,device,&erase,flags & FLAG_VERBOSE);
 
 			/* write to device */
 			safe_lseek(dev_fd, current_dev_block, SEEK_SET, device);
