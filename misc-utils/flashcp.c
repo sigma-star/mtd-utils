@@ -57,9 +57,6 @@
 #define KB(x) ((x) / 1024)
 #define PERCENTAGE(x,total) (((x) * 100) / (total))
 
-/* size of read/write buffer */
-#define BUFSIZE (10 * 1024)
-
 /* cmd-line flags */
 #define FLAG_NONE		0x00
 #define FLAG_HELP		0x02
@@ -222,7 +219,7 @@ int main (int argc,char *argv[])
 	struct mtd_info_user mtd;
 	struct erase_info_user erase;
 	struct stat filestat;
-	unsigned char src[BUFSIZE],dest[BUFSIZE];
+	unsigned char *src,*dest;
 
 	/*********************
 	 * parse cmd-line
@@ -304,6 +301,14 @@ int main (int argc,char *argv[])
 	if (filestat.st_size > mtd.size)
 		log_failure("%s won't fit into %s!\n",filename,device);
 
+	src = malloc(mtd.erasesize);
+	if (!src)
+		log_failure("Malloc failed");
+
+	dest = malloc(mtd.erasesize);
+	if (!dest)
+		log_failure("Malloc failed");
+
 	/* diff block flashcp */
 	if (flags & FLAG_PARTITION)
 	{
@@ -355,11 +360,11 @@ int main (int argc,char *argv[])
 
 	log_verbose ("Writing data: 0k/%lluk (0%%)",KB ((unsigned long long)filestat.st_size));
 	size = filestat.st_size;
-	i = BUFSIZE;
+	i = mtd.erasesize;
 	written = 0;
 	while (size)
 	{
-		if (size < BUFSIZE) i = size;
+		if (size < mtd.erasesize) i = size;
 		log_verbose ("\rWriting data: %dk/%lluk (%llu%%)",
 				KB (written + i),
 				KB ((unsigned long long)filestat.st_size),
@@ -386,12 +391,12 @@ int main (int argc,char *argv[])
 	safe_rewind (fil_fd,filename);
 	safe_rewind (dev_fd,device);
 	size = filestat.st_size;
-	i = BUFSIZE;
+	i = mtd.erasesize;
 	written = 0;
 	log_verbose ("Verifying data: 0k/%lluk (0%%)",KB ((unsigned long long)filestat.st_size));
 	while (size)
 	{
-		if (size < BUFSIZE) i = size;
+		if (size < mtd.erasesize) i = size;
 		log_verbose ("\rVerifying data: %luk/%lluk (%llu%%)",
 				KB (written + i),
 				KB ((unsigned long long)filestat.st_size),
