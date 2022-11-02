@@ -282,6 +282,9 @@ int main (int argc,char *argv[])
 	if (flags & FLAG_HELP || device == NULL)
 		showusage(flags != FLAG_HELP);
 
+	if (flags & FLAG_PARTITION && flags & FLAG_ERASE_ALL)
+		log_failure("Option --partition does not support --erase-all\n");
+
 	atexit (cleanup);
 
 	/* get some info about the flash device */
