@@ -464,6 +464,15 @@ DIFF_BLOCKS:
 			/* write to device */
 			safe_lseek(dev_fd, current_dev_block, SEEK_SET, device);
 			safe_write(dev_fd,src,i,written,(unsigned long long)filestat.st_size,device);
+
+			/* read from device */
+			safe_lseek(dev_fd, current_dev_block, SEEK_SET, device);
+			safe_read (dev_fd,device,dest,i);
+
+			/* compare buffers for write success */
+			if (memcmp (src,dest,i))
+				log_failure("File does not seem to match flash data. First mismatch at 0x%.8zx-0x%.8zx\n",
+						written,written + i);
 		}
 
 		erase.start += i;
