@@ -147,6 +147,29 @@ static void safe_read (int fd,const char *filename,void *buf,size_t count,bool v
 	}
 }
 
+static void safe_write (int fd,const void *buf,size_t count,size_t written,unsigned long long to_write,const char *device,bool verbose)
+{
+	ssize_t result;
+
+	/* write to device */
+	result = write (fd,buf,count);
+	if (count != result)
+	{
+		if (verbose) log_printf (LOG_NORMAL,"\n");
+		if (result < 0)
+		{
+			log_printf (LOG_ERROR,
+					"While writing data to 0x%.8lx-0x%.8lx on %s: %m\n",
+					written,written + count,device);
+			exit (EXIT_FAILURE);
+		}
+		log_printf (LOG_ERROR,
+				"Short write count returned while writing to x%.8zx-0x%.8zx on %s: %zu/%llu bytes written to flash\n",
+				written,written + count,device,written + result,to_write);
+		exit (EXIT_FAILURE);
+	}
+}
+
 static void safe_rewind (int fd,const char *filename)
 {
 	if (lseek (fd,0L,SEEK_SET) < 0)
@@ -170,7 +193,6 @@ int main (int argc,char *argv[])
 {
 	const char *filename = NULL,*device = NULL;
 	int i,flags = FLAG_NONE;
-	ssize_t result;
 	size_t size,written;
 	struct mtd_info_user mtd;
 	struct erase_info_user erase;
@@ -343,22 +365,7 @@ int main (int argc,char *argv[])
 		safe_read (fil_fd,filename,src,i,flags & FLAG_VERBOSE);
 
 		/* write to device */
-		result = write (dev_fd,src,i);
-		if (i != result)
-		{
-			if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL,"\n");
-			if (result < 0)
-			{
-				log_printf (LOG_ERROR,
-						"While writing data to 0x%.8lx-0x%.8lx on %s: %m\n",
-						written,written + i,device);
-				exit (EXIT_FAILURE);
-			}
-			log_printf (LOG_ERROR,
-					"Short write count returned while writing to x%.8zx-0x%.8zx on %s: %zu/%llu bytes written to flash\n",
-					written,written + i,device,written + result,(unsigned long long)filestat.st_size);
-			exit (EXIT_FAILURE);
-		}
+		safe_write(dev_fd,src,i,written,(unsigned long long)filestat.st_size,device,flags & FLAG_VERBOSE);
 
 		written += i;
 		size -= i;
@@ -468,22 +475,7 @@ DIFF_BLOCKS:
 
 			/* write to device */
 			lseek(dev_fd, current_dev_block, SEEK_SET);
-			result = write (dev_fd,src,i);
-			if (i != result)
-			{
-				if (flags & FLAG_VERBOSE) log_printf (LOG_NORMAL,"\n");
-				if (result < 0)
-				{
-					log_printf (LOG_ERROR,
-							"While writing data to 0x%.8lx-0x%.8lx on %s: %m\n",
-							written,written + i,device);
-					exit (EXIT_FAILURE);
-				}
-				log_printf (LOG_ERROR,
-						"Short write count returned while writing to x%.8zx-0x%.8zx on %s: %zu/%llu bytes written to flash\n",
-						written,written + i,device,written + result,(unsigned long long)filestat.st_size);
-				exit (EXIT_FAILURE);
-			}
+			safe_write(dev_fd,src,i,written,(unsigned long long)filestat.st_size,device,flags & FLAG_VERBOSE);
 		}
 
 		erase.start += i;
