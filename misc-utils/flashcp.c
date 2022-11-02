@@ -170,13 +170,23 @@ static void safe_write (int fd,const void *buf,size_t count,size_t written,unsig
 	}
 }
 
-static void safe_rewind (int fd,const char *filename)
+static off_t safe_lseek (int fd,off_t offset,int whence,const char *filename)
 {
-	if (lseek (fd,0L,SEEK_SET) < 0)
+	off_t off;
+
+	off = lseek (fd,offset,whence);
+	if (off < 0)
 	{
-		log_printf (LOG_ERROR,"While seeking to start of %s: %m\n",filename);
+		log_printf (LOG_ERROR,"While seeking on %s: %m\n",filename);
 		exit (EXIT_FAILURE);
 	}
+
+	return off;
+}
+
+static void safe_rewind (int fd,const char *filename)
+{
+	safe_lseek(fd,0L,SEEK_SET,filename);
 }
 
 /******************************************************************************/
@@ -455,7 +465,7 @@ DIFF_BLOCKS:
 		safe_read (fil_fd,filename,src,i,flags & FLAG_VERBOSE);
 
 		/* read from device */
-		current_dev_block = lseek(dev_fd, 0, SEEK_CUR);
+		current_dev_block = safe_lseek(dev_fd, 0, SEEK_CUR, device);
 		safe_read (dev_fd,device,dest,i,flags & FLAG_VERBOSE);
 
 		/* compare buffers, if not the same, erase and write the block */
@@ -463,7 +473,7 @@ DIFF_BLOCKS:
 		{
 			diffBlock++;
 			/* erase block */
-			lseek(dev_fd, current_dev_block, SEEK_SET);
+			safe_lseek(dev_fd, current_dev_block, SEEK_SET, device);
 			if (ioctl (dev_fd,MEMERASE,&erase) < 0)
 			{
 				log_printf (LOG_NORMAL,"\n");
@@ -474,7 +484,7 @@ DIFF_BLOCKS:
 			}
 
 			/* write to device */
-			lseek(dev_fd, current_dev_block, SEEK_SET);
+			safe_lseek(dev_fd, current_dev_block, SEEK_SET, device);
 			safe_write(dev_fd,src,i,written,(unsigned long long)filestat.st_size,device,flags & FLAG_VERBOSE);
 		}
 
