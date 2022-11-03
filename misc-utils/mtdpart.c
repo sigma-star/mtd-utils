@@ -37,7 +37,7 @@ static void display_help(int status)
 "  -V, --version Output version information and exit\n"
 "\n"
 "START location and SIZE of the partition are in bytes. They should align on\n"
-"eraseblock size.\n",
+"eraseblock size. If SIZE is 0 the partition will go to end of MTD device.\n",
 	PROGRAM_NAME
 	);
 	exit(status);
