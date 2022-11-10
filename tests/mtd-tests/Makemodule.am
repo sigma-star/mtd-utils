@@ -7,8 +7,11 @@ flash_stress_LDADD = libmtd.a
 flash_stress_CPPFLAGS = $(AM_CPPFLAGS)
 
 flash_speed_SOURCES = tests/mtd-tests/flash_speed.c
-flash_speed_LDADD = libmtd.a
+flash_speed_LDADD = libmtd.a $(PTHREAD_LIBS)
 flash_speed_CPPFLAGS = $(AM_CPPFLAGS)
+
+flash_speed_LDADD += $(PTHREAD_CFLAGS)
+flash_speed_CPPFLAGS += $(PTHREAD_CFLAGS)
 
 nandbiterrs_SOURCES = tests/mtd-tests/nandbiterrs.c
 nandbiterrs_LDADD = libmtd.a
