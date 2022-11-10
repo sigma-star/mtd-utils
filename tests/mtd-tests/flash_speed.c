@@ -258,22 +258,29 @@ static int read_eraseblock_by_2pages(int ebnum)
 	return err;
 }
 
-static void start_timing(void)
+static void start_timing(struct timespec *start)
 {
-	clock_gettime(CLOCK_MONOTONIC_RAW, &start);
+	clock_gettime(CLOCK_MONOTONIC_RAW, start);
 }
 
-static void stop_timing(void)
+static void stop_timing(struct timespec *finish)
 {
-	clock_gettime(CLOCK_MONOTONIC_RAW, &finish);
+	clock_gettime(CLOCK_MONOTONIC_RAW, finish);
 }
 
-static long calc_speed(void)
+static long calc_duration(struct timespec *start, struct timespec *finish)
 {
 	long ms;
 
-	ms = (finish.tv_sec - start.tv_sec) * 1000L;
-	ms += (finish.tv_nsec - start.tv_nsec) / 1000000L;
+	ms = (finish->tv_sec - start->tv_sec) * 1000L;
+	ms += (finish->tv_nsec - start->tv_nsec) / 1000000L;
+
+	return ms;
+}
+
+static long calc_speed(struct timespec *start, struct timespec *finish)
+{
+	long ms = calc_duration(start, finish);
 
 	if (ms <= 0)
 		return 0;
@@ -314,7 +321,7 @@ static int erase_good_eraseblocks(unsigned int eb, int ebcnt, int ebskip)
 }
 
 #define TIME_OP_PER_PEB( op )\
-		start_timing();\
+		start_timing(&start);\
 		for (i = 0; i < count; ++i) {\
 			if (bbt[i])\
 				continue;\
@@ -322,8 +329,8 @@ static int erase_good_eraseblocks(unsigned int eb, int ebcnt, int ebskip)
 			if (err)\
 				goto out;\
 		}\
-		stop_timing();\
-		speed = calc_speed()
+		stop_timing(&finish);\
+		speed = calc_speed(&start, &finish)
 
 int main(int argc, char **argv)
 {
@@ -428,12 +435,12 @@ int main(int argc, char **argv)
 	/* Erase all eraseblocks */
 	if (flags & DESTRUCTIVE) {
 		puts("Testing erase speed");
-		start_timing();
+		start_timing(&start);
 		err = erase_good_eraseblocks(peb, count, skip);
 		if (err)
 			goto out;
-		stop_timing();
-		speed = calc_speed();
+		stop_timing(&finish);
+		speed = calc_speed(&start, &finish);
 		printf("erase speed is %ld KiB/s\n", speed);
 	}
 
@@ -442,7 +449,7 @@ int main(int argc, char **argv)
 		for (k = 1; k < 7; ++k) {
 			blocks = 1 << k;
 			printf("Testing %dx multi-block erase speed\n", blocks);
-			start_timing();
+			start_timing(&start);
 			for (i = 0; i < count; ) {
 				for (j = 0; j < blocks && (i + j) < count; ++j)
 					if (bbt[i + j])
@@ -456,8 +463,8 @@ int main(int argc, char **argv)
 					goto out;
 				i += j;
 			}
-			stop_timing();
-			speed = calc_speed();
+			stop_timing(&finish);
+			speed = calc_speed(&start, &finish);
 			printf("%dx multi-block erase speed is %ld KiB/s\n",
 					blocks, speed);
 		}
