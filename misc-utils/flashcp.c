@@ -110,7 +110,7 @@ static NORETURN void showusage(bool error)
 			"   -A | --erase-all Erases the whole device regardless of the image size\n"
 			"   -V | --version   Show version information and exit\n"
 			"   <filename>       File which you want to copy to flash\n"
-			"   <device>         Flash device to write to (e.g. /dev/mtd0, /dev/mtd1, etc.)\n"
+			"   <device>         Flash device node or 'mtd:<name>' to write to (e.g. /dev/mtd0, /dev/mtd1, mtd:data, etc.)\n"
 			"\n",
 			PROGRAM_NAME);
 
@@ -275,7 +275,10 @@ int main (int argc,char *argv[])
 		DEBUG("Got filename: %s\n",filename);
 
 		flags |= FLAG_DEVICE;
-		device = argv[optind+1];
+		device = mtd_find_dev_node(argv[optind+1]);
+		if (!device)
+			log_failure("Failed to find device %s\n", argv[optind+1]);
+
 		DEBUG("Got device: %s\n",device);
 	}
 

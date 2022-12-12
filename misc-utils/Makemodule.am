@@ -7,8 +7,10 @@ ftl_check_SOURCES = misc-utils/ftl_check.c include/mtd_swab.h
 ftl_check_SOURCES += include/mtd/ftl-user.h
 
 mtd_debug_SOURCES = misc-utils/mtd_debug.c
+mtd_debug_LDADD = libmtd.a
 
 mtdpart_SOURCES = misc-utils/mtdpart.c
+mtdpart_LDADD = libmtd.a
 
 docfdisk_SOURCES = misc-utils/docfdisk.c include/mtd_swab.h
 docfdisk_SOURCES += include/mtd/inftl-user.h include/mtd/ftl-user.h
@@ -23,8 +25,10 @@ fectest_SOURCES = misc-utils/fectest.c misc-utils/mcast_image.h
 fectest_LDADD = libmtd.a
 
 flash_lock_SOURCES = misc-utils/flash_lock.c
+flash_lock_LDADD = libmtd.a
 
 flash_unlock_SOURCES = misc-utils/flash_unlock.c
+flash_unlock_LDADD = libmtd.a
 
 flash_otp_info_SOURCES = misc-utils/flash_otp_info.c
 
@@ -37,6 +41,7 @@ flash_otp_erase_SOURCES = misc-utils/flash_otp_erase.c
 flash_otp_write_SOURCES = misc-utils/flash_otp_write.c
 
 flashcp_SOURCES = misc-utils/flashcp.c
+flashcp_LDADD = libmtd.a
 
 flash_erase_SOURCES = misc-utils/flash_erase.c
 flash_erase_LDADD = libmtd.a

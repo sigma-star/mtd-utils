@@ -36,6 +36,8 @@ static void display_help(int status)
 "  -h, --help    Display this help and exit\n"
 "  -V, --version Output version information and exit\n"
 "\n"
+"  <MTD_DEVICE>  MTD device node or 'mtd:<name>'\n"
+"\n"
 "START location and SIZE of the partition are in bytes. They should align on\n"
 "eraseblock size. If SIZE is 0 the partition will go to end of MTD device.\n",
 	PROGRAM_NAME
@@ -106,7 +108,10 @@ static void process_options(int argc, char * const argv[])
 		display_help(EXIT_FAILURE);
 
 	const char *s_command = argv[optind++];
-	mtddev = argv[optind++];
+	mtddev = mtd_find_dev_node(argv[optind]);
+	if (!mtddev)
+		errmsg_die("MTD device not found %s", argv[optind]);
+	optind++;
 
 	if (strcmp(s_command, "del") == 0 && (argc - optind) == 1) {
 		const char *s_part_no = argv[optind++];

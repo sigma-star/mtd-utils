@@ -348,6 +348,7 @@ int main(int argc, char *argv[])
 {
 	int err = 0, fd;
 	int open_flag;
+	char *dev;
 
 	enum {
 		OPT_INFO,
@@ -369,8 +370,12 @@ int main(int argc, char *argv[])
 		showusage();
 
 	/* open device */
+	dev = mtd_find_dev_node(argv[2]);
+	if (!dev)
+		errmsg_die("Failed to find MTD device %s", argv[2]);
+
 	open_flag = (option == OPT_INFO || option == OPT_READ) ? O_RDONLY : O_RDWR;
-	if ((fd = open(argv[2], O_SYNC | open_flag)) < 0)
+	if ((fd = open(dev, O_SYNC | open_flag)) < 0)
 		errmsg_die("open()");
 
 	switch (option) {

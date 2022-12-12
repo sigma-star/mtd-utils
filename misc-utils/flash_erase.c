@@ -71,6 +71,8 @@ static void display_help (void)
 			"      --silent      same as --quiet\n"
 			"      --help        display this help and exit\n"
 			"      --version     output version information and exit\n",
+			"\n"
+			"  MTD_DEVICE  MTD device node or 'mtd:<name>'\n"
 			PROGRAM_NAME);
 }
 
@@ -169,7 +171,9 @@ int main(int argc, char *argv[])
 	}
 	switch (argc - optind) {
 	case 3:
-		mtd_device = argv[optind];
+		mtd_device = mtd_find_dev_node(argv[optind]);
+		if (!mtd_device)
+			return errmsg("Can't find MTD device %s", argv[optind]);
 		start = simple_strtoull(argv[optind + 1], &error);
 		eb_cnt = simple_strtoul(argv[optind + 2], &error);
 		break;
