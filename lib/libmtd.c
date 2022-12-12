@@ -427,7 +427,7 @@ static int type_str2int(const char *str)
 /**
  * dev_node2num - find MTD device number by its character device node.
  * @lib: MTD library descriptor
- * @node: name of the MTD device node
+ * @node: path of the MTD device node
  * @mtd_num: MTD device number is returned here
  *
  * This function returns %0 in case of success and %-1 in case of failure.
@@ -474,6 +474,58 @@ static int dev_node2num(struct libmtd *lib, const char *node, int *mtd_num)
 
 	errno = ENODEV;
 	return -1;
+}
+
+/**
+ * dev_name2num - find MTD device number by its MTD name
+ * @lib: MTD library descriptor
+ * @name: name of the MTD device
+ * @mtd_num: MTD device number is returned here
+ *
+ * This function returns %0 in case of success and %-1 in case of failure.
+ */
+static int dev_name2num(struct libmtd *lib, const char *name, int *mtd_num)
+{
+	struct mtd_info info;
+	char name2[MTD_NAME_MAX + 1];
+	int i, mtd_num_tmp = -1;
+
+	if (mtd_get_info((libmtd_t *)lib, &info))
+		return -1;
+
+	for (i = info.lowest_mtd_num; i <= info.highest_mtd_num; i++) {
+		int ret;
+
+		ret = dev_read_data(lib->mtd_name, i, name2,
+				    MTD_NAME_MAX + 1);
+		if (ret < 0) {
+			if (errno == ENOENT)
+				continue;
+			if (!errno)
+				break;
+			return -1;
+		}
+		name2[ret - 1] = '\0';
+
+		if (!strcmp(name, name2)) {
+			// Device name collision
+			if (mtd_num_tmp >= 0) {
+				errmsg("Multiple MTD's found matching name %s", name);
+				errno = ENODEV;
+				return -1;
+			}
+
+			mtd_num_tmp = i;
+		}
+	}
+
+	if (mtd_num_tmp < 0) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	*mtd_num = mtd_num_tmp;
+	return 0;
 }
 
 /**
@@ -812,6 +864,20 @@ int mtd_get_dev_info(libmtd_t desc, const char *node, struct mtd_dev_info *mtd)
 		return legacy_get_dev_info(node, mtd);
 
 	if (dev_node2num(lib, node, &mtd_num))
+		return -1;
+
+	return mtd_get_dev_info1(desc, mtd_num, mtd);
+}
+
+int mtd_get_dev_info2(libmtd_t desc, const char *name, struct mtd_dev_info *mtd)
+{
+	int mtd_num;
+	struct libmtd *lib = (struct libmtd *)desc;
+
+	if (!lib->sysfs_supported)
+		return legacy_get_dev_info2(name, mtd);
+
+	if (dev_name2num(lib, name, &mtd_num))
 		return -1;
 
 	return mtd_get_dev_info1(desc, mtd_num, mtd);

@@ -130,7 +130,7 @@ int mtd_get_info(libmtd_t desc, struct mtd_info *info);
 /**
  * mtd_get_dev_info - get information about an MTD device.
  * @desc: MTD library descriptor
- * @node: name of the MTD device node
+ * @node: path of the MTD device node
  * @mtd: the MTD device information is returned here
  *
  * This function gets information about MTD device defined by the @node device
@@ -150,6 +150,17 @@ int mtd_get_dev_info(libmtd_t desc, const char *node, struct mtd_dev_info *mtd);
  * MTD device number, not MTD character device.
  */
 int mtd_get_dev_info1(libmtd_t desc, int mtd_num, struct mtd_dev_info *mtd);
+
+/**
+ * mtd_get_dev_info2 - get information about an MTD device.
+ * @desc: MTD library descriptor
+ * @name: name of the MTD device
+ * @mtd: the MTD device information is returned here
+ *
+ * This function is identical to 'mtd_get_dev_info()' except that it accepts
+ * MTD device's name, not MTD character device.
+ */
+int mtd_get_dev_info2(libmtd_t desc, const char *name, struct mtd_dev_info *mtd);
 
 /**
  * mtd_lock - lock eraseblocks.

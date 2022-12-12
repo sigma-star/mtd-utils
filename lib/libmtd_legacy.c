@@ -428,3 +428,41 @@ int legacy_get_dev_info1(int mtd_num, struct mtd_dev_info *mtd)
 	sprintf(node, MTD_DEV_PATT, mtd_num);
 	return legacy_get_dev_info(node, mtd);
 }
+
+/**
+ * legacy_get_dev_info2 - legacy version of `mtd_get_dev_info2()`
+ * @name: name of the MTD device
+ * @mtd: the MTD device information is returned here
+ *
+ * This function is similar to 'mtd_get_dev_info2()' and has the same
+ * conventions.
+ */
+int legacy_get_dev_info2(const char *name, struct mtd_dev_info *mtd)
+{
+	struct proc_parse_info pi;
+	int ret, mtd_num = -1;
+
+	ret = proc_parse_start(&pi);
+	if (ret)
+		return -1;
+
+	while (proc_parse_next(&pi)) {
+		if (!strcmp(name, pi.name)) {
+			// Device name collision
+			if (mtd_num >= 0) {
+				errmsg("Multiple MTD's found matching name %s", name);
+				errno = ENODEV;
+				return -1;
+			}
+
+			mtd_num = pi.mtd_num;
+		}
+	}
+
+	if (mtd_num < 0) {
+		errno = ENODEV;
+		return -1;
+	}
+
+	return legacy_get_dev_info1(mtd_num, mtd);
+}
