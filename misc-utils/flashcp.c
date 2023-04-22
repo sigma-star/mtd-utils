@@ -371,7 +371,7 @@ int main (int argc,char *argv[])
 		log_verbose ("\rWriting data: %dk/%lluk (%llu%%)",
 				KB (written + i),
 				KB ((unsigned long long)filestat.st_size),
-				PERCENTAGE (written + i,(unsigned long long)filestat.st_size));
+				PERCENTAGE ((unsigned long long)written + i,(unsigned long long)filestat.st_size));
 
 		/* read from filename */
 		safe_read (fil_fd,filename,src,i);
@@ -403,7 +403,7 @@ int main (int argc,char *argv[])
 		log_verbose ("\rVerifying data: %luk/%lluk (%llu%%)",
 				KB (written + i),
 				KB ((unsigned long long)filestat.st_size),
-				PERCENTAGE (written + i,(unsigned long long)filestat.st_size));
+				PERCENTAGE ((unsigned long long)written + i,(unsigned long long)filestat.st_size));
 
 		/* read from filename */
 		safe_read (fil_fd,filename,src,i);
