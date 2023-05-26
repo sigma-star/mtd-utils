@@ -733,6 +733,7 @@ static int get_options(int argc, char**argv)
 			if (!context)
 				return err_msg("xmalloc failed\n");
 			memcpy(context, optarg, context_len);
+			context[context_len] = '\0';
 
 			/* Make sure root directory exists */
 			if (stat(context, &context_st))
