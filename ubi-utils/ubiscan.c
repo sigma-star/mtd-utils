@@ -264,10 +264,10 @@ int main(int argc, char * const argv[])
 
         int from = (j == 0) ? 0 : args.bin_thresholds[j - 1];
         if (j == args.nbins - 1)
-            printf("%-8d ..      inf: %8d %8d %8llu %8d\n",
+            printf("%-8d ..      inf: %8d %8d %8" PRIu64 " %8d\n",
                 from, bins[j].cnt, bins[j].min, bins[j].mean, bins[j].max);
         else
-            printf("%-8d .. %8d: %8d %8d %8llu %8d\n",
+            printf("%-8d .. %8d: %8d %8d %8" PRIu64 " %8d\n",
                 from, args.bin_thresholds[j] - 1,
                 bins[j].cnt, bins[j].min, bins[j].mean, bins[j].max);
     }

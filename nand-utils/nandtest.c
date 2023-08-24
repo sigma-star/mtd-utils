@@ -266,17 +266,20 @@ int main(int argc, char **argv)
 		length = mem_size;
 
 	if (offset % meminfo.erasesize) {
-		fprintf(stderr, "Offset %llx not multiple of erase size %x\n",
+		fprintf(stderr, "Offset %" PRIx64
+			" not multiple of erase size %x\n",
 			offset, meminfo.erasesize);
 		exit(1);
 	}
 	if (length % meminfo.erasesize) {
-		fprintf(stderr, "Length %llx not multiple of erase size %x\n",
+		fprintf(stderr, "Length %" PRIx64
+			" not multiple of erase size %x\n",
 			length, meminfo.erasesize);
 		exit(1);
 	}
 	if (length + offset > mem_size) {
-		fprintf(stderr, "Length %llx + offset %llx exceeds device size %llx\n",
+		fprintf(stderr, "Length %" PRIx64 " + offset %" PRIx64
+			" exceeds device size %" PRIx64 "\n",
 			length, offset, mem_size);
 		exit(1);
 	}

@@ -203,7 +203,8 @@ int main(int argc, char **argv)
 		int page;
 
 		if (bits_to_flip[i].offset >= mtdlen) {
-			fprintf(stderr, "Invalid byte offset %lld (max %lld)\n",
+			fprintf(stderr, "Invalid byte offset %" PRId64
+				" (max %" PRId64 ")\n",
 				bits_to_flip[i].offset, mtdlen);
 			ret = EXIT_FAILURE;
 			goto free_buf;
