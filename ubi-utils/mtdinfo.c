@@ -30,6 +30,7 @@
 #include <string.h>
 #include <unistd.h>
 #include <mtd/mtd-user.h>
+#include <mtd/ubi-media.h>
 
 #include <libubigen.h>
 #include <libmtd.h>
