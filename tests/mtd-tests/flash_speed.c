@@ -518,7 +518,7 @@ int main(int argc, char **argv)
 	 * the latency difference when performed on different banks (NOR only).
 	 */
 	if (speb >= 0 && mtd.subpage_size == 1) {
-		long duration_w, duration_r, rww_duration_w, rww_latency_end;
+		long rww_duration_w, rww_latency_end;
 		long rww_duration_rnw, rww_duration_r_end;
 		bool rww_r_end_first;
 		struct thread_arg write_args_peb = {

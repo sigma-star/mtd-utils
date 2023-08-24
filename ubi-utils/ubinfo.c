@@ -427,7 +427,6 @@ int main(int argc, char * const argv[])
 	if (err)
 		goto out_libubi;
 
-out:
 	libubi_close(libubi);
 	return 0;
 
