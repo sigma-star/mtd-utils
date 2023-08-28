@@ -64,6 +64,7 @@
 #define FLAG_DEVICE		0x08
 #define FLAG_ERASE_ALL	0x10
 #define FLAG_PARTITION	0x20
+#define FLAG_WR_LAST	0x40
 
 /* error levels */
 #define LOG_NORMAL	1
@@ -104,13 +105,14 @@ static NORETURN void showusage(bool error)
 			"       %1$s -h | --help\n"
 			"       %1$s -V | --version\n"
 			"\n"
-			"   -h | --help      Show this help message\n"
-			"   -v | --verbose   Show progress reports\n"
-			"   -p | --partition Only copy different block from file to device\n"
-			"   -A | --erase-all Erases the whole device regardless of the image size\n"
-			"   -V | --version   Show version information and exit\n"
-			"   <filename>       File which you want to copy to flash\n"
-			"   <device>         Flash device node or 'mtd:<name>' to write to (e.g. /dev/mtd0, /dev/mtd1, mtd:data, etc.)\n"
+			"   -h | --help           Show this help message\n"
+			"   -v | --verbose        Show progress reports\n"
+			"   -p | --partition      Only copy different block from file to device\n"
+			"   -A | --erase-all      Erases the whole device regardless of the image size\n"
+			"   -l | --wr-last=bytes  Write the first [bytes] last\n"
+			"   -V | --version        Show version information and exit\n"
+			"   <filename>            File which you want to copy to flash\n"
+			"   <device>              Flash device node or 'mtd:<name>' to write to (e.g. /dev/mtd0, /dev/mtd1, mtd:data, etc.)\n"
 			"\n",
 			PROGRAM_NAME);
 
@@ -219,7 +221,9 @@ int main (int argc,char *argv[])
 	struct mtd_info_user mtd;
 	struct erase_info_user erase;
 	struct stat filestat;
-	unsigned char *src,*dest;
+	unsigned char *src,*dest,*wrlast_buf;
+	unsigned long long wrlast_len = 0;
+	int error = 0;
 
 	/*********************
 	 * parse cmd-line
@@ -227,12 +231,13 @@ int main (int argc,char *argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "hvpAV";
+		static const char *short_options = "hvpAl:V";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 'h'},
 			{"verbose", no_argument, 0, 'v'},
 			{"partition", no_argument, 0, 'p'},
 			{"erase-all", no_argument, 0, 'A'},
+			{"wr-last", required_argument, 0, 'l'},
 			{"version", no_argument, 0, 'V'},
 			{0, 0, 0, 0},
 		};
@@ -259,6 +264,10 @@ int main (int argc,char *argv[])
 			case 'A':
 				flags |= FLAG_ERASE_ALL;
 				DEBUG("Got FLAG_ERASE_ALL\n");
+				break;
+			case 'l':
+				flags |= FLAG_WR_LAST;
+				wrlast_len = simple_strtoll(optarg, &error);
 				break;
 			case 'V':
 				common_print_version();
@@ -287,6 +296,10 @@ int main (int argc,char *argv[])
 
 	if (flags & FLAG_PARTITION && flags & FLAG_ERASE_ALL)
 		log_failure("Option --partition does not support --erase-all\n");
+
+	if (flags & FLAG_PARTITION && flags & FLAG_WR_LAST) {
+		log_failure("Option --partition does not support --wr-last\n");
+	}
 
 	atexit (cleanup);
 
@@ -364,10 +377,40 @@ int main (int argc,char *argv[])
 	 * write the entire file to flash *
 	 **********************************/
 
-	log_verbose ("Writing data: 0k/%lluk (0%%)",KB ((unsigned long long)filestat.st_size));
 	size = filestat.st_size;
 	i = mtd.erasesize;
 	written = 0;
+
+	if ((flags & FLAG_WR_LAST) && (filestat.st_size > wrlast_len)) {
+		if (wrlast_len > mtd.erasesize)
+			log_failure("The wrlast (%lluk) is larger than erasesize (%lluk)\n", KB (wrlast_len), KB ((unsigned long long)mtd.erasesize));
+
+		if (size < mtd.erasesize) i = size;
+
+		log_verbose ("Reading %lluk of data to write last.\n", KB ((unsigned long long)wrlast_len));
+		wrlast_buf = malloc(wrlast_len);
+		if (!wrlast_buf)
+			log_failure("Malloc failed");
+		safe_read (fil_fd, filename, wrlast_buf, wrlast_len);
+		safe_lseek(dev_fd, wrlast_len, SEEK_SET, device);
+		written += wrlast_len;
+		size -= wrlast_len;
+		i -= wrlast_len;
+
+		log_verbose ("Writing remaining erase block data: %dk/%lluk (%llu%%)\n",
+				KB (written + i),
+				KB ((unsigned long long)filestat.st_size),
+				PERCENTAGE ((unsigned long long)written + i, (unsigned long long)filestat.st_size));
+		safe_read (fil_fd, filename, src, i);
+		safe_write(dev_fd, src, i, written, (unsigned long long)filestat.st_size, device);
+
+		written += i;
+		size -= i;
+		i = mtd.erasesize;
+	} else {
+		log_verbose ("Writing data: 0k/%lluk (0%%)",KB ((unsigned long long)filestat.st_size));
+	}
+
 	while (size)
 	{
 		if (size < mtd.erasesize) i = size;
@@ -389,6 +432,12 @@ int main (int argc,char *argv[])
 			KB ((unsigned long long)filestat.st_size),
 			KB ((unsigned long long)filestat.st_size));
 	DEBUG("Wrote %d / %lluk bytes\n",written,(unsigned long long)filestat.st_size);
+
+	if ((flags & FLAG_WR_LAST) && (filestat.st_size > wrlast_len)) {
+		log_verbose ("Writing %lluk of the write last data.\n", KB ((unsigned long long)wrlast_len));
+		safe_rewind (dev_fd, device);
+		safe_write(dev_fd, wrlast_buf, wrlast_len, 0, wrlast_len, device);
+	}
 
 	/**********************************
 	 * verify that flash == file data *
