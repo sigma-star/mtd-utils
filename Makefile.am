@@ -41,7 +41,7 @@ test_PROGRAMS =
 test_SCRIPTS =
 
 TESTS =
-EXTRA_DIST = COPYING
+EXTRA_DIST = COPYING CHANGELOG.md
 
 include lib/Makemodule.am
 include ubi-utils/Makemodule.am
