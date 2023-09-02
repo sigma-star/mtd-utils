@@ -757,6 +757,12 @@ int main(int argc, char **argv)
 
 	// get image length
 	imglen = lseek(fd, 0, SEEK_END);
+	if (imglen < 0) {
+		perror(img);
+		close(fd);
+		exit(EXIT_FAILURE);
+	}
+
 	lseek (fd, 0, SEEK_SET);
 
 	data = malloc (imglen);
