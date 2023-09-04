@@ -260,8 +260,6 @@ int main(int argc, char *argv[])
 		return 2;
 	}
 
-	rfd.mtd_filename = rfd.mtd_filename;
-
 	for (i=0; i<rfd.sector_count; i++)
 		rfd.sector_map[i] = -1;
 
