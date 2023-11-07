@@ -64,13 +64,14 @@ static void display_help (void)
 			"Erase blocks of the specified MTD device.\n"
 			"Specify a count of 0 to erase to end of device.\n"
 			"\n"
-			"  -j, --jffs2       format the device for jffs2\n"
-			"  -N, --noskipbad   don't skip bad blocks\n"
-			"  -u, --unlock      unlock sectors before erasing\n"
-			"  -q, --quiet       do not display progress messages\n"
-			"      --silent      same as --quiet\n"
-			"      --help        display this help and exit\n"
-			"      --version     output version information and exit\n",
+			"  -j, --jffs2             format the device for jffs2\n"
+			"  -c, --cleanmarker=SIZE  size of jffs2 cleanmarker (default 12)\n"
+			"  -N, --noskipbad         don't skip bad blocks\n"
+			"  -u, --unlock            unlock sectors before erasing\n"
+			"  -q, --quiet             do not display progress messages\n"
+			"      --silent            same as --quiet\n"
+			"      --help              display this help and exit\n"
+			"      --version           output version information and exit\n",
 			"\n"
 			"  MTD_DEVICE  MTD device node or 'mtd:<name>'\n"
 			PROGRAM_NAME);
@@ -115,7 +116,7 @@ int main(int argc, char *argv[])
 {
 	libmtd_t mtd_desc;
 	struct mtd_dev_info mtd;
-	int fd, cmlen = 8;
+	int fd, cmlen = 8, cmsize = sizeof(cleanmarker);
 	unsigned long long start;
 	unsigned int eb, eb_start, eb_cnt;
 	bool isNAND, erase_chip = false;
@@ -127,11 +128,12 @@ int main(int argc, char *argv[])
 	 */
 	for (;;) {
 		int option_index = 0;
-		static const char *short_options = "jNquVh";
+		static const char *short_options = "jc:NquVh";
 		static const struct option long_options[] = {
 			{"help", no_argument, 0, 'h'},
 			{"version", no_argument, 0, 'V'},
 			{"jffs2", no_argument, 0, 'j'},
+			{"cleanmarker", required_argument, 0, 'c'},
 			{"noskipbad", no_argument, 0, 'N'},
 			{"quiet", no_argument, 0, 'q'},
 			{"silent", no_argument, 0, 'q'},
@@ -154,6 +156,9 @@ int main(int argc, char *argv[])
 			return EXIT_SUCCESS;
 		case 'j':
 			jffs2 = 1;
+			break;
+		case 'c':
+			cmsize = atoi(optarg);
 			break;
 		case 'N':
 			noskipbad = 1;
@@ -207,6 +212,10 @@ int main(int argc, char *argv[])
 
 	if (jffs2 && mtd.type == MTD_MLCNANDFLASH)
 		return errmsg("JFFS2 cannot support MLC NAND.");
+	if (jffs2 && cmsize < sizeof(cleanmarker))
+		return errmsg("cleanmarker size must be >= 12");
+	if (jffs2 && cmsize >= mtd.eb_size)
+		return errmsg("cleanmarker size must be < eraseblock size");
 
 	eb_start = start / mtd.eb_size;
 
@@ -216,7 +225,7 @@ int main(int argc, char *argv[])
 		cleanmarker.magic = cpu_to_je16 (JFFS2_MAGIC_BITMASK);
 		cleanmarker.nodetype = cpu_to_je16 (JFFS2_NODETYPE_CLEANMARKER);
 		if (!isNAND) {
-			cleanmarker.totlen = cpu_to_je32(sizeof(cleanmarker));
+			cleanmarker.totlen = cpu_to_je32(cmsize);
 		} else {
 			cleanmarker.totlen = cpu_to_je32(8);
 			cmlen = min(mtd.oobavail, 8);
