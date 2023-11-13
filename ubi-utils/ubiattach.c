@@ -43,6 +43,7 @@ struct args {
 	const char *dev;
 	int max_beb_per1024;
 	bool disable_fm;
+	bool need_resv_pool;
 };
 
 static struct args args = {
@@ -53,6 +54,7 @@ static struct args args = {
 	.dev = NULL,
 	.max_beb_per1024 = 0,
 	.disable_fm = false,
+	.need_resv_pool = false,
 };
 
 static const char doc[] = PROGRAM_NAME " version " VERSION
@@ -71,6 +73,9 @@ static const char optionsstr[] =
 "                      Allowed range is 0-768, 0 means the default kernel value.\n"
 "-f, --disable-fastmap don't create new fastmap and do full scanning (existed\n"
 "                      fastmap will be destroyed) for the given ubi device.\n"
+"-r, --reserve-pool    Slow down the frequency of updating fastmap by reserving\n"
+"                      pebs for filling pool/wl_pool, which can prolong flash\n"
+"                      service life.\n"
 "-h, --help            print help message\n"
 "-V, --version         print program version";
 
@@ -78,7 +83,7 @@ static const char usage[] =
 "Usage: " PROGRAM_NAME " [<UBI control device node file name>]\n"
 "\t[-m <MTD device number>] [-d <UBI device number>] [-p <path to device>]\n"
 "\t[--mtdn=<MTD device number>] [--devn=<UBI device number>]\n"
-"\t[--dev-path=<path to device>] [-f] [--disable-fastmap]\n"
+"\t[--dev-path=<path to device>] [-f] [--disable-fastmap] [-r] [--reserve-pool]\n"
 "\t[--max-beb-per1024=<maximum bad block number per 1024 blocks>]\n"
 "UBI control device defaults to " DEFAULT_CTRL_DEV " if not supplied.\n"
 "Example 1: " PROGRAM_NAME " -p /dev/mtd0 - attach /dev/mtd0 to UBI\n"
@@ -98,6 +103,7 @@ static const struct option long_options[] = {
 	{ .name = "vid-hdr-offset",  .has_arg = 1, .flag = NULL, .val = 'O' },
 	{ .name = "max-beb-per1024", .has_arg = 1, .flag = NULL, .val = 'b' },
 	{ .name = "disable-fastmap", .has_arg = 0, .flag = NULL, .val = 'f' },
+	{ .name = "reserve-pool",    .has_arg = 0, .flag = NULL, .val = 'r' },
 	{ .name = "help",            .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",         .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0},
@@ -108,7 +114,7 @@ static int parse_opt(int argc, char * const argv[])
 	while (1) {
 		int key, error = 0;
 
-		key = getopt_long(argc, argv, "p:m:d:O:b:fhV", long_options, NULL);
+		key = getopt_long(argc, argv, "p:m:d:O:b:frhV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -150,6 +156,10 @@ static int parse_opt(int argc, char * const argv[])
 
 		case 'f':
 			args.disable_fm = true;
+			break;
+
+		case 'r':
+			args.need_resv_pool = true;
 			break;
 
 		case 'h':
@@ -223,6 +233,7 @@ int main(int argc, char * const argv[])
 	req.mtd_dev_node = args.dev;
 	req.max_beb_per1024 = args.max_beb_per1024;
 	req.disable_fm = args.disable_fm;
+	req.need_resv_pool = args.need_resv_pool;
 
 	err = ubi_attach(libubi, args.node, &req);
 	if (err < 0) {

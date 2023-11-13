@@ -236,6 +236,7 @@ enum {
  * @vid_hdr_offset: VID header offset (use defaults if %0)
  * @max_beb_per1024: maximum expected number of bad PEB per 1024 PEBs
  * @disable_fm: whether disable fastmap
+ * @need_resv_pool: whether reserve free pebs for filling pool/wl_pool
  * @padding: reserved for future, not used, has to be zeroed
  *
  * This data structure is used to specify MTD device UBI has to attach and the
@@ -282,7 +283,8 @@ struct ubi_attach_req {
 	int32_t vid_hdr_offset;
 	int16_t max_beb_per1024;
 	int8_t	disable_fm;
-	int8_t  padding[9];
+	int8_t  need_resv_pool;
+	int8_t  padding[8];
 };
 
 /*
