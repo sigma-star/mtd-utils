@@ -56,7 +56,6 @@
 #ifdef WITH_SELINUX
 #define XATTR_NAME_SELINUX "security.selinux"
 static struct selabel_handle *sehnd;
-static char *secontext;
 #endif
 
 /**
@@ -1389,6 +1388,15 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 			continue;
 		}
 
+#ifdef WITH_SELINUX
+		/*
+		  Ignore selinux attributes if we have a label file, they are
+		  instead provided by inode_add_selinux_xattr.
+		 */
+		if (!strcmp(name, XATTR_NAME_SELINUX) && context && sehnd)
+			continue;
+#endif
+
 		ret = add_xattr(host_ino, st, inum, name, attrbuf, attrsize);
 		if (ret < 0)
 			goto out_free;
@@ -1413,12 +1421,10 @@ static int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
 	char *sepath = NULL;
 	char *name;
 	unsigned int con_size;
+	char *secontext;
 
-	if (!context || !sehnd) {
-		secontext = NULL;
-		con_size = 0;
+	if (!context || !sehnd)
 		return 0;
-	}
 
 	if (path_name[strlen(root)] == '/')
 		sepath = strdup(&path_name[strlen(root)]);
@@ -1595,11 +1601,11 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 	len = UBIFS_INO_NODE_SZ + data_len;
 
 	if (xattr_path) {
-#ifdef WITH_SELINUX
 		ret = inode_add_selinux_xattr(ino, xattr_path, st, inum);
-#else
+		if (ret < 0)
+			return ret;
+
 		ret = inode_add_xattr(ino, xattr_path, st, inum);
-#endif
 		if (ret < 0)
 			return ret;
 	}
