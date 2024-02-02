@@ -9,7 +9,8 @@ mkfs_jffs2_SOURCES = \
 	jffsX-utils/rbtree.h \
 	jffsX-utils/summary.h \
 	include/linux/jffs2.h \
-	include/mtd/jffs2-user.h
+	include/mtd/jffs2-user.h \
+	include/list.h
 mkfs_jffs2_LDADD = libmtd.a $(ZLIB_LIBS) $(LZO_LIBS)
 mkfs_jffs2_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 

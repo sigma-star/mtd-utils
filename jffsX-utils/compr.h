@@ -15,6 +15,7 @@
 #include <stdlib.h>
 #include <stdint.h>
 #include "linux/jffs2.h"
+#include "list.h"
 
 #define CONFIG_JFFS2_RTIME
 
@@ -48,10 +49,6 @@
 #define KERN_NOTICE
 #define KERN_INFO
 #define KERN_DEBUG
-
-struct list_head {
-	struct list_head *next, *prev;
-};
 
 void jffs2_set_compression_mode(int mode);
 int jffs2_get_compression_mode(void);

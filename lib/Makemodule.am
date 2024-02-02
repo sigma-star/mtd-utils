@@ -5,6 +5,8 @@ libmtd_a_SOURCES = \
 	include/libfec.h \
 	lib/common.c \
 	include/common.h \
+	lib/list_sort.c \
+	include/list.h \
 	lib/libcrc32.c \
 	include/crc32.h \
 	lib/libmtd_legacy.c \
