@@ -1,16 +1,14 @@
 mkfs_jffs2_SOURCES = \
 	jffsX-utils/mkfs.jffs2.c \
-	jffsX-utils/rbtree.h \
 	jffsX-utils/compr.h \
-	jffsX-utils/rbtree.c \
 	jffsX-utils/compr.c \
 	jffsX-utils/compr_rtime.c \
 	jffsX-utils/compr.h \
-	jffsX-utils/rbtree.h \
 	jffsX-utils/summary.h \
 	include/linux/jffs2.h \
 	include/mtd/jffs2-user.h \
-	include/list.h
+	include/list.h \
+	include/rbtree.h
 mkfs_jffs2_LDADD = libmtd.a $(ZLIB_LIBS) $(LZO_LIBS)
 mkfs_jffs2_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS)
 
