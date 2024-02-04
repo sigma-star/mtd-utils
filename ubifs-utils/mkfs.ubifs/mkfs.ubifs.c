@@ -556,7 +556,7 @@ static int get_options(int argc, char**argv)
 	struct stat st;
 	char *endp;
 #ifdef WITH_CRYPTO
-	const char *cipher_name;
+	const char *cipher_name = NULL;
 #endif
 
 	c->fanout = 8;
