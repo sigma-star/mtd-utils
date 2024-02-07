@@ -2832,7 +2832,7 @@ static int open_target(void)
 			return sys_err_msg("cannot open the UBI volume '%s'",
 					   output);
 		if (ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 1))
-			return sys_err_msg("ubi_set_property failed");
+			return sys_err_msg("ubi_set_property(set direct_write) failed");
 
 		if (!yes && check_volume_empty()) {
 			if (!prompt("UBI volume is not empty.  Format anyways?", false))
@@ -2859,10 +2859,14 @@ static int open_target(void)
  */
 static int close_target(void)
 {
+	if (out_fd >= 0) {
+		if (ubi && ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 0))
+			return sys_err_msg("ubi_set_property(clear direct_write) failed");
+		if (close(out_fd) == -1)
+			return sys_err_msg("cannot close the target '%s'", output);
+	}
 	if (ubi)
 		libubi_close(ubi);
-	if (out_fd >= 0 && close(out_fd) == -1)
-		return sys_err_msg("cannot close the target '%s'", output);
 	if (output)
 		free(output);
 	return 0;
