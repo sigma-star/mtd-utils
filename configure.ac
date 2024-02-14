@@ -21,6 +21,8 @@ AM_INIT_AUTOMAKE([foreign subdir-objects dist-bzip2])
 AM_SILENT_RULES([yes])
 AC_PROG_CC
 AC_PROG_INSTALL
+# autoconf <= 2.63 doesn't have AC_PROG_AR
+AC_CHECK_TOOL(AR, ar, :)
 AC_PROG_RANLIB
 AC_SYS_LARGEFILE
 
