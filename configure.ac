@@ -198,7 +198,7 @@ AS_IF([test -z "$LZO_LIBS" -a "x$with_lzo" != "xno"], [
 		    )
 ], [])
 
-AS_IF([test -z "$LZO_LIBS"], [AS_IF([test "x$with_lzo" != "xcheck"],
+AS_IF([test -z "$LZO_LIBS"], [AS_IF([test "x$with_lzo" = "xyes"],
 				    [AC_MSG_ERROR([cannot find liblzo])],
 				    [with_lzo="no"])],
 			     [with_lzo="yes"])
