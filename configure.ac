@@ -65,7 +65,6 @@ AC_SUBST([WARN_CFLAGS])
 need_clock_gettime="no"
 need_pthread="no"
 need_uuid="no"
-need_zlib="no"
 need_cmocka="no"
 need_openssl="no"
 
@@ -124,14 +123,13 @@ AC_ARG_WITH([ubifs],
 
 AM_COND_IF([BUILD_UBIFS], [
 	need_uuid="yes"
-	need_zlib="yes"
 	need_openssl="yes"
 	AS_VAR_IF([need_getrandom], [auto], [need_getrandom="yes"])
 ])
 
-AM_COND_IF([BUILD_JFFSX], [
-	need_zlib="yes"
-])
+AC_ARG_WITH([zlib],
+	[AS_HELP_STRING([--with-zlib], [Support zlib deflate compression])],
+	[], [with_zlib="check"])
 
 AC_ARG_WITH([xattr],
 	[AS_HELP_STRING([--with-xattr], [Support extended file attributes])],
@@ -164,14 +162,16 @@ AC_ARG_WITH([crypto],
 clock_gettime_missing="no"
 pthread_missing="no"
 uuid_missing="no"
-zlib_missing="no"
 cmocka_missing="no"
 openssl_missing="no"
 getrandom_missing="no"
 
-if test "x$need_zlib" = "xyes"; then
-	PKG_CHECK_MODULES(ZLIB, [zlib], [], [zlib_missing="yes"])
-fi
+AS_IF([test "x$with_zlib" != "xno"], [
+	PKG_CHECK_MODULES(ZLIB, [zlib], [with_zlib="yes"],
+				[AS_IF([test "x$with_zlib" != "xcheck"],
+				       [AC_MSG_ERROR([cannot find zlib])],
+				       [with_zlib="no"])])
+], [])
 
 if test "x$need_uuid" = "xyes"; then
 	PKG_CHECK_MODULES(UUID, [uuid], [], [uuid_missing="yes"])
@@ -270,13 +270,6 @@ if test "x$uuid_missing" = "xyes"; then
 	dep_missing="yes"
 fi
 
-if test "x$zlib_missing" = "xyes"; then
-	AC_MSG_WARN([cannot find ZLIB library required for mkfs programs])
-	AC_MSG_NOTICE([mtd-utils can optionally be built without mkfs.ubifs])
-	AC_MSG_NOTICE([mtd-utils can optionally be built without mkfs.jffs2])
-	dep_missing="yes"
-fi
-
 if test "x$openssl_missing" = "xyes"; then
 	AC_MSG_WARN([cannot find headers for OpenSSL library])
 	AC_MSG_WARN([disabling OpenSSL support])
@@ -302,6 +295,7 @@ fi
 ##### generate output #####
 
 AM_CONDITIONAL([WITH_LZO], [test "x$with_lzo" = "xyes"])
+AM_CONDITIONAL([WITH_ZLIB], [test "x$with_zlib" = "xyes"])
 AM_CONDITIONAL([WITH_ZSTD], [test "x$with_zstd" = "xyes"])
 AM_CONDITIONAL([WITH_XATTR], [test "x$with_xattr" = "xyes"])
 AM_CONDITIONAL([WITH_SELINUX], [test "x$with_selinux" = "xyes"])

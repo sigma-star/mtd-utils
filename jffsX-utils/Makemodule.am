@@ -1,7 +1,6 @@
 mkfs_jffs2_SOURCES = \
 	jffsX-utils/mkfs.jffs2.c \
 	jffsX-utils/rbtree.h \
-	jffsX-utils/compr_zlib.c \
 	jffsX-utils/compr.h \
 	jffsX-utils/rbtree.c \
 	jffsX-utils/compr.c \
@@ -28,6 +27,10 @@ sumtool_LDADD = libmtd.a
 
 if WITH_LZO
 mkfs_jffs2_SOURCES += jffsX-utils/compr_lzo.c
+endif
+
+if WITH_ZLIB
+mkfs_jffs2_SOURCES += jffsX-utils/compr_zlib.c
 endif
 
 EXTRA_DIST += jffsX-utils/device_table.txt jffsX-utils/mkfs.jffs2.1

@@ -3,7 +3,9 @@ ACLOCAL_AMFLAGS = -I m4
 AM_CPPFLAGS = $(WARN_CFLAGS) -D_GNU_SOURCE -std=gnu99 -I$(top_srcdir)/include \
 		-include $(top_builddir)/include/config.h
 
+if WITH_ZLIB
 AM_CPPFLAGS += -DWITH_ZLIB
+endif
 
 if WITH_XATTR
 AM_CPPFLAGS += -DWITH_XATTR
