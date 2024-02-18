@@ -96,7 +96,7 @@
  For compiling mtd-utils, you need development packages for the following
  dependency libraries:
 
-   zlib          (required by mkfs.ubifs, mkfs.jffs2
+   zlib          (optional dependency for mkfs.ubifs, mkfs.jffs2)
    lzo2          (optional dependency for mkfs.ubifs, mkfs.jffs2)
    zstd          (optional dependency for mkfs.ubifs)
    libuuid*      (required by mkfs.ubifs)
@@ -106,15 +106,14 @@
  * this library is part of util-linux, aka util-linux-ng and some distributions
    package it under that name.
 
- If you don't explicitly disable xattr support, mkfs.ubifs and mkfs.jffs2
- require the "sys/xattr.h" and "sys/acl.h" header files, depending on your
- Distributions, those may be packaged as part of libattr and libacl
+ For xattr & acl support in mkfs.ubifs and mkfs.jffs2, the build system looks
+ for the "sys/xattr.h" and "sys/acl.h" header files. Depending on your
+ distributions, those may be packaged as part of libattr and libacl
  respectively.
 
 
  Please note that the mkfs tools are optional and can be disabled via a
- configure flag. This should also remove the need for the dependency
- libraries.
+ configure flag. This should also remove any library dependencies.
 
 
  How to contribute
