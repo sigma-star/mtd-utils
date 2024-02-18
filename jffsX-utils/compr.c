@@ -511,7 +511,7 @@ reinsert:
 
 int jffs2_compressors_init(void)
 {
-#ifdef CONFIG_JFFS2_ZLIB
+#ifdef WITH_ZLIB
 	jffs2_zlib_init();
 #endif
 #ifdef CONFIG_JFFS2_RTIME
@@ -528,7 +528,7 @@ int jffs2_compressors_exit(void)
 #ifdef CONFIG_JFFS2_RTIME
 	jffs2_rtime_exit();
 #endif
-#ifdef CONFIG_JFFS2_ZLIB
+#ifdef WITH_ZLIB
 	jffs2_zlib_exit();
 #endif
 #ifdef WITH_LZO

@@ -75,7 +75,11 @@ BUGS:
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <dirent.h>
+#ifdef WITH_ZLIB
 #include <zlib.h>
+#else
+typedef unsigned long uLongf;
+#endif
 
 #include "mtd/jffs2-user.h"
 #include "common.h"
@@ -132,12 +136,13 @@ static void putblock(char *b, size_t bsize, size_t * rsize,
 		bzero(b + *rsize, je32_to_cpu(n->isize) - *rsize);
 
 	switch (n->compr) {
+#ifdef WITH_ZLIB
 		case JFFS2_COMPR_ZLIB:
 			uncompress((Bytef *) b + je32_to_cpu(n->offset), &dlen,
 					(Bytef *) ((char *) n) + sizeof(struct jffs2_raw_inode),
 					(uLongf) je32_to_cpu(n->csize));
 			break;
-
+#endif
 		case JFFS2_COMPR_NONE:
 			memcpy(b + je32_to_cpu(n->offset),
 					((char *) n) + sizeof(struct jffs2_raw_inode), dlen);
