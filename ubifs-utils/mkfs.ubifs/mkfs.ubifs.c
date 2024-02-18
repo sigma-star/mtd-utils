@@ -539,10 +539,12 @@ static void select_default_compr(void)
 		return;
 	}
 
-#ifndef WITH_LZO
+#ifdef WITH_LZO
+	c->default_compr = UBIFS_COMPR_LZO;
+#elif defined(WITH_ZLIB)
 	c->default_compr = UBIFS_COMPR_ZLIB;
 #else
-	c->default_compr = UBIFS_COMPR_LZO;
+	c->default_compr = UBIFS_COMPR_NONE;
 #endif
 }
 
@@ -681,26 +683,30 @@ static int get_options(int argc, char**argv)
 		case 'x':
 			if (strcmp(optarg, "none") == 0)
 				c->default_compr = UBIFS_COMPR_NONE;
+#ifdef WITH_ZLIB
 			else if (strcmp(optarg, "zlib") == 0)
 				c->default_compr = UBIFS_COMPR_ZLIB;
+#endif
 #ifdef WITH_ZSTD
 			else if (strcmp(optarg, "zstd") == 0)
 				c->default_compr = UBIFS_COMPR_ZSTD;
 #endif
 #ifdef WITH_LZO
+			else if (strcmp(optarg, "lzo") == 0)
+				c->default_compr = UBIFS_COMPR_LZO;
+#endif
+#if defined(WITH_LZO) && defined(WITH_ZLIB)
 			else if (strcmp(optarg, "favor_lzo") == 0) {
 				c->default_compr = UBIFS_COMPR_LZO;
 				c->favor_lzo = 1;
-			} else if (strcmp(optarg, "lzo") == 0) {
-				c->default_compr = UBIFS_COMPR_LZO;
 			}
 #endif
 			else
 				return err_msg("bad compressor name");
 			break;
 		case 'X':
-#ifndef WITH_LZO
-			return err_msg("built without LZO support");
+#if !defined(WITH_LZO) && !defined(WITH_ZLIB)
+			return err_msg("built without LZO or ZLIB support");
 #else
 			c->favor_percent = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg ||
@@ -1858,10 +1864,12 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		out_len = NODE_BUFFER_SIZE - UBIFS_DATA_NODE_SZ;
 		if (c->default_compr == UBIFS_COMPR_NONE &&
 		    !c->encrypted && (flags & FS_COMPR_FL))
-#ifndef WITH_LZO
+#ifdef WITH_LZO
+			use_compr = UBIFS_COMPR_LZO;
+#elif defined(WITH_ZLIB)
 			use_compr = UBIFS_COMPR_ZLIB;
 #else
-			use_compr = UBIFS_COMPR_LZO;
+			use_compr = UBIFS_COMPR_NONE;
 #endif
 		else
 			use_compr = c->default_compr;
