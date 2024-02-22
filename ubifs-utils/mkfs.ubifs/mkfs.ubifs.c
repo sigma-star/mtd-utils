@@ -509,11 +509,21 @@ static long long get_bytes(const char *str)
 
 	return bytes;
 }
+
+static void close_ubi(void)
+{
+	if (ubi) {
+		libubi_close(ubi);
+		ubi = NULL;
+	}
+}
+
 /**
- * open_ubi - open the UBI volume.
+ * open_ubi - open the libubi.
  * @node: name of the UBI volume character device to fetch information about
  *
- * Returns %0 in case of success and %-1 in case of failure
+ * This function opens libubi, and initialize device & volume information
+ * according to @node. Returns %0 in case of success and %-1 in case of failure.
  */
 static int open_ubi(const char *node)
 {
@@ -525,10 +535,14 @@ static int open_ubi(const char *node)
 	ubi = libubi_open();
 	if (!ubi)
 		return -1;
-	if (ubi_get_vol_info(ubi, node, &c->vi))
+	if (ubi_get_vol_info(ubi, node, &c->vi)) {
+		close_ubi();
 		return -1;
-	if (ubi_get_dev_info1(ubi, c->vi.dev_num, &c->di))
+	}
+	if (ubi_get_dev_info1(ubi, c->vi.dev_num, &c->di)) {
+		close_ubi();
 		return -1;
+	}
 	return 0;
 }
 
@@ -2868,8 +2882,6 @@ static int close_target(void)
 		if (close(out_fd) == -1)
 			return sys_err_msg("cannot close the target '%s'", output);
 	}
-	if (ubi)
-		libubi_close(ubi);
 	if (output)
 		free(output);
 	return 0;
@@ -3047,25 +3059,25 @@ int main(int argc, char *argv[])
 
 	err = get_options(argc, argv);
 	if (err)
-		return err;
+		goto out;
 
 	err = open_target();
 	if (err)
-		return err;
+		goto out;
 
 	err = mkfs();
 	if (err) {
 		close_target();
-		return err;
+		goto out;
 	}
 
 	err = close_target();
-	if (err)
-		return err;
 
-	if (verbose)
+	if (verbose && !err)
 		printf("Success!\n");
 
+out:
+	close_ubi();
 	crypto_cleanup();
-	return 0;
+	return err;
 }
