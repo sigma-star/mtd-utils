@@ -2848,12 +2848,16 @@ static int open_target(void)
 		if (out_fd == -1)
 			return sys_err_msg("cannot open the UBI volume '%s'",
 					   output);
-		if (ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 1))
+		if (ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 1)) {
+			close(out_fd);
 			return sys_err_msg("ubi_set_property(set direct_write) failed");
+		}
 
 		if (!yes && check_volume_empty()) {
-			if (!prompt("UBI volume is not empty.  Format anyways?", false))
+			if (!prompt("UBI volume is not empty.  Format anyways?", false)) {
+				close(out_fd);
 				return err_msg("UBI volume is not empty");
+			}
 		}
 	} else {
 		out_fd = open(output, O_CREAT | O_RDWR | O_TRUNC,
