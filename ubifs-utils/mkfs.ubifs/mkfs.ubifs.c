@@ -2886,8 +2886,6 @@ static int close_target(void)
 		if (close(out_fd) == -1)
 			return sys_err_msg("cannot close the target '%s'", output);
 	}
-	if (output)
-		free(output);
 	return 0;
 }
 
@@ -3081,6 +3079,7 @@ int main(int argc, char *argv[])
 		printf("Success!\n");
 
 out:
+	free(output);
 	close_ubi();
 	crypto_cleanup();
 	return err;
