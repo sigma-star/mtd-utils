@@ -87,6 +87,6 @@ int main(void)
 		exit(1);
 	}
 
-	printf("Decoded in %ld.%06lds\n", now.tv_sec, now.tv_usec);
+	printf("Decoded in %ld.%06lds\n", (long)now.tv_sec, (long)now.tv_usec);
 	return 0;
 }
