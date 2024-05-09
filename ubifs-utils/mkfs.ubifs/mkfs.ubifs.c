@@ -1711,15 +1711,17 @@ static void set_dent_cookie(struct ubifs_dent_node *dent)
  * @name: directory entry name
  * @inum: target inode number of the directory entry
  * @type: type of the target inode
+ * @kname_len: the length of name stored in the directory entry node is
+ *	       returned here
  */
 static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
-			 unsigned char type, struct fscrypt_context *fctx)
+			 unsigned char type, struct fscrypt_context *fctx,
+			 int *kname_len)
 {
 	struct ubifs_dent_node *dent = node_buf;
 	union ubifs_key key;
 	struct qstr dname;
 	char *kname;
-	int kname_len;
 	int len;
 
 	dbg_msg(3, "%s ino %lu type %u dir ino %lu", name, (unsigned long)inum,
@@ -1737,7 +1739,7 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	set_dent_cookie(dent);
 
 	if (!fctx) {
-		kname_len = dname.len;
+		*kname_len = dname.len;
 		kname = strdup(name);
 		if (!kname)
 			return err_msg("cannot allocate memory");
@@ -1753,18 +1755,18 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 		if (ret < 0)
 			return ret;
 
-		kname_len = ret;
+		*kname_len = ret;
 	}
 
-	dent_key_init(c, &key, dir_inum, kname, kname_len);
-	dent->nlen = cpu_to_le16(kname_len);
-	memcpy(dent->name, kname, kname_len);
-	dent->name[kname_len] = '\0';
-	len = UBIFS_DENT_NODE_SZ + kname_len + 1;
+	dent_key_init(c, &key, dir_inum, kname, *kname_len);
+	dent->nlen = cpu_to_le16(*kname_len);
+	memcpy(dent->name, kname, *kname_len);
+	dent->name[*kname_len] = '\0';
+	len = UBIFS_DENT_NODE_SZ + *kname_len + 1;
 
 	key_write(&key, dent->key);
 
-	return add_node(&key, kname, kname_len, dent, len);
+	return add_node(&key, kname, *kname_len, dent, len);
 }
 
 /**
@@ -2014,7 +2016,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 {
 	struct dirent *entry;
 	DIR *dir = NULL;
-	int err = 0;
+	int kname_len, err = 0;
 	loff_t size = UBIFS_INO_NODE_SZ;
 	char *name = NULL;
 	unsigned int nlink = 2;
@@ -2127,13 +2129,13 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 			goto out_free;
 		}
 
-		err = add_dent_node(dir_inum, entry->d_name, inum, type, fctx);
+		err = add_dent_node(dir_inum, entry->d_name, inum, type, fctx,
+				    &kname_len);
 		if (err) {
 			free_fscrypt_context(new_fctx);
 			goto out_free;
 		}
-		size += ALIGN(UBIFS_DENT_NODE_SZ + strlen(entry->d_name) + 1,
-			      8);
+		size += ALIGN(UBIFS_DENT_NODE_SZ + kname_len + 1, 8);
 
 		if (new_fctx)
 			free_fscrypt_context(new_fctx);
@@ -2198,13 +2200,14 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 			goto out_free;
 		}
 
-		err = add_dent_node(dir_inum, nh_elt->name, inum, type, fctx);
+		err = add_dent_node(dir_inum, nh_elt->name, inum, type, fctx,
+				    &kname_len);
 		if (err) {
 			free_fscrypt_context(new_fctx);
 			goto out_free;
 		}
 
-		size += ALIGN(UBIFS_DENT_NODE_SZ + strlen(nh_elt->name) + 1, 8);
+		size += ALIGN(UBIFS_DENT_NODE_SZ + kname_len + 1, 8);
 
 		nh_elt = next_name_htbl_element(ph_elt, &itr);
 		if (new_fctx)
