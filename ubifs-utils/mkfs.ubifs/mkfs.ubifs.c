@@ -1243,7 +1243,7 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st,
 
 	xent->ch.len = len;
 	xent->padding1 = 0;
-	xent->type = UBIFS_ITYPE_DIR;
+	xent->type = UBIFS_ITYPE_REG;
 	xent->nlen = cpu_to_le16(nm.len);
 
 	memcpy(xent->name, nm.name, nm.len + 1);
