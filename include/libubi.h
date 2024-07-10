@@ -431,8 +431,8 @@ int ubi_vol_block_remove(int fd);
  * @bytes: how many bytes will be written to the volume
  *
  * This function initiates UBI volume update and returns %0 in case of success
- * and %-1 in case of error. The caller is assumed to write @bytes data to the
- * volume @fd afterward.
+ * and %-1 in case of error (errno is set). The caller is assumed to write
+ * @bytes data to the volume @fd afterward.
  */
 int ubi_update_start(libubi_t desc, int fd, long long bytes);
 
