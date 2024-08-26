@@ -23,6 +23,7 @@
  * Author: Adrian Hunter <adrian.hunter@nokia.com>
  */
 #define DESTRUCTIVE 0x01
+#define CONTINOUS 0x02
 
 #define PROGRAM_NAME "flash_speed"
 
@@ -49,6 +50,7 @@ static int fd;
 
 static int npages = 1;
 static int peb=-1, count=-1, skip=-1, flags=0, speb=-1;
+static bool continuous = false;
 static struct timespec start, finish;
 static int pgsize, pgcnt;
 static int goodebcnt;
@@ -60,6 +62,7 @@ static const struct option options[] = {
 	{ "count", required_argument, NULL, 'c' },
 	{ "skip", required_argument, NULL, 's' },
 	{ "sec-peb", required_argument, NULL, 'k' },
+	{ "continuous", no_argument, NULL, 'C' },
 	{ NULL, 0, NULL, 0 },
 };
 
@@ -73,7 +76,8 @@ static NORETURN void usage(int status)
 	"  -c, --count <num>   Number of erase blocks to use (default: all)\n"
 	"  -s, --skip <num>    Number of blocks to skip\n"
 	"  -d, --destructive   Run destructive (erase and write speed) tests\n"
-	"  -k, --sec-peb <num> Start of secondary block to measure RWW latency (requires -d)\n",
+	"  -k, --sec-peb <num> Start of secondary block to measure RWW latency (requires -d)\n"
+	"  -C, --continuous    Increase the number of consecutive pages gradually\n",
 	status==EXIT_SUCCESS ? stdout : stderr);
 	exit(status);
 }
@@ -97,7 +101,7 @@ static void process_options(int argc, char **argv)
 	int c;
 
 	while (1) {
-		c = getopt_long(argc, argv, "hb:c:s:dk:", options, NULL);
+		c = getopt_long(argc, argv, "hb:c:s:dk:C", options, NULL);
 		if (c == -1)
 			break;
 
@@ -136,6 +140,9 @@ static void process_options(int argc, char **argv)
 			speb = read_num(c, optarg);
 			if (speb < 0)
 				goto failarg;
+			break;
+		case 'C':
+			continuous = true;
 			break;
 		default:
 			exit(EXIT_FAILURE);
@@ -440,22 +447,35 @@ int main(int argc, char **argv)
 	TIME_OP_PER_PEB(read_eraseblock_by_npages, npages);
 	printf("page read speed is %ld KiB/s\n", speed);
 
-	/* Write all eraseblocks, 2 pages at a time */
-	if (flags & DESTRUCTIVE) {
-		err = erase_good_eraseblocks(peb, count, skip);
-		if (err)
-			goto out;
+	if (continuous) {
+		/* Write all eraseblocks, 2 pages at a time */
+		if (flags & DESTRUCTIVE) {
+			err = erase_good_eraseblocks(peb, count, skip);
+			if (err)
+				goto out;
 
-		puts("testing 2 page write speed");
-		TIME_OP_PER_PEB(write_eraseblock_by_2pages, 2);
-		printf("2 page write speed is %ld KiB/s\n", speed);
+			puts("testing 2 page write speed");
+			TIME_OP_PER_PEB(write_eraseblock_by_2pages, 2);
+			printf("2 page write speed is %ld KiB/s\n", speed);
+		}
+
+		/* Read all eraseblocks, N pages at a time */
+		puts("testing multiple pages read speed");
+		for (npages = 2; npages <= 16 && npages <= pgcnt; npages++) {
+			TIME_OP_PER_PEB(read_eraseblock_by_npages, npages);
+			printf("%d page read speed is %ld KiB/s\n", npages, speed);
+		}
+		if (pgcnt >= 32) {
+			npages = 32;
+			TIME_OP_PER_PEB(read_eraseblock_by_npages, npages);
+			printf("%d page read speed is %ld KiB/s\n", npages, speed);
+		}
+		if (pgcnt >= 64) {
+			npages = 64;
+			TIME_OP_PER_PEB(read_eraseblock_by_npages, npages);
+			printf("%d page read speed is %ld KiB/s\n", npages, speed);
+		}
 	}
-
-	/* Read all eraseblocks, 2 pages at a time */
-	puts("testing 2 page read speed");
-	npages = 2;
-	TIME_OP_PER_PEB(read_eraseblock_by_npages, npages);
-	printf("2 page read speed is %ld KiB/s\n", speed);
 
 	/* Erase all eraseblocks */
 	if (flags & DESTRUCTIVE) {
