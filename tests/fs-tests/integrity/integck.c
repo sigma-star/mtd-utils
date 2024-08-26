@@ -2665,6 +2665,35 @@ static int umount_and_remount(int mounted, int reatt, int um_rorw)
 }
 
 /**
+ * Remount the test file-system RO first, then RW.
+ */
+static int remount_ro_rw(const char *tries)
+{
+	int ret;
+	unsigned long flags;
+
+	flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
+	ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
+		    flags, fsinfo.mount_opts);
+	if (ret) {
+		pcv("cannot remount %s R/O%s", tries, fsinfo.mount_point);
+		return -1;
+	}
+
+	flags = fsinfo.mount_flags | MS_REMOUNT;
+	flags &= ~((unsigned long)MS_RDONLY);
+	ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
+		    flags, fsinfo.mount_opts);
+	if (ret) {
+		pcv("remounted %s R/O%s, but cannot re-mount it R/W",
+		    tries, fsinfo.mount_point);
+		return -1;
+	}
+
+	return 0;
+}
+
+/**
  * Re-mount the test file-system. This function randomly select how to
  * re-mount.
  */
@@ -2688,24 +2717,9 @@ static int remount_tested_fs(void)
 		um = 1;
 
 	if (rorw1) {
-		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
-		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
-			    flags, fsinfo.mount_opts);
-		if (ret) {
-			pcv("cannot remount %s R/O (1)",
-			    fsinfo.mount_point);
+		ret = remount_ro_rw(" (1)");
+		if (ret)
 			return -1;
-		}
-
-		flags = fsinfo.mount_flags | MS_REMOUNT;
-		flags &= ~((unsigned long)MS_RDONLY);
-		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
-			    flags, fsinfo.mount_opts);
-		if (ret) {
-			pcv("remounted %s R/O (1), but cannot re-mount it R/W",
-			    fsinfo.mount_point);
-			return -1;
-		}
 	}
 
 	if (um) {
@@ -2726,23 +2740,9 @@ static int remount_tested_fs(void)
 	}
 
 	if (rorw2) {
-		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
-		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
-			    flags, fsinfo.mount_opts);
-		if (ret) {
-			pcv("cannot re-mount %s R/O (3)", fsinfo.mount_point);
+		ret = remount_ro_rw(" (3)");
+		if (ret)
 			return -1;
-		}
-
-		flags = fsinfo.mount_flags | MS_REMOUNT;
-		flags &= ~((unsigned long)MS_RDONLY);
-		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
-			    flags, fsinfo.mount_opts);
-		if (ret) {
-			pcv("remounted %s R/O (3), but cannot re-mount it back R/W",
-			     fsinfo.mount_point);
-			return -1;
-		}
 	}
 
 	CHECK(chdir(fsinfo.mount_point) == 0);
@@ -3205,7 +3205,6 @@ static void free_fs_info(struct dir_info *dir)
 static int recover_tested_fs(void)
 {
 	int ret;
-	unsigned long flags;
 	unsigned int  um_rorw, rorw2;
 	struct mntent *mntent;
 
@@ -3227,23 +3226,9 @@ static int recover_tested_fs(void)
 		return -1;
 
 	if (rorw2) {
-		flags = fsinfo.mount_flags | MS_RDONLY | MS_REMOUNT;
-		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
-			    flags, fsinfo.mount_opts);
-		if (ret) {
-			pcv("cannot re-mount %s R/O", fsinfo.mount_point);
+		ret = remount_ro_rw("");
+		if (ret)
 			return -1;
-		}
-
-		flags = fsinfo.mount_flags | MS_REMOUNT;
-		flags &= ~((unsigned long)MS_RDONLY);
-		ret = mount(fsinfo.fsdev, fsinfo.mount_point, fsinfo.fstype,
-			    flags, fsinfo.mount_opts);
-		if (ret) {
-			pcv("remounted %s R/O, but cannot re-mount it back R/W",
-			     fsinfo.mount_point);
-			return -1;
-		}
 	}
 
 	return 0;
