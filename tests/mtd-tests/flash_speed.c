@@ -265,13 +265,6 @@ static int read_eraseblock_by_2pages(int ebnum)
 		}
 		buf += sz;
 	}
-	if (pgcnt % 2) {
-		err = mtd_read(&mtd, fd, ebnum, i * sz, iobuf, pgsize);
-		if (err) {
-			fprintf(stderr, "Error reading block %d, page %d!\n",
-					ebnum, i*2);
-		}
-	}
 
 	return err;
 }
