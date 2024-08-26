@@ -458,7 +458,7 @@ int main(int argc, char * const argv[])
 			/* skip bad block, increase end_addr */
 			if (bb_method == skipbad) {
 				end_addr += mtd.eb_size;
-				ofs += mtd.eb_size - bs;
+				ofs += mtd.eb_size - mtd.min_io_size;
 				if (end_addr > mtd.size)
 					end_addr = mtd.size;
 				continue;
