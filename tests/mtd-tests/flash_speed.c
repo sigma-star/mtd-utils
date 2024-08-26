@@ -233,24 +233,6 @@ static int write_eraseblock_by_2pages(int ebnum)
 	return err;
 }
 
-static int read_eraseblock_by_page(int ebnum)
-{
-	void *buf = iobuf;
-	int i, err = 0;
-
-	for (i = 0; i < pgcnt; ++i) {
-		err = mtd_read(&mtd, fd, ebnum, i * pgsize, iobuf, pgsize);
-		if (err) {
-			fprintf(stderr, "Error reading block %d, page %d!\n",
-					ebnum, i);
-			break;
-		}
-		buf += pgsize;
-	}
-
-	return err;
-}
-
 static int read_eraseblock_by_npages(int ebnum)
 {
 	int i, n = pgcnt / npages, err = 0;
@@ -454,7 +436,8 @@ int main(int argc, char **argv)
 
 	/* Read all eraseblocks, 1 page at a time */
 	puts("testing page read speed");
-	TIME_OP_PER_PEB(read_eraseblock_by_page, 1);
+	npages = 1;
+	TIME_OP_PER_PEB(read_eraseblock_by_npages, npages);
 	printf("page read speed is %ld KiB/s\n", speed);
 
 	/* Write all eraseblocks, 2 pages at a time */
