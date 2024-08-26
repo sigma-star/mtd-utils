@@ -63,6 +63,7 @@
 #define MODE_INCREMENTAL 0x02
 #define MODE_OVERWRITE 0x04
 #define PAGE_ERASED 0x08
+#define CONTINUOUS_READ 0x10
 
 static int peb = -1, page = -1, max_overwrite = -1, seed = -1;
 static const char *mtddev;
@@ -81,6 +82,7 @@ static const struct option options[] = {
 	{ "erased", no_argument, NULL, 'e' },
 	{ "writes", required_argument, NULL, 'w' },
 	{ "incremental", no_argument, NULL, 'i' },
+	{ "continuous", no_argument, NULL, 'c' },
 	{ "overwrite", no_argument, NULL, 'o' },
 	{ NULL, 0, NULL, 0 },
 };
@@ -95,7 +97,8 @@ static NORETURN void usage(int status)
 	"  -b, --peb <num>     Use this physical erase block\n"
 	"  -p, --page <num>    Use this page within the erase block\n"
 	"  -s, --seed <num>    Specify seed for PRNG\n"
-	"  -e, --erased        Test erased pages instead of written pages\n\n"
+	"  -e, --erased        Test erased pages instead of written pages\n"
+	"  -c, --continuous    Use two consecutive pages (incremental test only)\n\n"
 	"Options controling test mode:\n"
 	"  -i, --incremental   Manually insert bit errors until ECC fails\n"
 	"  -o, --overwrite     Rewrite page until bits flip and ECC fails\n\n"
@@ -124,7 +127,7 @@ static void process_options(int argc, char **argv)
 	int c;
 
 	while (1) {
-		c = getopt_long(argc, argv, "hkb:p:s:eiow:", options, NULL);
+		c = getopt_long(argc, argv, "hkb:p:s:eiow:c", options, NULL);
 		if (c == -1)
 			break;
 
@@ -175,6 +178,9 @@ static void process_options(int argc, char **argv)
 		case 'e':
 			flags |= PAGE_ERASED;
 			break;
+		case 'c':
+			flags |= CONTINUOUS_READ;
+			break;
 		case 'h':
 			usage(EXIT_SUCCESS);
 		default:
@@ -192,6 +198,9 @@ static void process_options(int argc, char **argv)
 
 	if (!(flags & (MODE_OVERWRITE|MODE_INCREMENTAL)))
 		errmsg_die("No test mode specified!");
+
+	if (flags & CONTINUOUS_READ && !(flags & MODE_INCREMENTAL))
+		errmsg_die("Use --continuous with --incremental only!");
 
 	if ((max_overwrite > 0) && !(flags & MODE_OVERWRITE))
 		errmsg_die("Write count specified but mode is not --overwrite!");
@@ -461,7 +470,10 @@ int main(int argc, char **argv)
 
 	pagesize = mtd.subpage_size;
 	pagecount = mtd.eb_size / pagesize;
-	bs = pagesize;
+	if (!(flags & CONTINUOUS_READ))
+		bs = pagesize;
+	else
+		bs = 2 * pagesize;
 
 	if (peb >= mtd.eb_cnt)
 		return errmsg("Physical erase block %d is out of range!", peb);
