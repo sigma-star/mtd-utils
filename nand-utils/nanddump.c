@@ -332,7 +332,7 @@ static int ofd_write(int ofd, const void *buf, size_t nbyte)
  */
 int main(int argc, char * const argv[])
 {
-	long long ofs, end_addr = 0;
+	long long ofs, end_addr = 0, readbuf_sz;
 	long long blockstart = 1;
 	int i, fd, ofd = 0, bs, badblock = 0;
 	struct mtd_dev_info mtd;
@@ -362,8 +362,9 @@ int main(int argc, char * const argv[])
 		return errmsg("mtd_get_dev_info failed");
 
 	/* Allocate buffers */
+	readbuf_sz = mtd.min_io_size;
 	oobbuf = xmalloc(mtd.oob_size);
-	readbuf = xmalloc(mtd.min_io_size);
+	readbuf = xmalloc(readbuf_sz);
 
 	if (noecc)  {
 		if (ioctl(fd, MTDFILEMODE, MTD_FILE_MODE_RAW) != 0) {
@@ -462,7 +463,7 @@ int main(int argc, char * const argv[])
 					end_addr = mtd.size;
 				continue;
 			}
-			memset(readbuf, 0xff, bs);
+			memset(readbuf, 0xff, readbuf_sz);
 		} else {
 			/* Read page data and exit on failure */
 			if (mtd_read(&mtd, fd, ofs / mtd.eb_size, ofs % mtd.eb_size, readbuf, bs)) {
