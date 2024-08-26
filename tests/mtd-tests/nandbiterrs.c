@@ -68,7 +68,7 @@ static int peb = -1, page = -1, max_overwrite = -1, seed = -1;
 static const char *mtddev;
 
 static unsigned char *wbuffer, *rbuffer, *old_data;
-static int fd, pagesize, pagecount, flags;
+static int fd, pagesize, bs, pagecount, flags;
 static struct mtd_dev_info mtd;
 static libmtd_t mtd_desc;
 
@@ -235,9 +235,9 @@ static void init_buffer(void)
 	unsigned int i;
 
 	if (flags & PAGE_ERASED) {
-		memset(wbuffer, 0xff, pagesize);
+		memset(wbuffer, 0xff, bs);
 	} else {
-		for (i = 0; i < pagesize; ++i)
+		for (i = 0; i < bs; ++i)
 			wbuffer[i] = hash(i+seed);
 	}
 }
@@ -251,7 +251,7 @@ static int write_page(void)
 		goto fail_mode;
 
 	err = mtd_write(mtd_desc, &mtd, fd, peb, page*pagesize,
-					wbuffer, pagesize, NULL, 0, 0);
+					wbuffer, bs, NULL, 0, 0);
 
 	if (err)
 		fprintf(stderr, "Failed to write page %d in block %d\n", peb, page);
@@ -290,7 +290,7 @@ static int read_page(void)
 	if (ioctl(fd, ECCGETSTATS, &old) != 0)
 		goto failstats;
 
-	err = mtd_read(&mtd, fd, peb, page*pagesize, rbuffer, pagesize);
+	err = mtd_read(&mtd, fd, peb, page*pagesize, rbuffer, bs);
 	if (err) {
 		fputs("Read failed!\n", stderr);
 		return -1;
@@ -316,7 +316,7 @@ static int verify_page(void)
 	int erased = flags & PAGE_ERASED;
 	unsigned int i, errs = 0;
 
-	for (i = 0; i < pagesize; ++i) {
+	for (i = 0; i < bs; ++i) {
 		if (rbuffer[i] != (erased ? 0xff : hash(i+seed)))
 			++errs;
 	}
@@ -332,7 +332,7 @@ static int insert_biterror(void)
 {
 	int bit, mask, byte;
 
-	for (byte = 0; byte < pagesize; ++byte) {
+	for (byte = 0; byte < bs; ++byte) {
 		for (bit = 7, mask = 0x80; bit >= 0; bit--, mask >>= 1) {
 			if (wbuffer[byte] & mask) {
 				wbuffer[byte] &= ~mask;
@@ -461,6 +461,7 @@ int main(int argc, char **argv)
 
 	pagesize = mtd.subpage_size;
 	pagecount = mtd.eb_size / pagesize;
+	bs = pagesize;
 
 	if (peb >= mtd.eb_cnt)
 		return errmsg("Physical erase block %d is out of range!", peb);
@@ -483,13 +484,13 @@ int main(int argc, char **argv)
 		}
 	}
 
-	wbuffer = malloc(pagesize);
+	wbuffer = malloc(bs);
 	if (!wbuffer) {
 		perror(NULL);
 		goto fail_dev;
 	}
 
-	rbuffer = malloc(pagesize);
+	rbuffer = malloc(bs);
 	if (!rbuffer) {
 		perror(NULL);
 		goto fail_rbuffer;
