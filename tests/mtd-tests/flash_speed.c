@@ -47,6 +47,7 @@ static const char *mtddev;
 static libmtd_t mtd_desc;
 static int fd;
 
+static int npages = 1;
 static int peb=-1, count=-1, skip=-1, flags=0, speb=-1;
 static struct timespec start, finish;
 static int pgsize, pgcnt;
@@ -250,17 +251,17 @@ static int read_eraseblock_by_page(int ebnum)
 	return err;
 }
 
-static int read_eraseblock_by_2pages(int ebnum)
+static int read_eraseblock_by_npages(int ebnum)
 {
-	int i, n = pgcnt / 2, err = 0;
-	size_t sz = pgsize * 2;
+	int i, n = pgcnt / npages, err = 0;
+	size_t sz = pgsize * npages;
 	void *buf = iobuf;
 
 	for (i = 0; i < n; ++i) {
 		err = mtd_read(&mtd, fd, ebnum, i * sz, iobuf, sz);
 		if (err) {
-			fprintf(stderr, "Error reading block %d, page %d + %d!\n",
-					ebnum, i*2, i*2+1);
+			fprintf(stderr, "Error reading block %d, page [%d-%d]!\n",
+				ebnum, i*npages, (i*npages) + npages- 1);
 			return err;
 		}
 		buf += sz;
@@ -469,7 +470,8 @@ int main(int argc, char **argv)
 
 	/* Read all eraseblocks, 2 pages at a time */
 	puts("testing 2 page read speed");
-	TIME_OP_PER_PEB(read_eraseblock_by_2pages, 2);
+	npages = 2;
+	TIME_OP_PER_PEB(read_eraseblock_by_npages, npages);
 	printf("2 page read speed is %ld KiB/s\n", speed);
 
 	/* Erase all eraseblocks */
