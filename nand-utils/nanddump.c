@@ -54,6 +54,7 @@ static void display_help(int status)
 "-s addr    --startaddress=addr  Start address\n"
 "           --skip-bad-blocks-to-start\n"
 "                                Skip bad blocks when seeking to the start address\n"
+"-C         --continuous         Continuous read up to a block of data at a time\n"
 "\n"
 "--bb=METHOD, where METHOD can be `padbad', `dumpbad', or `skipbad':\n"
 "    padbad:  dump flash data, substituting 0xFF for any bad blocks\n"
@@ -89,6 +90,7 @@ static bool			quiet = false;		// suppress diagnostic output
 static bool			canonical = false;	// print nice + ascii
 static bool			forcebinary = false;	// force printing binary to tty
 static bool			skip_bad_blocks_to_start = false;
+static bool			continuous = false;	// leverage continuous reads
 
 static enum {
 	padbad,   // dump flash data, substituting 0xFF for any bad blocks
@@ -103,7 +105,7 @@ static void process_options(int argc, char * const argv[])
 
 	for (;;) {
 		int option_index = 0;
-		static const char short_options[] = "hs:f:l:opqncaV";
+		static const char short_options[] = "hs:f:l:opqncaVC";
 		static const struct option long_options[] = {
 			{"version", no_argument, 0, 'V'},
 			{"bb", required_argument, 0, 0},
@@ -119,6 +121,7 @@ static void process_options(int argc, char * const argv[])
 			{"length", required_argument, 0, 'l'},
 			{"noecc", no_argument, 0, 'n'},
 			{"quiet", no_argument, 0, 'q'},
+			{"continuous", no_argument, 0, 'C'},
 			{0, 0, 0, 0},
 		};
 
@@ -191,6 +194,9 @@ static void process_options(int argc, char * const argv[])
 			case 'n':
 				noecc = true;
 				break;
+			case 'C':
+				continuous = true;
+				break;
 			case 'h':
 				display_help(EXIT_SUCCESS);
 				break;
@@ -217,6 +223,13 @@ static void process_options(int argc, char * const argv[])
 		fprintf(stderr, "The forcebinary and pretty print options are\n"
 				"mutually-exclusive. Choose one or the "
 				"other.\n");
+		exit(EXIT_FAILURE);
+	}
+
+	if (continuous && !omitoob) {
+		fprintf(stderr, "Sequential/continuous reads (when available) will\n"
+				"always skip OOB data, so it is not possible to \n"
+				"request both at the same time.\n");
 		exit(EXIT_FAILURE);
 	}
 
@@ -362,7 +375,7 @@ int main(int argc, char * const argv[])
 		return errmsg("mtd_get_dev_info failed");
 
 	/* Allocate buffers */
-	readbuf_sz = mtd.min_io_size;
+	readbuf_sz = mtd.eb_size;
 	oobbuf = xmalloc(mtd.oob_size);
 	readbuf = xmalloc(readbuf_sz);
 
@@ -428,8 +441,6 @@ int main(int argc, char * const argv[])
 	if (!length || end_addr > mtd.size)
 		end_addr = mtd.size;
 
-	bs = mtd.min_io_size;
-
 	/* Print informative message */
 	if (!quiet) {
 		fprintf(stderr, "Block size %d, page size %d, OOB size %d\n",
@@ -441,6 +452,8 @@ int main(int argc, char * const argv[])
 
 	/* Dump the flash contents */
 	for (ofs = start_addr; ofs < end_addr; ofs += bs) {
+		long long size_left = end_addr - ofs;
+
 		/* Check for bad block */
 		if (bb_method == dumpbad) {
 			badblock = 0;
@@ -453,6 +466,11 @@ int main(int argc, char * const argv[])
 				goto closeall;
 			}
 		}
+
+		if (continuous)
+			bs = MIN(size_left, mtd.eb_size);
+		else
+			bs = mtd.min_io_size;
 
 		if (badblock) {
 			/* skip bad block, increase end_addr */
@@ -500,7 +518,6 @@ int main(int argc, char * const argv[])
 			}
 		} else {
 			/* Write requested length if oob is omitted */
-			long long size_left = end_addr - ofs;
 			if (omitoob && (size_left < bs))
 				err = ofd_write(ofd, readbuf, size_left);
 			else
