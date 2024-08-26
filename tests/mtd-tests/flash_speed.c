@@ -289,14 +289,17 @@ static long calc_duration(struct timespec *start, struct timespec *finish)
 	return ms;
 }
 
-static long calc_speed(struct timespec *start, struct timespec *finish)
+static long calc_speed(struct timespec *start, struct timespec *finish,
+		       int pages_per_set)
 {
 	long ms = calc_duration(start, finish);
+	int sets_in_eb = pgcnt / pages_per_set;
+	size_t sz = pgsize * pages_per_set * sets_in_eb;
 
 	if (ms <= 0)
 		return 0;
 
-	return ((long)goodebcnt * (mtd.eb_size / 1024L) * 1000L) / ms;
+	return ((long)goodebcnt * (sz / 1024L) * 1000L) / ms;
 }
 
 static void scan_for_bad_eraseblocks(unsigned int eb, int ebcnt, int ebskip)
@@ -357,7 +360,7 @@ static void *op_thread(void *ptr)
 	return (void *)err;
 }
 
-#define TIME_OP_PER_PEB( op )\
+#define TIME_OP_PER_PEB( op, npages )			\
 		start_timing(&start);\
 		for (i = 0; i < count; ++i) {\
 			if (bbt[i])\
@@ -367,7 +370,7 @@ static void *op_thread(void *ptr)
 				goto out;\
 		}\
 		stop_timing(&finish);\
-		speed = calc_speed(&start, &finish)
+		speed = calc_speed(&start, &finish, npages)
 
 int main(int argc, char **argv)
 {
@@ -428,13 +431,13 @@ int main(int argc, char **argv)
 			goto out;
 
 		puts("testing eraseblock write speed");
-		TIME_OP_PER_PEB(write_eraseblock);
+		TIME_OP_PER_PEB(write_eraseblock, 1);
 		printf("eraseblock write speed is %ld KiB/s\n", speed);
 	}
 
 	/* Read all eraseblocks, 1 eraseblock at a time */
 	puts("testing eraseblock read speed");
-	TIME_OP_PER_PEB(read_eraseblock);
+	TIME_OP_PER_PEB(read_eraseblock, 1);
 	printf("eraseblock read speed is %ld KiB/s\n", speed);
 
 	/* Write all eraseblocks, 1 page at a time */
@@ -444,13 +447,13 @@ int main(int argc, char **argv)
 			goto out;
 
 		puts("testing page write speed");
-		TIME_OP_PER_PEB(write_eraseblock_by_page);
+		TIME_OP_PER_PEB(write_eraseblock_by_page, 1);
 		printf("page write speed is %ld KiB/s\n", speed);
 	}
 
 	/* Read all eraseblocks, 1 page at a time */
 	puts("testing page read speed");
-	TIME_OP_PER_PEB(read_eraseblock_by_page);
+	TIME_OP_PER_PEB(read_eraseblock_by_page, 1);
 	printf("page read speed is %ld KiB/s\n", speed);
 
 	/* Write all eraseblocks, 2 pages at a time */
@@ -460,13 +463,13 @@ int main(int argc, char **argv)
 			goto out;
 
 		puts("testing 2 page write speed");
-		TIME_OP_PER_PEB(write_eraseblock_by_2pages);
+		TIME_OP_PER_PEB(write_eraseblock_by_2pages, 2);
 		printf("2 page write speed is %ld KiB/s\n", speed);
 	}
 
 	/* Read all eraseblocks, 2 pages at a time */
 	puts("testing 2 page read speed");
-	TIME_OP_PER_PEB(read_eraseblock_by_2pages);
+	TIME_OP_PER_PEB(read_eraseblock_by_2pages, 2);
 	printf("2 page read speed is %ld KiB/s\n", speed);
 
 	/* Erase all eraseblocks */
@@ -477,7 +480,7 @@ int main(int argc, char **argv)
 		if (err)
 			goto out;
 		stop_timing(&finish);
-		speed = calc_speed(&start, &finish);
+		speed = calc_speed(&start, &finish, 1);
 		printf("erase speed is %ld KiB/s\n", speed);
 	}
 
@@ -501,7 +504,7 @@ int main(int argc, char **argv)
 				i += j;
 			}
 			stop_timing(&finish);
-			speed = calc_speed(&start, &finish);
+			speed = calc_speed(&start, &finish, 1);
 			printf("%dx multi-block erase speed is %ld KiB/s\n",
 					blocks, speed);
 		}
