@@ -145,7 +145,8 @@ AS_IF([test "x$with_zlib" != "xno"], [
 ], [])
 
 if test "x$need_uuid" = "xyes"; then
-	PKG_CHECK_MODULES(UUID, [uuid], [], [uuid_missing="yes"])
+	PKG_CHECK_MODULES(UUID, [uuid], [],
+			  [PKG_CHECK_MODULES_STATIC(UUID, [uuid], [], [uuid_missing="yes"])])
 fi
 
 if test "x$need_clock_gettime" = "xyes"; then
