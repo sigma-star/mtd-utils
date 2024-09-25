@@ -4,6 +4,22 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.2.1] - 2024-09-25
+### Fixed
+ - fectest: Fix time formatting with _TIME_BITS=64 on 32-bit system
+ - mkfs.ubifs: Clear direct_write property when closing target
+ - mkfs.ubifs: Initialize 'cipher_name' as NULL
+ - mkfs.ubifs: Fix wrong xattr entry type
+ - mkfs.ubifs: Fix incorrect dir size calculation in encryption scenario
+ - mkfs.ubifs: Close libubi in error handling paths
+ - mkfs.ubifs: Fix missed closing fd
+ - mkfs.ubifs: Fix memleak for in error paths
+ - also check for static libuuid
+
+### Changed
+ - refactor: integck: split out common remount logic
+ - refactor: move rbtree & list code from jffsX-utils to common code
+
 ## [2.2.0] - 2024-03-29
 ### Added
  - flashcp: Add write last option
