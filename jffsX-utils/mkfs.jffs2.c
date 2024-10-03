@@ -428,7 +428,7 @@ static int interpret_table_entry(struct filesystem_entry *root, char *line)
 
 	if (sscanf (line, "%" SCANF_PREFIX "s %c %lo %lu %lu %lu %lu %lu %lu %lu",
 				SCANF_STRING(name), &type, &mode, &uid, &gid, &major, &minor,
-				&start, &increment, &count) < 0)
+				&start, &increment, &count) < 2)
 	{
 		return 1;
 	}
