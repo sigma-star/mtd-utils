@@ -403,3 +403,278 @@ bool parse_trun_node(struct ubifs_info *c, int lnum, int offs, void *node,
 out:
 	return valid;
 }
+
+/**
+ * insert_file_dentry - insert dentry according to scanned dent node.
+ * @file: file object
+ * @n_dent: scanned dent node
+ *
+ * Insert file dentry information. Returns zero in case of success, a
+ * negative error code in case of failure.
+ */
+static int insert_file_dentry(struct scanned_file *file,
+			      struct scanned_dent_node *n_dent)
+{
+	struct scanned_dent_node *dent;
+	struct rb_node **p, *parent = NULL;
+
+	p = &file->dent_nodes.rb_node;
+	while (*p) {
+		parent = *p;
+		dent = rb_entry(parent, struct scanned_dent_node, rb);
+		if (n_dent->header.sqnum < dent->header.sqnum)
+			p = &(*p)->rb_left;
+		else
+			p = &(*p)->rb_right;
+	}
+
+	dent = kmalloc(sizeof(struct scanned_dent_node), GFP_KERNEL);
+	if (!dent)
+		return -ENOMEM;
+
+	*dent = *n_dent;
+	rb_link_node(&dent->rb, parent, p);
+	rb_insert_color(&dent->rb, &file->dent_nodes);
+
+	return 0;
+}
+
+/**
+ * update_file_data - insert/update data according to scanned data node.
+ * @c: UBIFS file-system description object
+ * @file: file object
+ * @n_dn: scanned data node
+ *
+ * Insert or update file data information. Returns zero in case of success,
+ * a negative error code in case of failure.
+ */
+static int update_file_data(struct ubifs_info *c, struct scanned_file *file,
+			    struct scanned_data_node *n_dn)
+{
+	int cmp;
+	struct scanned_data_node *dn, *o_dn = NULL;
+	struct rb_node **p, *parent = NULL;
+
+	p = &file->data_nodes.rb_node;
+	while (*p) {
+		parent = *p;
+		dn = rb_entry(parent, struct scanned_data_node, rb);
+		cmp = keys_cmp(c, &n_dn->key, &dn->key);
+		if (cmp < 0) {
+			p = &(*p)->rb_left;
+		} else if (cmp > 0) {
+			p = &(*p)->rb_right;
+		} else {
+			o_dn = dn;
+			break;
+		}
+	}
+
+	if (o_dn) {
+		/* found data node with same block no. */
+		if (o_dn->header.sqnum < n_dn->header.sqnum) {
+			o_dn->header = n_dn->header;
+			o_dn->size = n_dn->size;
+		}
+
+		return 0;
+	}
+
+	dn = kmalloc(sizeof(struct scanned_data_node), GFP_KERNEL);
+	if (!dn)
+		return -ENOMEM;
+
+	*dn = *n_dn;
+	INIT_LIST_HEAD(&dn->list);
+	rb_link_node(&dn->rb, parent, p);
+	rb_insert_color(&dn->rb, &file->data_nodes);
+
+	return 0;
+}
+
+/**
+ * update_file - update file information.
+ * @c: UBIFS file-system description object
+ * @file: file object
+ * @sn: scanned node
+ * @key_type: type of @sn
+ *
+ * Update inode/dent/truncation/data node information of @file. Returns
+ * zero in case of success, a negative error code in case of failure.
+ */
+static int update_file(struct ubifs_info *c, struct scanned_file *file,
+		       struct scanned_node *sn, int key_type)
+{
+	int err = 0;
+
+	switch (key_type) {
+	case UBIFS_INO_KEY:
+	{
+		struct scanned_ino_node *o_ino, *n_ino;
+
+		o_ino = &file->ino;
+		n_ino = (struct scanned_ino_node *)sn;
+		if (o_ino->header.exist && o_ino->header.sqnum > sn->sqnum)
+			goto out;
+
+		*o_ino = *n_ino;
+		break;
+	}
+	case UBIFS_DENT_KEY:
+	case UBIFS_XENT_KEY:
+	{
+		struct scanned_dent_node *dent = (struct scanned_dent_node *)sn;
+
+		err = insert_file_dentry(file, dent);
+		break;
+	}
+	case UBIFS_DATA_KEY:
+	{
+		struct scanned_data_node *dn = (struct scanned_data_node *)sn;
+
+		err = update_file_data(c, file, dn);
+		break;
+	}
+	case UBIFS_TRUN_KEY:
+	{
+		struct scanned_trun_node *o_trun, *n_trun;
+
+		o_trun = &file->trun;
+		n_trun = (struct scanned_trun_node *)sn;
+		if (o_trun->header.exist && o_trun->header.sqnum > sn->sqnum)
+			goto out;
+
+		*o_trun = *n_trun;
+		break;
+	}
+	default:
+		err = -EINVAL;
+		log_err(c, 0, "unknown key type %d", key_type);
+	}
+
+out:
+	return err;
+}
+
+/**
+ * insert_or_update_file - insert or update file according to scanned node.
+ * @c: UBIFS file-system description object
+ * @file_tree: tree of all scanned files
+ * @sn: scanned node
+ * @key_type: key type of @sn
+ * @inum: inode number
+ *
+ * According to @sn, this function inserts file into the tree, or updates
+ * file information if it already exists in the tree. Returns zero in case
+ * of success, a negative error code in case of failure.
+ */
+int insert_or_update_file(struct ubifs_info *c, struct rb_root *file_tree,
+			  struct scanned_node *sn, int key_type, ino_t inum)
+{
+	int err;
+	struct scanned_file *file, *old_file = NULL;
+	struct rb_node **p, *parent = NULL;
+
+	p = &file_tree->rb_node;
+	while (*p) {
+		parent = *p;
+		file = rb_entry(parent, struct scanned_file, rb);
+		if (inum < file->inum) {
+			p = &(*p)->rb_left;
+		} else if (inum > file->inum) {
+			p = &(*p)->rb_right;
+		} else {
+			old_file = file;
+			break;
+		}
+	}
+	if (old_file)
+		return update_file(c, old_file, sn, key_type);
+
+	file = kzalloc(sizeof(struct scanned_file), GFP_KERNEL);
+	if (!file)
+		return -ENOMEM;
+
+	file->inum = inum;
+	file->dent_nodes = RB_ROOT;
+	file->data_nodes = RB_ROOT;
+	file->xattr_files = RB_ROOT;
+	INIT_LIST_HEAD(&file->list);
+	err = update_file(c, file, sn, key_type);
+	if (err) {
+		kfree(file);
+		return err;
+	}
+	rb_link_node(&file->rb, parent, p);
+	rb_insert_color(&file->rb, file_tree);
+
+	return 0;
+}
+
+/**
+ * destroy_file_content - destroy scanned data/dentry nodes in give file.
+ * @c: UBIFS file-system description object
+ * @file: file object
+ *
+ * Destroy all data/dentry nodes and xattrs attached to @file.
+ */
+void destroy_file_content(struct ubifs_info *c, struct scanned_file *file)
+{
+	struct scanned_data_node *data_node;
+	struct scanned_dent_node *dent_node;
+	struct scanned_file *xattr_file;
+	struct rb_node *this;
+
+	this = rb_first(&file->data_nodes);
+	while (this) {
+		data_node = rb_entry(this, struct scanned_data_node, rb);
+		this = rb_next(this);
+
+		rb_erase(&data_node->rb, &file->data_nodes);
+		kfree(data_node);
+	}
+
+	this = rb_first(&file->dent_nodes);
+	while (this) {
+		dent_node = rb_entry(this, struct scanned_dent_node, rb);
+		this = rb_next(this);
+
+		rb_erase(&dent_node->rb, &file->dent_nodes);
+		kfree(dent_node);
+	}
+
+	this = rb_first(&file->xattr_files);
+	while (this) {
+		xattr_file = rb_entry(this, struct scanned_file, rb);
+		this = rb_next(this);
+
+		ubifs_assert(c, !rb_first(&xattr_file->xattr_files));
+		destroy_file_content(c, xattr_file);
+		rb_erase(&xattr_file->rb, &file->xattr_files);
+		kfree(xattr_file);
+	}
+}
+
+/**
+ * destroy_file_tree - destroy files from a given tree.
+ * @c: UBIFS file-system description object
+ * @file_tree: tree of all scanned files
+ *
+ * Destroy scanned files from a given tree.
+ */
+void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree)
+{
+	struct scanned_file *file;
+	struct rb_node *this;
+
+	this = rb_first(file_tree);
+	while (this) {
+		file = rb_entry(this, struct scanned_file, rb);
+		this = rb_next(this);
+
+		destroy_file_content(c, file);
+
+		rb_erase(&file->rb, file_tree);
+		kfree(file);
+	}
+}

@@ -136,6 +136,45 @@ struct scanned_trun_node {
 };
 
 /**
+ * scanned_file - file info scanned from UBIFS volume.
+ *
+ * @calc_nlink: calculated count of directory entries refer this inode
+ * @calc_xcnt: calculated count of extended attributes
+ * @calc_xsz: calculated summary size of all extended attributes
+ * @calc_xnms: calculated sum of lengths of all extended attribute names
+ * @calc_size: calculated file size
+ * @has_encrypted_info: whether the file has encryption related xattrs
+ *
+ * @inum: inode number
+ * @ino: inode node
+ * @trun: truncation node
+ *
+ * @rb: link in the tree of all scanned files
+ * @list: link in the list files for kinds of processing
+ * @dent_nodes: tree of all scanned dentry nodes
+ * @data_nodes: tree of all scanned data nodes
+ * @xattr_files: tree of all scanned xattr files
+ */
+struct scanned_file {
+	unsigned int calc_nlink;
+	unsigned int calc_xcnt;
+	unsigned int calc_xsz;
+	unsigned int calc_xnms;
+	unsigned long long calc_size;
+	bool has_encrypted_info;
+
+	ino_t inum;
+	struct scanned_ino_node ino;
+	struct scanned_trun_node trun;
+
+	struct rb_node rb;
+	struct list_head list;
+	struct rb_root dent_nodes;
+	struct rb_root data_nodes;
+	struct rb_root xattr_files;
+};
+
+/**
  * struct ubifs_fsck_info - UBIFS fsck information.
  * @mode: working mode
  * @failure_reason: reasons for failed operations
@@ -207,5 +246,9 @@ bool parse_data_node(struct ubifs_info *c, int lnum, int offs, void *node,
 		     union ubifs_key *key, struct scanned_data_node *data_node);
 bool parse_trun_node(struct ubifs_info *c, int lnum, int offs, void *node,
 		     union ubifs_key *key, struct scanned_trun_node *trun_node);
+int insert_or_update_file(struct ubifs_info *c, struct rb_root *file_tree,
+			  struct scanned_node *sn, int key_type, ino_t inum);
+void destroy_file_content(struct ubifs_info *c, struct scanned_file *file);
+void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree);
 
 #endif
