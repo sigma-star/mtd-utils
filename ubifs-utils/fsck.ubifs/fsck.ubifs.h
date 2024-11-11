@@ -40,6 +40,102 @@ enum { NORMAL_MODE = 0, SAFE_MODE, DANGER_MODE0,
 enum { SB_CORRUPTED = 0 };
 
 /**
+ * scanned_node - common header node.
+ * @exist: whether the node is found by scanning
+ * @lnum: LEB number of the scanned node
+ * @offs: scanned node's offset within @lnum
+ * @len: length of scanned node
+ * @sqnum: sequence number
+ */
+struct scanned_node {
+	bool exist;
+	int lnum;
+	int offs;
+	int len;
+	unsigned long long sqnum;
+};
+
+/**
+ * scanned_ino_node - scanned inode node.
+ * @header: common header of scanned node
+ * @key: the key of inode node
+ * @is_xattr: %1 for xattr inode, otherwise %0
+ * @is_encrypted: %1 for encrypted inode, otherwise %0
+ * @mode: file mode
+ * @nlink: number of hard links
+ * @xcnt: count of extended attributes this inode has
+ * @xsz: summarized size of all extended attributes in bytes
+ * @xnms: sum of lengths of all extended attribute names
+ * @size: inode size in bytes
+ * @rb: link in the tree of valid inode nodes or deleted inode nodes
+ */
+struct scanned_ino_node {
+	struct scanned_node header;
+	union ubifs_key key;
+	unsigned int is_xattr:1;
+	unsigned int is_encrypted:1;
+	unsigned int mode;
+	unsigned int nlink;
+	unsigned int xcnt;
+	unsigned int xsz;
+	unsigned int xnms;
+	unsigned long long size;
+	struct rb_node rb;
+};
+
+/**
+ * scanned_dent_node - scanned dentry node.
+ * @header: common header of scanned node
+ * @key: the key of dentry node
+ * @can_be_found: whether this dentry can be found from '/'
+ * @type: file type, reg/dir/symlink/block/char/fifo/sock
+ * @nlen: name length
+ * @name: dentry name
+ * @inum: target inode number
+ * @rb: link in the trees of:
+ *  1) valid dentry nodes or deleted dentry node
+ *  2) all scanned dentry nodes from same file
+ * @list: link in the list dentries for looking up/deleting
+ */
+struct scanned_dent_node {
+	struct scanned_node header;
+	union ubifs_key key;
+	bool can_be_found;
+	unsigned int type;
+	unsigned int nlen;
+	char name[UBIFS_MAX_NLEN + 1];
+	ino_t inum;
+	struct rb_node rb;
+	struct list_head list;
+};
+
+/**
+ * scanned_data_node - scanned data node.
+ * @header: common header of scanned node
+ * @key: the key of data node
+ * @size: uncompressed data size in bytes
+ * @rb: link in the tree of all scanned data nodes from same file
+ * @list: link in the list for deleting
+ */
+struct scanned_data_node {
+	struct scanned_node header;
+	union ubifs_key key;
+	unsigned int size;
+	struct rb_node rb;
+	struct list_head list;
+};
+
+/**
+ * scanned_trun_node - scanned truncation node.
+ * @header: common header of scanned node
+ * @new_size: size after truncation
+ */
+struct scanned_trun_node {
+	struct scanned_node header;
+	unsigned long long new_size;
+};
+
+/**
  * struct ubifs_fsck_info - UBIFS fsck information.
  * @mode: working mode
  * @failure_reason: reasons for failed operations
@@ -101,5 +197,15 @@ bool fix_problem(const struct ubifs_info *c, int problem_type);
 /* load_fs.c */
 int ubifs_load_filesystem(struct ubifs_info *c);
 void ubifs_destroy_filesystem(struct ubifs_info *c);
+
+/* extract_files.c */
+bool parse_ino_node(struct ubifs_info *c, int lnum, int offs, void *node,
+		    union ubifs_key *key, struct scanned_ino_node *ino_node);
+bool parse_dent_node(struct ubifs_info *c, int lnum, int offs, void *node,
+		     union ubifs_key *key, struct scanned_dent_node *dent_node);
+bool parse_data_node(struct ubifs_info *c, int lnum, int offs, void *node,
+		     union ubifs_key *key, struct scanned_data_node *data_node);
+bool parse_trun_node(struct ubifs_info *c, int lnum, int offs, void *node,
+		     union ubifs_key *key, struct scanned_trun_node *trun_node);
 
 #endif

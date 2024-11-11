@@ -77,6 +77,8 @@ void ubifs_assert_failed(struct ubifs_info *c, const char *expr,
 #define dbg_scan(fmt, ...)  ubifs_dbg_msg("scan", fmt, ##__VA_ARGS__)
 /* Additional recovery messages */
 #define dbg_rcvry(fmt, ...) ubifs_dbg_msg("rcvry", fmt, ##__VA_ARGS__)
+/* Additional fsck messages */
+#define dbg_fsck(fmt, ...) ubifs_dbg_msg("fsck", fmt, ##__VA_ARGS__)
 
 static inline int dbg_is_chk_index(__unused const struct ubifs_info *c)
 { return 0; }
