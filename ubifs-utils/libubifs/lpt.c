@@ -31,10 +31,13 @@
  * mounted.
  */
 
+#include "linux_err.h"
+#include "bitops.h"
+#include "kmem.h"
+#include "crc16.h"
 #include "ubifs.h"
-#include <linux/crc16.h>
-#include <linux/math64.h>
-#include <linux/slab.h>
+#include "defs.h"
+#include "debug.h"
 
 /**
  * do_calc_lpt_geom - calculate sizes for the LPT area.
@@ -48,8 +51,20 @@ static void do_calc_lpt_geom(struct ubifs_info *c)
 	int i, n, bits, per_leb_wastage, max_pnode_cnt;
 	long long sz, tot_wastage;
 
-	n = c->main_lebs + c->max_leb_cnt - c->leb_cnt;
-	max_pnode_cnt = DIV_ROUND_UP(n, UBIFS_LPT_FANOUT);
+	if (c->program_type != MKFS_PROGRAM_TYPE) {
+		n = c->main_lebs + c->max_leb_cnt - c->leb_cnt;
+		max_pnode_cnt = DIV_ROUND_UP(n, UBIFS_LPT_FANOUT);
+	} else {
+		/*
+		 * Different from linux kernel.
+		 *
+		 * We change it, because 'c->leb_cnt' is not initialized in
+		 * mkfs.ubifs when do_calc_lpt_geom() is invoked, 'c->main_lebs'
+		 * is calculated by 'c->max_leb_cnt', so the 'c->lpt_hght'
+		 * should be calculated by 'c->main_lebs'.
+		 */
+		max_pnode_cnt = DIV_ROUND_UP(c->main_lebs, UBIFS_LPT_FANOUT);
+	}
 
 	c->lpt_hght = 1;
 	n = UBIFS_LPT_FANOUT;
@@ -148,7 +163,7 @@ int ubifs_calc_lpt_geom(struct ubifs_info *c)
 }
 
 /**
- * calc_dflt_lpt_geom - calculate default LPT geometry.
+ * ubifs_calc_dflt_lpt_geom - calculate default LPT geometry.
  * @c: the UBIFS file-system description object
  * @main_lebs: number of main area LEBs is passed and returned here
  * @big_lpt: whether the LPT area is "big" is returned here
@@ -159,8 +174,7 @@ int ubifs_calc_lpt_geom(struct ubifs_info *c)
  *
  * This function returns %0 on success and a negative error code on failure.
  */
-static int calc_dflt_lpt_geom(struct ubifs_info *c, int *main_lebs,
-			      int *big_lpt)
+int ubifs_calc_dflt_lpt_geom(struct ubifs_info *c, int *main_lebs, int *big_lpt)
 {
 	int i, lebs_needed;
 	long long sz;
@@ -275,7 +289,7 @@ uint32_t ubifs_unpack_bits(const struct ubifs_info *c, uint8_t **addr, int *pos,
 	const int k = 32 - nrbits;
 	uint8_t *p = *addr;
 	int b = *pos;
-	uint32_t val;
+	uint32_t val = 0;
 	const int bytes = (nrbits + b + 7) >> 3;
 
 	ubifs_assert(c, nrbits > 0);
@@ -638,8 +652,13 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 	lnum = c->lpt_first;
 	p = buf;
 	len = 0;
-	/* Number of leaf nodes (pnodes) */
-	cnt = c->pnode_cnt;
+	/*
+	 * Different from linux kernel. The number of leaf nodes (pnodes) should
+	 * be calculated by the number of current main LEBs. The 'c->pnode_cnt'
+	 * may not be equal to 'DIV_ROUND_UP(c->main_lebs, UBIFS_LPT_FANOUT)' in
+	 * mkfs when 'c->leb_cnt != c->max_leb_cnt' is true.
+	 */
+	cnt = DIV_ROUND_UP(c->main_lebs, UBIFS_LPT_FANOUT);
 
 	/*
 	 * To calculate the internal node branches, we keep information about
@@ -655,8 +674,19 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 		if (len + c->pnode_sz > c->leb_size) {
 			alen = ALIGN(len, c->min_io_size);
 			set_ltab(c, lnum, c->leb_size - alen, alen - len);
-			memset(p, 0xff, alen - len);
-			err = ubifs_leb_change(c, lnum++, buf, alen);
+			/*
+			 * Different from linux kernel.
+			 * The mkfs may partially write data into a certain LEB
+			 * of file image, the left unwritten area in the LEB
+			 * should be filled with '0xFF'.
+			 */
+			if (c->libubi) {
+				memset(p, 0xff, alen - len);
+				err = ubifs_leb_change(c, lnum++, buf, alen);
+			} else {
+				memset(p, 0xff, c->leb_size - len);
+				err = ubifs_leb_change(c, lnum++, buf, c->leb_size);
+			}
 			if (err)
 				goto out;
 			p = buf;
@@ -691,27 +721,45 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 		pnode->num += 1;
 	}
 
-	row = 0;
-	for (i = UBIFS_LPT_FANOUT; cnt > i; i <<= UBIFS_LPT_FANOUT_SHIFT)
-		row += 1;
+	/*
+	 * Different from linux kernel. The 'c->lpt_hght' is calculated by the
+	 * 'c->max_leb_cnt', according to the implementation of function
+	 * ubifs_pnode_lookup(), there are at least 'c->lpt_hght' cnodes should
+	 * be created, otherwise the LPT looking up could be failed after
+	 * mouting.
+	 */
+	row = c->lpt_hght - 1;
 	/* Add all nnodes, one level at a time */
 	while (1) {
 		/* Number of internal nodes (nnodes) at next level */
 		cnt = DIV_ROUND_UP(cnt, UBIFS_LPT_FANOUT);
+		if (cnt == 0)
+			cnt = 1;
 		for (i = 0; i < cnt; i++) {
 			if (len + c->nnode_sz > c->leb_size) {
 				alen = ALIGN(len, c->min_io_size);
 				set_ltab(c, lnum, c->leb_size - alen,
 					    alen - len);
-				memset(p, 0xff, alen - len);
-				err = ubifs_leb_change(c, lnum++, buf, alen);
+				/*
+				 * Different from linux kernel.
+				 * The mkfs may partially write data into a certain LEB
+				 * of file image, the left unwritten area in the LEB
+				 * should be filled with '0xFF'.
+				 */
+				if (c->libubi) {
+					memset(p, 0xff, alen - len);
+					err = ubifs_leb_change(c, lnum++, buf, alen);
+				} else {
+					memset(p, 0xff, c->leb_size - len);
+					err = ubifs_leb_change(c, lnum++, buf, c->leb_size);
+				}
 				if (err)
 					goto out;
 				p = buf;
 				len = 0;
 			}
 			/* Only 1 nnode at this level, so it is the root */
-			if (cnt == 1) {
+			if (row == 0) {
 				c->lpt_lnum = lnum;
 				c->lpt_offs = len;
 			}
@@ -736,8 +784,8 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 			p += c->nnode_sz;
 			len += c->nnode_sz;
 		}
-		/* Only 1 nnode at this level, so it is the root */
-		if (cnt == 1)
+		/* Row zero  is the top row */
+		if (row == 0)
 			break;
 		/* Update the information about the level below */
 		bcnt = cnt;
@@ -750,8 +798,19 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 		if (len + c->lsave_sz > c->leb_size) {
 			alen = ALIGN(len, c->min_io_size);
 			set_ltab(c, lnum, c->leb_size - alen, alen - len);
-			memset(p, 0xff, alen - len);
-			err = ubifs_leb_change(c, lnum++, buf, alen);
+			/*
+			 * Different from linux kernel.
+			 * The mkfs may partially write data into a certain LEB
+			 * of file image, the left unwritten area in the LEB
+			 * should be filled with '0xFF'.
+			 */
+			if (c->libubi) {
+				memset(p, 0xff, alen - len);
+				err = ubifs_leb_change(c, lnum++, buf, alen);
+			} else {
+				memset(p, 0xff, c->leb_size - len);
+				err = ubifs_leb_change(c, lnum++, buf, c->leb_size);
+			}
 			if (err)
 				goto out;
 			p = buf;
@@ -775,8 +834,19 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 	if (len + c->ltab_sz > c->leb_size) {
 		alen = ALIGN(len, c->min_io_size);
 		set_ltab(c, lnum, c->leb_size - alen, alen - len);
-		memset(p, 0xff, alen - len);
-		err = ubifs_leb_change(c, lnum++, buf, alen);
+		/*
+		 * Different from linux kernel.
+		 * The mkfs may partially write data into a certain LEB
+		 * of file image, the left unwritten area in the LEB
+		 * should be filled with '0xFF'.
+		 */
+		if (c->libubi) {
+			memset(p, 0xff, alen - len);
+			err = ubifs_leb_change(c, lnum++, buf, alen);
+		} else {
+			memset(p, 0xff, c->leb_size - len);
+			err = ubifs_leb_change(c, lnum++, buf, c->leb_size);
+		}
 		if (err)
 			goto out;
 		p = buf;
@@ -795,10 +865,24 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 	p += c->ltab_sz;
 
 	/* Write remaining buffer */
-	memset(p, 0xff, alen - len);
-	err = ubifs_leb_change(c, lnum, buf, alen);
+	/*
+	 * Different from linux kernel.
+	 * The mkfs may partially write data into a certain LEB
+	 * of file image, the left unwritten area in the LEB
+	 * should be filled with '0xFF'.
+	 */
+	if (c->libubi) {
+		memset(p, 0xff, alen - len);
+		err = ubifs_leb_change(c, lnum, buf, alen);
+	} else {
+		memset(p, 0xff, c->leb_size - len);
+		err = ubifs_leb_change(c, lnum, buf, c->leb_size);
+	}
 	if (err)
 		goto out;
+
+	if (c->big_lpt && c->lsave)
+		memcpy(c->lsave, lsave, c->lsave_cnt * sizeof(int));
 
 	err = ubifs_shash_final(c, desc, hash);
 	if (err)
@@ -834,54 +918,6 @@ out:
 	kfree(nnode);
 	kfree(pnode);
 	return err;
-}
-
-/**
- * ubifs_create_dflt_lpt - create default LPT.
- * @c: UBIFS file-system description object
- * @main_lebs: number of main area LEBs is passed and returned here
- * @lpt_first: LEB number of first LPT LEB
- * @lpt_lebs: number of LEBs for LPT is passed and returned here
- * @big_lpt: use big LPT model is passed and returned here
- * @hash: hash of the LPT is returned here
- *
- * This function returns %0 on success and a negative error code on failure.
- */
-int ubifs_create_dflt_lpt(struct ubifs_info *c, int *main_lebs, int lpt_first,
-			  int *lpt_lebs, int *big_lpt, u8 *hash)
-{
-	int node_sz, iopos, err = 0;
-	struct ubifs_lprops lps[2];
-
-	err = calc_dflt_lpt_geom(c, main_lebs, big_lpt);
-	if (err)
-		return err;
-	*lpt_lebs = c->lpt_lebs;
-
-	/* Needed by 'ubifs_pack_nnode()' and 'set_ltab()' */
-	c->lpt_first = lpt_first;
-	/* Needed by 'set_ltab()' */
-	c->lpt_last = lpt_first + c->lpt_lebs - 1;
-	/* Needed by 'ubifs_pack_lsave()' */
-	c->main_first = c->leb_cnt - *main_lebs;
-
-	/*
-	 * The first pnode contains the LEB properties for the LEBs that contain
-	 * the root inode node and the root index node of the index tree.
-	 */
-	node_sz = ALIGN(ubifs_idx_node_sz(c, 1), 8);
-	iopos = ALIGN(node_sz, c->min_io_size);
-	lps[0].free = c->leb_size - iopos;
-	lps[0].dirty = iopos - node_sz;
-	lps[0].flags = LPROPS_INDEX;
-
-	node_sz = UBIFS_INO_NODE_SZ;
-	iopos = ALIGN(node_sz, c->min_io_size);
-	lps[1].free = c->leb_size - iopos;
-	lps[1].dirty = iopos - node_sz;
-	lps[1].flags = 0;
-
-	return ubifs_create_lpt(c, lps, 2, hash);
 }
 
 /**
@@ -2253,199 +2289,4 @@ again:
 out:
 	kfree(path);
 	return err;
-}
-
-/**
- * dbg_chk_pnode - check a pnode.
- * @c: the UBIFS file-system description object
- * @pnode: pnode to check
- * @col: pnode column
- *
- * This function returns %0 on success and a negative error code on failure.
- */
-static int dbg_chk_pnode(struct ubifs_info *c, struct ubifs_pnode *pnode,
-			 int col)
-{
-	int i;
-
-	if (pnode->num != col) {
-		ubifs_err(c, "pnode num %d expected %d parent num %d iip %d",
-			  pnode->num, col, pnode->parent->num, pnode->iip);
-		return -EINVAL;
-	}
-	for (i = 0; i < UBIFS_LPT_FANOUT; i++) {
-		struct ubifs_lprops *lp, *lprops = &pnode->lprops[i];
-		int lnum = (pnode->num << UBIFS_LPT_FANOUT_SHIFT) + i +
-			   c->main_first;
-		int found, cat = lprops->flags & LPROPS_CAT_MASK;
-		struct ubifs_lpt_heap *heap;
-		struct list_head *list = NULL;
-
-		if (lnum >= c->leb_cnt)
-			continue;
-		if (lprops->lnum != lnum) {
-			ubifs_err(c, "bad LEB number %d expected %d",
-				  lprops->lnum, lnum);
-			return -EINVAL;
-		}
-		if (lprops->flags & LPROPS_TAKEN) {
-			if (cat != LPROPS_UNCAT) {
-				ubifs_err(c, "LEB %d taken but not uncat %d",
-					  lprops->lnum, cat);
-				return -EINVAL;
-			}
-			continue;
-		}
-		if (lprops->flags & LPROPS_INDEX) {
-			switch (cat) {
-			case LPROPS_UNCAT:
-			case LPROPS_DIRTY_IDX:
-			case LPROPS_FRDI_IDX:
-				break;
-			default:
-				ubifs_err(c, "LEB %d index but cat %d",
-					  lprops->lnum, cat);
-				return -EINVAL;
-			}
-		} else {
-			switch (cat) {
-			case LPROPS_UNCAT:
-			case LPROPS_DIRTY:
-			case LPROPS_FREE:
-			case LPROPS_EMPTY:
-			case LPROPS_FREEABLE:
-				break;
-			default:
-				ubifs_err(c, "LEB %d not index but cat %d",
-					  lprops->lnum, cat);
-				return -EINVAL;
-			}
-		}
-		switch (cat) {
-		case LPROPS_UNCAT:
-			list = &c->uncat_list;
-			break;
-		case LPROPS_EMPTY:
-			list = &c->empty_list;
-			break;
-		case LPROPS_FREEABLE:
-			list = &c->freeable_list;
-			break;
-		case LPROPS_FRDI_IDX:
-			list = &c->frdi_idx_list;
-			break;
-		}
-		found = 0;
-		switch (cat) {
-		case LPROPS_DIRTY:
-		case LPROPS_DIRTY_IDX:
-		case LPROPS_FREE:
-			heap = &c->lpt_heap[cat - 1];
-			if (lprops->hpos < heap->cnt &&
-			    heap->arr[lprops->hpos] == lprops)
-				found = 1;
-			break;
-		case LPROPS_UNCAT:
-		case LPROPS_EMPTY:
-		case LPROPS_FREEABLE:
-		case LPROPS_FRDI_IDX:
-			list_for_each_entry(lp, list, list)
-				if (lprops == lp) {
-					found = 1;
-					break;
-				}
-			break;
-		}
-		if (!found) {
-			ubifs_err(c, "LEB %d cat %d not found in cat heap/list",
-				  lprops->lnum, cat);
-			return -EINVAL;
-		}
-		switch (cat) {
-		case LPROPS_EMPTY:
-			if (lprops->free != c->leb_size) {
-				ubifs_err(c, "LEB %d cat %d free %d dirty %d",
-					  lprops->lnum, cat, lprops->free,
-					  lprops->dirty);
-				return -EINVAL;
-			}
-			break;
-		case LPROPS_FREEABLE:
-		case LPROPS_FRDI_IDX:
-			if (lprops->free + lprops->dirty != c->leb_size) {
-				ubifs_err(c, "LEB %d cat %d free %d dirty %d",
-					  lprops->lnum, cat, lprops->free,
-					  lprops->dirty);
-				return -EINVAL;
-			}
-			break;
-		}
-	}
-	return 0;
-}
-
-/**
- * dbg_check_lpt_nodes - check nnodes and pnodes.
- * @c: the UBIFS file-system description object
- * @cnode: next cnode (nnode or pnode) to check
- * @row: row of cnode (root is zero)
- * @col: column of cnode (leftmost is zero)
- *
- * This function returns %0 on success and a negative error code on failure.
- */
-int dbg_check_lpt_nodes(struct ubifs_info *c, struct ubifs_cnode *cnode,
-			int row, int col)
-{
-	struct ubifs_nnode *nnode, *nn;
-	struct ubifs_cnode *cn;
-	int num, iip = 0, err;
-
-	if (!dbg_is_chk_lprops(c))
-		return 0;
-
-	while (cnode) {
-		ubifs_assert(c, row >= 0);
-		nnode = cnode->parent;
-		if (cnode->level) {
-			/* cnode is a nnode */
-			num = calc_nnode_num(row, col);
-			if (cnode->num != num) {
-				ubifs_err(c, "nnode num %d expected %d parent num %d iip %d",
-					  cnode->num, num,
-					  (nnode ? nnode->num : 0), cnode->iip);
-				return -EINVAL;
-			}
-			nn = (struct ubifs_nnode *)cnode;
-			while (iip < UBIFS_LPT_FANOUT) {
-				cn = nn->nbranch[iip].cnode;
-				if (cn) {
-					/* Go down */
-					row += 1;
-					col <<= UBIFS_LPT_FANOUT_SHIFT;
-					col += iip;
-					iip = 0;
-					cnode = cn;
-					break;
-				}
-				/* Go right */
-				iip += 1;
-			}
-			if (iip < UBIFS_LPT_FANOUT)
-				continue;
-		} else {
-			struct ubifs_pnode *pnode;
-
-			/* cnode is a pnode */
-			pnode = (struct ubifs_pnode *)cnode;
-			err = dbg_chk_pnode(c, pnode, col);
-			if (err)
-				return err;
-		}
-		/* Go up and to the right */
-		row -= 1;
-		col >>= UBIFS_LPT_FANOUT_SHIFT;
-		iip = cnode->iip + 1;
-		cnode = (struct ubifs_cnode *)nnode;
-	}
-	return 0;
 }
