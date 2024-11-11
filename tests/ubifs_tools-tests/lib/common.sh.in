@@ -234,12 +234,13 @@ function encryption_gen_key()
 function encryption_set_key()
 {
 	mnt=$1
+	ignore_err=$2
 	# https://github.com/google/fscryptctl
 	key=$(fscryptctl add_key $mnt < $KEY_FILE)
 	fscryptctl set_policy $key $mnt
 	#fscryptctl get_policy $mnt
 	ret=$?
-	if [[ $ret != 0 ]]; then
+	if [[ $ret != 0 && $ignore_err != 1 ]]; then
 		fatal "set encryption policy failed"
 	fi
 }
