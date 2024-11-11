@@ -18,9 +18,11 @@
  * approximations are used.
  */
 
+#include "bitops.h"
 #include "ubifs.h"
-#include <linux/writeback.h>
-#include <linux/math64.h>
+#include "defs.h"
+#include "debug.h"
+#include "misc.h"
 
 /*
  * When pessimistic budget calculations say that there is no enough space,
@@ -29,31 +31,6 @@
  * repeats the operations.
  */
 #define MAX_MKSPC_RETRIES 3
-
-/*
- * The below constant defines amount of dirty pages which should be written
- * back at when trying to shrink the liability.
- */
-#define NR_TO_WRITE 16
-
-/**
- * shrink_liability - write-back some dirty pages/inodes.
- * @c: UBIFS file-system description object
- * @nr_to_write: how many dirty pages to write-back
- *
- * This function shrinks UBIFS liability by means of writing back some amount
- * of dirty inodes and their pages.
- *
- * Note, this function synchronizes even VFS inodes which are locked
- * (@i_mutex) by the caller of the budgeting function, because write-back does
- * not touch @i_mutex.
- */
-static void shrink_liability(struct ubifs_info *c, int nr_to_write)
-{
-	down_read(&c->vfs_sb->s_umount);
-	writeback_inodes_sb_nr(c->vfs_sb, nr_to_write, WB_REASON_FS_FREE_SPACE);
-	up_read(&c->vfs_sb->s_umount);
-}
 
 /**
  * run_gc - run garbage collector.
@@ -80,23 +57,6 @@ static int run_gc(struct ubifs_info *c)
 }
 
 /**
- * get_liability - calculate current liability.
- * @c: UBIFS file-system description object
- *
- * This function calculates and returns current UBIFS liability, i.e. the
- * amount of bytes UBIFS has "promised" to write to the media.
- */
-static long long get_liability(struct ubifs_info *c)
-{
-	long long liab;
-
-	spin_lock(&c->space_lock);
-	liab = c->bi.idx_growth + c->bi.data_growth + c->bi.dd_growth;
-	spin_unlock(&c->space_lock);
-	return liab;
-}
-
-/**
  * make_free_space - make more free space on the file-system.
  * @c: UBIFS file-system description object
  *
@@ -117,24 +77,8 @@ static long long get_liability(struct ubifs_info *c)
 static int make_free_space(struct ubifs_info *c)
 {
 	int err, retries = 0;
-	long long liab1, liab2;
 
 	do {
-		liab1 = get_liability(c);
-		/*
-		 * We probably have some dirty pages or inodes (liability), try
-		 * to write them back.
-		 */
-		dbg_budg("liability %lld, run write-back", liab1);
-		shrink_liability(c, NR_TO_WRITE);
-
-		liab2 = get_liability(c);
-		if (liab2 < liab1)
-			return -EAGAIN;
-
-		dbg_budg("new liability %lld (not shrunk)", liab2);
-
-		/* Liability did not shrink again, try GC */
 		dbg_budg("Run GC");
 		err = run_gc(c);
 		if (!err)
@@ -254,12 +198,10 @@ long long ubifs_calc_available(const struct ubifs_info *c, int min_idx_lebs)
  * This function checks whether current user is allowed to use reserved pool.
  * Returns %1  current user is allowed to use reserved pool and %0 otherwise.
  */
-static int can_use_rp(struct ubifs_info *c)
+static int can_use_rp(__unused struct ubifs_info *c)
 {
-	if (uid_eq(current_fsuid(), c->rp_uid) || capable(CAP_SYS_RESOURCE) ||
-	    (!gid_eq(c->rp_gid, GLOBAL_ROOT_GID) && in_group_p(c->rp_gid)))
-		return 1;
-	return 0;
+	/* Fsck can always use reserved pool. */
+	return c->program_type != MKFS_PROGRAM_TYPE;
 }
 
 /**
@@ -556,49 +498,6 @@ void ubifs_release_budget(struct ubifs_info *c, struct ubifs_budget_req *req)
 }
 
 /**
- * ubifs_convert_page_budget - convert budget of a new page.
- * @c: UBIFS file-system description object
- *
- * This function converts budget which was allocated for a new page of data to
- * the budget of changing an existing page of data. The latter is smaller than
- * the former, so this function only does simple re-calculation and does not
- * involve any write-back.
- */
-void ubifs_convert_page_budget(struct ubifs_info *c)
-{
-	spin_lock(&c->space_lock);
-	/* Release the index growth reservation */
-	c->bi.idx_growth -= c->max_idx_node_sz << UBIFS_BLOCKS_PER_PAGE_SHIFT;
-	/* Release the data growth reservation */
-	c->bi.data_growth -= c->bi.page_budget;
-	/* Increase the dirty data growth reservation instead */
-	c->bi.dd_growth += c->bi.page_budget;
-	/* And re-calculate the indexing space reservation */
-	c->bi.min_idx_lebs = ubifs_calc_min_idx_lebs(c);
-	spin_unlock(&c->space_lock);
-}
-
-/**
- * ubifs_release_dirty_inode_budget - release dirty inode budget.
- * @c: UBIFS file-system description object
- * @ui: UBIFS inode to release the budget for
- *
- * This function releases budget corresponding to a dirty inode. It is usually
- * called when after the inode has been written to the media and marked as
- * clean. It also causes the "no space" flags to be cleared.
- */
-void ubifs_release_dirty_inode_budget(struct ubifs_info *c,
-				      struct ubifs_inode *ui)
-{
-	struct ubifs_budget_req req;
-
-	memset(&req, 0, sizeof(struct ubifs_budget_req));
-	/* The "no space" flags will be cleared because dd_growth is > 0 */
-	req.dd_growth = c->bi.inode_budget + ALIGN(ui->data_len, 8);
-	ubifs_release_budget(c, &req);
-}
-
-/**
  * ubifs_reported_space - calculate reported free space.
  * @c: the UBIFS file-system description object
  * @free: amount of free space
@@ -692,23 +591,5 @@ long long ubifs_get_free_space_nolock(struct ubifs_info *c)
 		free = ubifs_reported_space(c, available - outstanding);
 	else
 		free = 0;
-	return free;
-}
-
-/**
- * ubifs_get_free_space - return amount of free space.
- * @c: UBIFS file-system description object
- *
- * This function calculates and returns amount of free space to report to
- * user-space.
- */
-long long ubifs_get_free_space(struct ubifs_info *c)
-{
-	long long free;
-
-	spin_lock(&c->space_lock);
-	free = ubifs_get_free_space_nolock(c);
-	spin_unlock(&c->space_lock);
-
 	return free;
 }
