@@ -1778,6 +1778,7 @@ int ubifs_read_nnode(struct ubifs_info *c, struct ubifs_nnode *parent, int iip);
 void ubifs_add_lpt_dirt(struct ubifs_info *c, int lnum, int dirty);
 void ubifs_add_nnode_dirt(struct ubifs_info *c, struct ubifs_nnode *nnode);
 uint32_t ubifs_unpack_bits(const struct ubifs_info *c, uint8_t **addr, int *pos, int nrbits);
+int ubifs_calc_nnode_num(int row, int col);
 struct ubifs_nnode *ubifs_first_nnode(struct ubifs_info *c, int *hght);
 /* Needed only in debugging code in lpt_commit.c */
 int ubifs_unpack_nnode(const struct ubifs_info *c, void *buf,
@@ -1785,9 +1786,14 @@ int ubifs_unpack_nnode(const struct ubifs_info *c, void *buf,
 int ubifs_lpt_calc_hash(struct ubifs_info *c, u8 *hash);
 
 /* lpt_commit.c */
+struct ubifs_pnode *ubifs_find_next_pnode(struct ubifs_info *c,
+					  struct ubifs_pnode *pnode);
+void ubifs_make_nnode_dirty(struct ubifs_info *c, struct ubifs_nnode *nnode);
+void ubifs_make_pnode_dirty(struct ubifs_info *c, struct ubifs_pnode *pnode);
 int ubifs_lpt_start_commit(struct ubifs_info *c);
 int ubifs_lpt_end_commit(struct ubifs_info *c);
 int ubifs_lpt_post_commit(struct ubifs_info *c);
+void ubifs_free_lpt_nodes(struct ubifs_info *c);
 void ubifs_lpt_free(struct ubifs_info *c, int wr_only);
 
 /* lprops.c */
@@ -1830,6 +1836,7 @@ int take_gc_lnum(struct ubifs_info *c);
 int alloc_wbufs(struct ubifs_info *c);
 void free_wbufs(struct ubifs_info *c);
 void free_orphans(struct ubifs_info *c);
+void free_buds(struct ubifs_info *c, bool delete_from_list);
 void destroy_journal(struct ubifs_info *c);
 
 /* recovery.c */

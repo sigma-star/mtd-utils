@@ -48,6 +48,9 @@ enum { SB_CORRUPTED = 0, MST_CORRUPTED, LOG_CORRUPTED, BUD_CORRUPTED,
 
 enum { HAS_DATA_CORRUPTED = 1, HAS_TNC_CORRUPTED = 2 };
 
+typedef int (*calculate_lp_callback)(struct ubifs_info *c,
+				     int index, int *free, int *dirty);
+
 struct scanned_file;
 
 /**
@@ -199,14 +202,12 @@ struct invalid_file_problem {
 
 /**
  * ubifs_rebuild_info - UBIFS rebuilding information.
- * @lpts: lprops table
  * @write_buf: write buffer for LEB @head_lnum
  * @head_lnum: current writing LEB number
  * @head_offs: current writing position in LEB @head_lnum
  * @need_update_lpt: whether to update lpt while writing index nodes
  */
 struct ubifs_rebuild_info {
-	struct ubifs_lprops *lpts;
 	void *write_buf;
 	int head_lnum;
 	int head_offs;
@@ -222,6 +223,7 @@ struct ubifs_rebuild_info {
  * @scanned_files: tree of all scanned files
  * @used_lebs: a bitmap used for recording used lebs
  * @disconnected_files: regular files without dentries
+ * @lpts: lprops table
  * @try_rebuild: %true means that try to rebuild fs when fsck failed
  * @rebuild: rebuilding-related information
  */
@@ -232,6 +234,7 @@ struct ubifs_fsck_info {
 	struct rb_root scanned_files;
 	unsigned long *used_lebs;
 	struct list_head disconnected_files;
+	struct ubifs_lprops *lpts;
 	bool try_rebuild;
 	struct ubifs_rebuild_info *rebuild;
 };
@@ -320,5 +323,9 @@ void update_files_size(struct ubifs_info *c);
 int handle_invalid_files(struct ubifs_info *c);
 int handle_dentry_tree(struct ubifs_info *c);
 bool tnc_is_empty(struct ubifs_info *c);
+
+/* check_space.c */
+int get_free_leb(struct ubifs_info *c);
+int build_lpt(struct ubifs_info *c, calculate_lp_callback calculate_lp_cb);
 
 #endif

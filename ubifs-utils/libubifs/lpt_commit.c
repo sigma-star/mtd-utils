@@ -545,16 +545,15 @@ no_space:
 }
 
 /**
- * next_pnode_to_dirty - find next pnode to dirty.
+ * ubifs_find_next_pnode - find next pnode.
  * @c: UBIFS file-system description object
  * @pnode: pnode
  *
- * This function returns the next pnode to dirty or %NULL if there are no more
- * pnodes.  Note that pnodes that have never been written (lnum == 0) are
- * skipped.
+ * This function returns the next pnode or %NULL if there are no more pnodes.
+ * Note that pnodes that have never been written (lnum == 0) are skipped.
  */
-static struct ubifs_pnode *next_pnode_to_dirty(struct ubifs_info *c,
-					       struct ubifs_pnode *pnode)
+struct ubifs_pnode *ubifs_find_next_pnode(struct ubifs_info *c,
+					  struct ubifs_pnode *pnode)
 {
 	struct ubifs_nnode *nnode;
 	int iip;
@@ -622,28 +621,35 @@ static void add_pnode_dirt(struct ubifs_info *c, struct ubifs_pnode *pnode)
 }
 
 /**
- * do_make_pnode_dirty - mark a pnode dirty.
+ * ubifs_make_nnode_dirty - mark a nnode dirty.
+ * @c: UBIFS file-system description object
+ * @nnode: nnode to mark dirty
+ */
+void ubifs_make_nnode_dirty(struct ubifs_info *c, struct ubifs_nnode *nnode)
+{
+	while (nnode) {
+		if (!test_and_set_bit(DIRTY_CNODE, &nnode->flags)) {
+			c->dirty_nn_cnt += 1;
+			ubifs_add_nnode_dirt(c, nnode);
+			nnode = nnode->parent;
+		} else
+			break;
+	}
+}
+
+/**
+ * ubifs_make_pnode_dirty - mark a pnode dirty.
  * @c: UBIFS file-system description object
  * @pnode: pnode to mark dirty
  */
-static void do_make_pnode_dirty(struct ubifs_info *c, struct ubifs_pnode *pnode)
+void ubifs_make_pnode_dirty(struct ubifs_info *c, struct ubifs_pnode *pnode)
 {
 	/* Assumes cnext list is empty i.e. not called during commit */
 	if (!test_and_set_bit(DIRTY_CNODE, &pnode->flags)) {
-		struct ubifs_nnode *nnode;
-
 		c->dirty_pn_cnt += 1;
 		add_pnode_dirt(c, pnode);
 		/* Mark parent and ancestors dirty too */
-		nnode = pnode->parent;
-		while (nnode) {
-			if (!test_and_set_bit(DIRTY_CNODE, &nnode->flags)) {
-				c->dirty_nn_cnt += 1;
-				ubifs_add_nnode_dirt(c, nnode);
-				nnode = nnode->parent;
-			} else
-				break;
-		}
+		ubifs_make_nnode_dirty(c, pnode->parent);
 	}
 }
 
@@ -667,8 +673,8 @@ static int make_tree_dirty(struct ubifs_info *c)
 		return PTR_ERR(pnode);
 
 	while (pnode) {
-		do_make_pnode_dirty(c, pnode);
-		pnode = next_pnode_to_dirty(c, pnode);
+		ubifs_make_pnode_dirty(c, pnode);
+		pnode = ubifs_find_next_pnode(c, pnode);
 		if (IS_ERR(pnode))
 			return PTR_ERR(pnode);
 	}
@@ -878,20 +884,7 @@ static int make_nnode_dirty(struct ubifs_info *c, int node_num, int lnum,
 	} else if (c->lpt_lnum != lnum || c->lpt_offs != offs)
 			return 0; /* nnode is obsolete */
 	/* Assumes cnext list is empty i.e. not called during commit */
-	if (!test_and_set_bit(DIRTY_CNODE, &nnode->flags)) {
-		c->dirty_nn_cnt += 1;
-		ubifs_add_nnode_dirt(c, nnode);
-		/* Mark parent and ancestors dirty too */
-		nnode = nnode->parent;
-		while (nnode) {
-			if (!test_and_set_bit(DIRTY_CNODE, &nnode->flags)) {
-				c->dirty_nn_cnt += 1;
-				ubifs_add_nnode_dirt(c, nnode);
-				nnode = nnode->parent;
-			} else
-				break;
-		}
-	}
+	ubifs_make_nnode_dirty(c, nnode);
 	return 0;
 }
 
@@ -922,7 +915,7 @@ static int make_pnode_dirty(struct ubifs_info *c, int node_num, int lnum,
 	branch = &pnode->parent->nbranch[pnode->iip];
 	if (branch->lnum != lnum || branch->offs != offs)
 		return 0;
-	do_make_pnode_dirty(c, pnode);
+	ubifs_make_pnode_dirty(c, pnode);
 	return 0;
 }
 
@@ -1414,14 +1407,33 @@ static struct ubifs_nnode *next_nnode(struct ubifs_info *c,
 }
 
 /**
+ * ubifs_free_lpt_nodes - free pnodes/nnodes in LPT.
+ * @c: UBIFS file-system description object
+ */
+void ubifs_free_lpt_nodes(struct ubifs_info *c)
+{
+	int i, hght;
+	struct ubifs_nnode *nnode;
+
+	nnode = first_nnode(c, &hght);
+	while (nnode) {
+		for (i = 0; i < UBIFS_LPT_FANOUT; i++)
+			kfree(nnode->nbranch[i].nnode);
+		nnode = next_nnode(c, nnode, &hght);
+	}
+
+	kfree(c->nroot);
+	c->nroot = NULL;
+}
+
+/**
  * ubifs_lpt_free - free resources owned by the LPT.
  * @c: UBIFS file-system description object
  * @wr_only: free only resources used for writing
  */
 void ubifs_lpt_free(struct ubifs_info *c, int wr_only)
 {
-	struct ubifs_nnode *nnode;
-	int i, hght;
+	int i;
 
 	/* Free write-only things first */
 
@@ -1439,17 +1451,12 @@ void ubifs_lpt_free(struct ubifs_info *c, int wr_only)
 
 	/* Now free the rest */
 
-	nnode = first_nnode(c, &hght);
-	while (nnode) {
-		for (i = 0; i < UBIFS_LPT_FANOUT; i++)
-			kfree(nnode->nbranch[i].nnode);
-		nnode = next_nnode(c, nnode, &hght);
-	}
+	ubifs_free_lpt_nodes(c);
 	for (i = 0; i < LPROPS_HEAP_CNT; i++)
 		kfree(c->lpt_heap[i].arr);
 	kfree(c->dirty_idx.arr);
-	kfree(c->nroot);
 	vfree(c->ltab);
+	c->ltab = NULL;
 	kfree(c->lpt_nod_buf);
 }
 

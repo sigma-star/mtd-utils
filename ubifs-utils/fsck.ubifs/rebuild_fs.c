@@ -81,9 +81,9 @@ static int init_rebuild_info(struct ubifs_info *c)
 		log_err(c, errno, "can not allocate bitmap of used lebs");
 		goto free_rebuild;
 	}
-	FSCK(c)->rebuild->lpts = kzalloc(sizeof(struct ubifs_lprops) * c->main_lebs,
-					 GFP_KERNEL);
-	if (!FSCK(c)->rebuild->lpts) {
+	FSCK(c)->lpts = kzalloc(sizeof(struct ubifs_lprops) * c->main_lebs,
+				GFP_KERNEL);
+	if (!FSCK(c)->lpts) {
 		err = -ENOMEM;
 		log_err(c, errno, "can not allocate lpts");
 		goto free_used_lebs;
@@ -98,7 +98,7 @@ static int init_rebuild_info(struct ubifs_info *c)
 	return 0;
 
 free_lpts:
-	kfree(FSCK(c)->rebuild->lpts);
+	kfree(FSCK(c)->lpts);
 free_used_lebs:
 	kfree(FSCK(c)->used_lebs);
 free_rebuild:
@@ -111,7 +111,7 @@ free_sbuf:
 static void destroy_rebuild_info(struct ubifs_info *c)
 {
 	vfree(FSCK(c)->rebuild->write_buf);
-	kfree(FSCK(c)->rebuild->lpts);
+	kfree(FSCK(c)->lpts);
 	kfree(FSCK(c)->used_lebs);
 	kfree(FSCK(c)->rebuild);
 	vfree(c->sbuf);
@@ -496,13 +496,12 @@ static void update_lpt(struct ubifs_info *c, struct scanned_node *sn,
 	int pos = sn->offs + ALIGN(sn->len, 8);
 
 	set_bit(index, FSCK(c)->used_lebs);
-	FSCK(c)->rebuild->lpts[index].end = max_t(int,
-					FSCK(c)->rebuild->lpts[index].end, pos);
+	FSCK(c)->lpts[index].end = max_t(int, FSCK(c)->lpts[index].end, pos);
 
 	if (deleted)
 		return;
 
-	FSCK(c)->rebuild->lpts[index].used += ALIGN(sn->len, 8);
+	FSCK(c)->lpts[index].used += ALIGN(sn->len, 8);
 }
 
 /**
@@ -731,28 +730,6 @@ static void init_root_ino(struct ubifs_info *c, struct ubifs_ino_node *ino)
 }
 
 /**
- * get_free_leb - get a free LEB according to @FSCK(c)->used_lebs.
- * @c: UBIFS file-system description object
- *
- * This function tries to find a free LEB, lnum is returned if found, otherwise
- * %-ENOSPC is returned.
- */
-static int get_free_leb(struct ubifs_info *c)
-{
-	int lnum;
-
-	lnum = find_next_zero_bit(FSCK(c)->used_lebs, c->main_lebs, 0);
-	if (lnum >= c->main_lebs) {
-		ubifs_err(c, "No space left.");
-		return -ENOSPC;
-	}
-	set_bit(lnum, FSCK(c)->used_lebs);
-	lnum += c->main_first;
-
-	return lnum;
-}
-
-/**
  * flush_write_buf - flush write buffer.
  * @c: UBIFS file-system description object
  *
@@ -780,9 +757,9 @@ static int flush_write_buf(struct ubifs_info *c)
 	if (FSCK(c)->rebuild->need_update_lpt) {
 		int index = FSCK(c)->rebuild->head_lnum - c->main_first;
 
-		FSCK(c)->rebuild->lpts[index].free = c->leb_size - len;
-		FSCK(c)->rebuild->lpts[index].dirty = pad;
-		FSCK(c)->rebuild->lpts[index].flags = LPROPS_INDEX;
+		FSCK(c)->lpts[index].free = c->leb_size - len;
+		FSCK(c)->lpts[index].dirty = pad;
+		FSCK(c)->lpts[index].flags = LPROPS_INDEX;
 	}
 
 	FSCK(c)->rebuild->head_lnum = -1;
@@ -1220,7 +1197,7 @@ static int traverse_files_and_nodes(struct ubifs_info *c)
 		lnum = i + c->main_first;
 		dbg_fsck("re-write LEB %d, in %s", lnum, c->dev_name);
 
-		end = FSCK(c)->rebuild->lpts[i].end;
+		end = FSCK(c)->lpts[i].end;
 		len = ALIGN(end, c->min_io_size);
 
 		err = ubifs_leb_read(c, lnum, c->sbuf, 0, len, 0);
@@ -1247,69 +1224,28 @@ out_idx_list:
 	return err;
 }
 
-/**
- * build_lpt - construct LPT and write it into flash.
- * @c: UBIFS file-system description object
- *
- * This function builds LPT according to @FSCK(c)->rebuild->lpts and writes
- * LPT into flash.
- */
-static int build_lpt(struct ubifs_info *c)
+static int calculate_lp(struct ubifs_info *c, int index, int *free, int *dirty)
 {
-	int i, len, free, dirty, lnum;
-	u8 hash_lpt[UBIFS_HASH_ARR_SZ];
+	if (!test_bit(index, FSCK(c)->used_lebs) ||
+	    c->gc_lnum == index + c->main_first) {
+		*free = c->leb_size;
+		*dirty = 0;
+	} else if (FSCK(c)->lpts[index].flags & LPROPS_INDEX) {
+		*free = FSCK(c)->lpts[index].free;
+		*dirty = FSCK(c)->lpts[index].dirty;
+	} else {
+		int len = ALIGN(FSCK(c)->lpts[index].end, c->min_io_size);
 
-	memset(&c->lst, 0, sizeof(struct ubifs_lp_stats));
-	/* Set gc lnum. */
-	lnum = get_free_leb(c);
-	if (lnum < 0)
-		return lnum;
-	c->gc_lnum = lnum;
+		*free = c->leb_size - len;
+		*dirty = len - FSCK(c)->lpts[index].used;
 
-	/* Update LPT. */
-	for (i = 0; i < c->main_lebs; i++) {
-		if (!test_bit(i, FSCK(c)->used_lebs) ||
-		    c->gc_lnum == i + c->main_first) {
-			free = c->leb_size;
-			dirty = 0;
-		} else if (FSCK(c)->rebuild->lpts[i].flags & LPROPS_INDEX) {
-			free = FSCK(c)->rebuild->lpts[i].free;
-			dirty = FSCK(c)->rebuild->lpts[i].dirty;
-		} else {
-			len = ALIGN(FSCK(c)->rebuild->lpts[i].end, c->min_io_size);
-			free = c->leb_size - len;
-			dirty = len - FSCK(c)->rebuild->lpts[i].used;
-
-			if (dirty == c->leb_size) {
-				free = c->leb_size;
-				dirty = 0;
-			}
-		}
-
-		FSCK(c)->rebuild->lpts[i].free = free;
-		FSCK(c)->rebuild->lpts[i].dirty = dirty;
-		c->lst.total_free += free;
-		c->lst.total_dirty += dirty;
-
-		if (free == c->leb_size)
-			c->lst.empty_lebs++;
-
-		if (!(FSCK(c)->rebuild->lpts[i].flags & LPROPS_INDEX)) {
-			int spc;
-
-			spc = free + dirty;
-			if (spc < c->dead_wm)
-				c->lst.total_dead += spc;
-			else
-				c->lst.total_dark += ubifs_calc_dark(c, spc);
-			c->lst.total_used += c->leb_size - spc;
-		} else {
-			c->lst.idx_lebs += 1;
+		if (*dirty == c->leb_size) {
+			*free = c->leb_size;
+			*dirty = 0;
 		}
 	}
 
-	/* Write LPT. */
-	return ubifs_create_lpt(c, FSCK(c)->rebuild->lpts, c->main_lebs, hash_lpt);
+	return 0;
 }
 
 /**
@@ -1485,7 +1421,7 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 
 	/* Step 10. Build LPT. */
 	log_out(c, "Build LPT");
-	err = build_lpt(c);
+	err = build_lpt(c, calculate_lp);
 	if (err) {
 		exit_code |= FSCK_ERROR;
 		goto out;

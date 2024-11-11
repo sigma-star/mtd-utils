@@ -523,7 +523,7 @@ static void add_pnode_dirt(struct ubifs_info *c, struct ubifs_pnode *pnode)
 }
 
 /**
- * calc_nnode_num - calculate nnode number.
+ * ubifs_calc_nnode_num - calculate nnode number.
  * @row: the row in the tree (root is zero)
  * @col: the column in the row (leftmost is zero)
  *
@@ -533,7 +533,7 @@ static void add_pnode_dirt(struct ubifs_info *c, struct ubifs_pnode *pnode)
  * This function calculates and returns the nnode number for the nnode at @row
  * and @col.
  */
-static int calc_nnode_num(int row, int col)
+int ubifs_calc_nnode_num(int row, int col)
 {
 	int num, bits;
 
@@ -779,7 +779,7 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 					nnode->nbranch[j].offs = 0;
 				}
 			}
-			nnode->num = calc_nnode_num(row, i);
+			nnode->num = ubifs_calc_nnode_num(row, i);
 			ubifs_pack_nnode(c, p, nnode);
 			p += c->nnode_sz;
 			len += c->nnode_sz;

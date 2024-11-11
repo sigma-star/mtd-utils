@@ -654,15 +654,20 @@ void free_orphans(struct ubifs_info *c)
 /**
  * free_buds - free per-bud objects.
  * @c: UBIFS file-system description object
+ * @delete_from_list: whether to delete the bud from list
  */
-static void free_buds(struct ubifs_info *c)
+void free_buds(struct ubifs_info *c, bool delete_from_list)
 {
 	struct ubifs_bud *bud, *n;
 
 	rbtree_postorder_for_each_entry_safe(bud, n, &c->buds, rb) {
+		if (delete_from_list)
+			list_del(&bud->list);
 		kfree(bud->log_hash);
 		kfree(bud);
 	}
+
+	c->buds = RB_ROOT;
 }
 
 /**
@@ -693,5 +698,5 @@ void destroy_journal(struct ubifs_info *c)
 	ubifs_destroy_idx_gc(c);
 	ubifs_destroy_size_tree(c);
 	ubifs_tnc_close(c);
-	free_buds(c);
+	free_buds(c, false);
 }
