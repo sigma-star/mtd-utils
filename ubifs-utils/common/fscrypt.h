@@ -25,6 +25,8 @@
 #include <openssl/rand.h>
 #endif
 #include <assert.h>
+
+#include "compiler_attributes.h"
 #include "ubifs.h"
 #include "crypto.h"
 
@@ -79,7 +81,7 @@ struct fscrypt_context {
 	__u8 flags;
 	__u8 master_key_descriptor[FS_KEY_DESCRIPTOR_SIZE];
 	__u8 nonce[FS_KEY_DERIVATION_NONCE_SIZE];
-} __attribute__((packed));
+} __packed;
 
 /**
  * For encrypted symlinks, the ciphertext length is stored at the beginning
@@ -88,7 +90,7 @@ struct fscrypt_context {
 struct fscrypt_symlink_data {
 	__le16 len;
 	char encrypted_path[1];
-} __attribute__((packed));
+} __packed;
 
 
 #ifndef FS_MAX_KEY_SIZE

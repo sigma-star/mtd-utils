@@ -28,6 +28,7 @@
 #include <openssl/conf.h>
 #include <err.h>
 
+#include "compiler_attributes.h"
 #include "sign.h"
 #include "defs.h"
 #include "ubifs.h"
@@ -116,8 +117,7 @@ static void drain_openssl_errors(void)
 
 static const char *key_pass;
 
-static int pem_pw_cb(char *buf, int len, __attribute__((unused)) int w,
-		     __attribute__((unused)) void *v)
+static int pem_pw_cb(char *buf, int len, __unused int w, __unused void *v)
 {
 	int pwlen;
 

@@ -1,4 +1,5 @@
 common_SOURCES = \
+	ubifs-utils/common/compiler_attributes.h \
 	ubifs-utils/common/defs.h \
 	ubifs-utils/common/crc16.h \
 	ubifs-utils/common/crc16.c \
