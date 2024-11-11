@@ -50,18 +50,6 @@ static inline int ubifs_zn_cow(const struct ubifs_znode *znode)
 }
 
 /**
- * ubifs_wake_up_bgt - wake up background thread.
- * @c: UBIFS file-system description object
- */
-static inline void ubifs_wake_up_bgt(struct ubifs_info *c)
-{
-	if (c->bgt && !c->need_bgt) {
-		c->need_bgt = 1;
-		wake_up_process(c->bgt);
-	}
-}
-
-/**
  * ubifs_tnc_find_child - find next child in znode.
  * @znode: znode to search at
  * @start: the zbranch index to start at
@@ -82,42 +70,6 @@ ubifs_tnc_find_child(struct ubifs_znode *znode, int start)
 }
 
 /**
- * ubifs_inode - get UBIFS inode information by VFS 'struct inode' object.
- * @inode: the VFS 'struct inode' pointer
- */
-static inline struct ubifs_inode *ubifs_inode(const struct inode *inode)
-{
-	return container_of(inode, struct ubifs_inode, vfs_inode);
-}
-
-/**
- * ubifs_compr_present - check if compressor was compiled in.
- * @compr_type: compressor type to check
- * @c: the UBIFS file-system description object
- *
- * This function returns %1 of compressor of type @compr_type is present, and
- * %0 if not.
- */
-static inline int ubifs_compr_present(struct ubifs_info *c, int compr_type)
-{
-	ubifs_assert(c, compr_type >= 0 && compr_type < UBIFS_COMPR_TYPES_CNT);
-	return !!ubifs_compressors[compr_type]->capi_name;
-}
-
-/**
- * ubifs_compr_name - get compressor name string by its type.
- * @compr_type: compressor type
- * @c: the UBIFS file-system description object
- *
- * This function returns compressor type string.
- */
-static inline const char *ubifs_compr_name(struct ubifs_info *c, int compr_type)
-{
-	ubifs_assert(c, compr_type >= 0 && compr_type < UBIFS_COMPR_TYPES_CNT);
-	return ubifs_compressors[compr_type]->name;
-}
-
-/**
  * ubifs_wbuf_sync - synchronize write-buffer.
  * @wbuf: write-buffer to synchronize
  *
@@ -132,21 +84,6 @@ static inline int ubifs_wbuf_sync(struct ubifs_wbuf *wbuf)
 	err = ubifs_wbuf_sync_nolock(wbuf);
 	mutex_unlock(&wbuf->io_mutex);
 	return err;
-}
-
-/**
- * ubifs_encode_dev - encode device node IDs.
- * @dev: UBIFS device node information
- * @rdev: device IDs to encode
- *
- * This is a helper function which encodes major/minor numbers of a device node
- * into UBIFS device node description. We use standard Linux "new" and "huge"
- * encodings.
- */
-static inline int ubifs_encode_dev(union ubifs_dev_desc *dev, dev_t rdev)
-{
-	dev->new = cpu_to_le32(new_encode_dev(rdev));
-	return sizeof(dev->new);
 }
 
 /**
@@ -209,7 +146,7 @@ struct ubifs_branch *ubifs_idx_branch(const struct ubifs_info *c,
  * @c: the UBIFS file-system description object
  * @idx: index node
  */
-static inline void *ubifs_idx_key(const struct ubifs_info *c,
+static inline void *ubifs_idx_key(__unused const struct ubifs_info *c,
 				  const struct ubifs_idx_node *idx)
 {
 	return (void *)((struct ubifs_branch *)idx->branches)->key;
@@ -275,15 +212,5 @@ static inline int ubifs_next_log_lnum(const struct ubifs_info *c, int lnum)
 
 	return lnum;
 }
-
-static inline int ubifs_xattr_max_cnt(struct ubifs_info *c)
-{
-	int max_xattrs = (c->leb_size / 2) / UBIFS_INO_NODE_SZ;
-
-	ubifs_assert(c, max_xattrs < c->max_orphans);
-	return max_xattrs;
-}
-
-const char *ubifs_assert_action_name(struct ubifs_info *c);
 
 #endif /* __UBIFS_MISC_H__ */
