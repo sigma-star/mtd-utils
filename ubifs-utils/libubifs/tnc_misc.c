@@ -15,97 +15,14 @@
  * putting it all in one file would make that file too big and unreadable.
  */
 
+#include "linux_err.h"
+#include "bitops.h"
+#include "kmem.h"
 #include "ubifs.h"
-
-/**
- * ubifs_tnc_levelorder_next - next TNC tree element in levelorder traversal.
- * @c: UBIFS file-system description object
- * @zr: root of the subtree to traverse
- * @znode: previous znode
- *
- * This function implements levelorder TNC traversal. The LNC is ignored.
- * Returns the next element or %NULL if @znode is already the last one.
- */
-struct ubifs_znode *ubifs_tnc_levelorder_next(const struct ubifs_info *c,
-					      struct ubifs_znode *zr,
-					      struct ubifs_znode *znode)
-{
-	int level, iip, level_search = 0;
-	struct ubifs_znode *zn;
-
-	ubifs_assert(c, zr);
-
-	if (unlikely(!znode))
-		return zr;
-
-	if (unlikely(znode == zr)) {
-		if (znode->level == 0)
-			return NULL;
-		return ubifs_tnc_find_child(zr, 0);
-	}
-
-	level = znode->level;
-
-	iip = znode->iip;
-	while (1) {
-		ubifs_assert(c, znode->level <= zr->level);
-
-		/*
-		 * First walk up until there is a znode with next branch to
-		 * look at.
-		 */
-		while (znode->parent != zr && iip >= znode->parent->child_cnt) {
-			znode = znode->parent;
-			iip = znode->iip;
-		}
-
-		if (unlikely(znode->parent == zr &&
-			     iip >= znode->parent->child_cnt)) {
-			/* This level is done, switch to the lower one */
-			level -= 1;
-			if (level_search || level < 0)
-				/*
-				 * We were already looking for znode at lower
-				 * level ('level_search'). As we are here
-				 * again, it just does not exist. Or all levels
-				 * were finished ('level < 0').
-				 */
-				return NULL;
-
-			level_search = 1;
-			iip = -1;
-			znode = ubifs_tnc_find_child(zr, 0);
-			ubifs_assert(c, znode);
-		}
-
-		/* Switch to the next index */
-		zn = ubifs_tnc_find_child(znode->parent, iip + 1);
-		if (!zn) {
-			/* No more children to look at, we have walk up */
-			iip = znode->parent->child_cnt;
-			continue;
-		}
-
-		/* Walk back down to the level we came from ('level') */
-		while (zn->level != level) {
-			znode = zn;
-			zn = ubifs_tnc_find_child(zn, 0);
-			if (!zn) {
-				/*
-				 * This path is not too deep so it does not
-				 * reach 'level'. Try next path.
-				 */
-				iip = znode->iip;
-				break;
-			}
-		}
-
-		if (zn) {
-			ubifs_assert(c, zn->level >= 0);
-			return zn;
-		}
-	}
-}
+#include "defs.h"
+#include "debug.h"
+#include "key.h"
+#include "misc.h"
 
 /**
  * ubifs_search_zbranch - search znode branch.
@@ -129,6 +46,12 @@ int ubifs_search_zbranch(const struct ubifs_info *c,
 	int beg = 0, end = znode->child_cnt, mid;
 	int cmp;
 	const struct ubifs_zbranch *zbr = &znode->zbranch[0];
+
+	if (!end) {
+		/* Different with linux kernel, TNC could become empty. */
+		*n = -1;
+		return 0;
+	}
 
 	ubifs_assert(c, end > beg);
 
@@ -360,9 +283,10 @@ static int read_znode(struct ubifs_info *c, struct ubifs_zbranch *zzbr,
 		}
 
 		if (znode->level)
-			continue;
+			type = UBIFS_IDX_NODE;
+		else
+			type = key_type(c, &zbr->key);
 
-		type = key_type(c, &zbr->key);
 		if (c->ranges[type].max_len == 0) {
 			if (zbr->len != c->ranges[type].len) {
 				ubifs_err(c, "bad target node (type %d) length (%d)",

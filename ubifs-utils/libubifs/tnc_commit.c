@@ -10,8 +10,14 @@
 
 /* This file implements TNC functions for committing */
 
-#include <linux/random.h>
+#include "linux_err.h"
+#include "bitops.h"
+#include "kmem.h"
 #include "ubifs.h"
+#include "defs.h"
+#include "debug.h"
+#include "key.h"
+#include "misc.h"
 
 /**
  * make_idx_node - make an index node for fill-the-gaps method of TNC commit.
@@ -546,8 +552,8 @@ static int layout_in_empty_space(struct ubifs_info *c)
 		break;
 	}
 
-	c->dbg->new_ihead_lnum = lnum;
-	c->dbg->new_ihead_offs = buf_offs;
+	c->new_ihead_lnum = lnum;
+	c->new_ihead_offs = buf_offs;
 
 	return 0;
 }
@@ -700,7 +706,7 @@ static int alloc_idx_lebs(struct ubifs_info *c, int cnt)
 		c->ilebs[c->ileb_cnt++] = lnum;
 		dbg_cmt("LEB %d", lnum);
 	}
-	if (dbg_is_chk_index(c) && !get_random_u32_below(8))
+	if (dbg_is_chk_index(c))
 		return -ENOSPC;
 	return 0;
 }
@@ -1011,8 +1017,8 @@ static int write_index(struct ubifs_info *c)
 		break;
 	}
 
-	if (lnum != c->dbg->new_ihead_lnum ||
-	    buf_offs != c->dbg->new_ihead_offs) {
+	if (lnum != c->new_ihead_lnum ||
+	    buf_offs != c->new_ihead_offs) {
 		ubifs_err(c, "inconsistent ihead");
 		return -EINVAL;
 	}
