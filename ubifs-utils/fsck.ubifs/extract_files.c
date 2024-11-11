@@ -1292,8 +1292,8 @@ reachable:
  * data nodes and truncation node. The calculated informaion will be used
  * to correct inode node.
  */
-static void calculate_file_info(struct ubifs_info *c, struct scanned_file *file,
-				struct rb_root *file_tree)
+static int calculate_file_info(struct ubifs_info *c, struct scanned_file *file,
+			       struct rb_root *file_tree)
 {
 	int nlink = 0;
 	bool corrupted_truncation = false;
@@ -1306,15 +1306,24 @@ static void calculate_file_info(struct ubifs_info *c, struct scanned_file *file,
 
 	for (node = rb_first(&file->xattr_files); node; node = rb_next(node)) {
 		xattr_file = rb_entry(node, struct scanned_file, rb);
+		dent_node = rb_entry(rb_first(&xattr_file->dent_nodes),
+				     struct scanned_dent_node, rb);
 
+		ubifs_assert(c, xattr_file->ino.is_xattr);
 		ubifs_assert(c, !rb_first(&xattr_file->xattr_files));
-		calculate_file_info(c, xattr_file, file_tree);
+		xattr_file->calc_nlink = 1;
+		xattr_file->calc_size = xattr_file->ino.size;
+
+		file->calc_xcnt += 1;
+		file->calc_xsz += CALC_DENT_SIZE(dent_node->nlen);
+		file->calc_xsz += CALC_XATTR_BYTES(xattr_file->ino.size);
+		file->calc_xnms += dent_node->nlen;
 	}
 
 	if (file->inum == UBIFS_ROOT_INO) {
 		file->calc_nlink += 2;
 		file->calc_size += UBIFS_INO_NODE_SZ;
-		return;
+		return 0;
 	}
 
 	if (S_ISDIR(file->ino.mode)) {
@@ -1326,29 +1335,11 @@ static void calculate_file_info(struct ubifs_info *c, struct scanned_file *file,
 		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
 		if (!parent_file) {
 			ubifs_assert(c, 0);
-			return;
+			return 0;
 		}
 		parent_file->calc_nlink += 1;
 		parent_file->calc_size += CALC_DENT_SIZE(dent_node->nlen);
-		return;
-	}
-
-	if (file->ino.is_xattr) {
-		file->calc_nlink = 1;
-		file->calc_size = file->ino.size;
-
-		dent_node = rb_entry(rb_first(&file->dent_nodes),
-				     struct scanned_dent_node, rb);
-		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
-		if (!parent_file) {
-			ubifs_assert(c, 0);
-			return;
-		}
-		parent_file->calc_xcnt += 1;
-		parent_file->calc_xsz += CALC_DENT_SIZE(dent_node->nlen);
-		parent_file->calc_xsz += CALC_XATTR_BYTES(file->ino.size);
-		parent_file->calc_xnms += dent_node->nlen;
-		return;
+		return 0;
 	}
 
 	for (node = rb_first(&file->dent_nodes); node; node = rb_next(node)) {
@@ -1359,7 +1350,7 @@ static void calculate_file_info(struct ubifs_info *c, struct scanned_file *file,
 		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
 		if (!parent_file) {
 			ubifs_assert(c, 0);
-			return;
+			return 0;
 		}
 		parent_file->calc_size += CALC_DENT_SIZE(dent_node->nlen);
 	}
@@ -1368,7 +1359,7 @@ static void calculate_file_info(struct ubifs_info *c, struct scanned_file *file,
 	if (!S_ISREG(file->ino.mode)) {
 		/* No need to verify i_size for symlink/sock/block/char/fifo. */
 		file->calc_size = file->ino.size;
-		return;
+		return 0;
 	}
 
 	/*
@@ -1452,10 +1443,22 @@ drop_data:
 		data_node = list_entry(drop_list.next, struct scanned_data_node,
 				       list);
 
+		if (FSCK(c)->mode != REBUILD_MODE) {
+			/*
+			 * Don't ask, inconsistent file correcting will be
+			 * asked in function correct_file_info().
+			 */
+			int err = delete_node(c, &data_node->key,
+				data_node->header.lnum, data_node->header.offs);
+			if (err)
+				return err;
+		}
 		list_del(&data_node->list);
 		rb_erase(&data_node->rb, &file->data_nodes);
 		kfree(data_node);
 	}
+
+	return 0;
 }
 
 /**
@@ -1490,6 +1493,7 @@ static int correct_file_info(struct ubifs_info *c, struct scanned_file *file)
 	    file->calc_size == file->ino.size)
 		return 0;
 
+	handle_invalid_file(c, FILE_IS_INCONSISTENT, file, NULL);
 	lnum = file->ino.header.lnum;
 	dbg_fsck("correct file(inum:%lu type:%s), nlink %u->%u, xattr cnt %u->%u, xattr size %u->%u, xattr names %u->%u, size %llu->%llu, at %d:%d, in %s",
 		 file->inum, file->ino.is_xattr ? "xattr" :
@@ -1537,12 +1541,30 @@ int check_and_correct_files(struct ubifs_info *c)
 	for (node = rb_first(tree); node; node = rb_next(node)) {
 		file = rb_entry(node, struct scanned_file, rb);
 
-		calculate_file_info(c, file, tree);
+		err = calculate_file_info(c, file, tree);
+		if (err)
+			return err;
 	}
 
 	for (node = rb_first(tree); node; node = rb_next(node)) {
 		file = rb_entry(node, struct scanned_file, rb);
 
+		err = correct_file_info(c, file);
+		if (err)
+			return err;
+	}
+
+	if (list_empty(&FSCK(c)->disconnected_files))
+		return 0;
+
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+	list_for_each_entry(file, &FSCK(c)->disconnected_files, list) {
+		err = calculate_file_info(c, file, tree);
+		if (err)
+			return err;
+
+		/* Reset disconnected file's nlink as one. */
+		file->calc_nlink = 1;
 		err = correct_file_info(c, file);
 		if (err)
 			return err;

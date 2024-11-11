@@ -59,6 +59,7 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "File is disconnected(regular file without dentries)"},	// FILE_IS_DISCONNECTED
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Root dir should not have a dentry"},	// FILE_ROOT_HAS_DENT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Dentry is unreachable"},	// DENTRY_IS_UNREACHABLE
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "File is inconsistent"},	// FILE_IS_INCONSISTENT
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -210,6 +211,21 @@ static void print_problem(const struct ubifs_info *c,
 			c->encrypted && !ifp->file->ino.is_xattr ? "<encrypted>" : dent_node->name,
 			ubifs_get_type_name(dent_node->type),
 			key_type(c, &dent_node->key) == UBIFS_XENT_KEY ? "(xattr)" : "");
+		break;
+	}
+	case FILE_IS_INCONSISTENT:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+		const struct scanned_file *file = ifp->file;
+
+		log_out(c, "problem: %s, ino %lu type %s, nlink %u xcnt %u xsz %u xnms %u size %llu, "
+			"should be nlink %u xcnt %u xsz %u xnms %u size %llu",
+			problem->desc, file->inum,
+			file->ino.is_xattr ? "xattr" : ubifs_get_type_name(ubifs_get_dent_type(file->ino.mode)),
+			file->ino.nlink, file->ino.xcnt, file->ino.xsz,
+			file->ino.xnms, file->ino.size,
+			file->calc_nlink, file->calc_xcnt, file->calc_xsz,
+			file->calc_xnms, file->calc_size);
 		break;
 	}
 	default:

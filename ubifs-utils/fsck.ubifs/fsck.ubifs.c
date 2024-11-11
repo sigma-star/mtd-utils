@@ -460,6 +460,13 @@ static int do_fsck(void)
 		goto free_disconnected_files;
 	}
 
+	log_out(c, "Check and correct files");
+	err = check_and_correct_files(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto free_disconnected_files;
+	}
+
 free_disconnected_files:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
 free_used_lebs:
@@ -504,6 +511,7 @@ int main(int argc, char *argv[])
 	 * Step 7: Update files' size
 	 * Step 8: Check and handle invalid files
 	 * Step 9: Check and handle unreachable files
+	 * Step 10: Check and correct files
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {
