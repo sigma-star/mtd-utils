@@ -74,15 +74,24 @@ bool parse_ino_node(struct ubifs_info *c, int lnum, int offs, void *node,
 	ino_t inum = key_inum(c, key);
 
 	if (!inum || inum > INUM_WATERMARK) {
-		dbg_fsck("bad inode node(bad inum %lu) at %d:%d, in %s",
-			 inum, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node(bad inum %lu) at %d:%d, in %s",
+				 inum, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node(bad inum %lu) at %d:%d",
+				inum, lnum, offs);
 		goto out;
 	}
 
 	if (ch->node_type != key_type(c, key)) {
-		dbg_fsck("bad inode node %lu(inconsistent node type %d vs key_type %d) at %d:%d, in %s",
-			 inum, ch->node_type, key_type(c, key),
-			 lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(inconsistent node type %d vs key_type %d) at %d:%d, in %s",
+				 inum, ch->node_type, key_type(c, key),
+				 lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(inconsistent node type %d vs key_type %d) at %d:%d",
+				inum, ch->node_type, key_type(c, key),
+				lnum, offs);
 		goto out;
 	}
 
@@ -101,60 +110,101 @@ bool parse_ino_node(struct ubifs_info *c, int lnum, int offs, void *node,
 	ino_node->size = le64_to_cpu(ino->size);
 
 	if (inum == UBIFS_ROOT_INO && !S_ISDIR(ino_node->mode)) {
-		dbg_fsck("bad inode node %lu(root inode is not dir, tyoe %u) at %d:%d, in %s",
-			 inum, ino_node->mode & S_IFMT, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(root inode is not dir, tyoe %u) at %d:%d, in %s",
+				 inum, ino_node->mode & S_IFMT, lnum, offs,
+				 c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(root inode is not dir, tyoe %u) at %d:%d",
+				inum, ino_node->mode & S_IFMT, lnum, offs);
 		goto out;
 	}
 
 	if (ino_node->size > c->max_inode_sz) {
-		dbg_fsck("bad inode node %lu(size %llu is too large) at %d:%d, in %s",
-			 inum, ino_node->size, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(size %llu is too large) at %d:%d, in %s",
+				 inum, ino_node->size, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(size %llu is too large) at %d:%d",
+				inum, ino_node->size, lnum, offs);
 		goto out;
 	}
 
 	if (le16_to_cpu(ino->compr_type) >= UBIFS_COMPR_TYPES_CNT) {
-		dbg_fsck("bad inode node %lu(unknown compression type %d) at %d:%d, in %s",
-			 inum, le16_to_cpu(ino->compr_type), lnum, offs,
-			 c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(unknown compression type %d) at %d:%d, in %s",
+				 inum, le16_to_cpu(ino->compr_type), lnum, offs,
+				 c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(unknown compression type %d) at %d:%d",
+				inum, le16_to_cpu(ino->compr_type), lnum, offs);
 		goto out;
 	}
 
 	if (ino_node->xnms + ino_node->xcnt > XATTR_LIST_MAX) {
-		dbg_fsck("bad inode node %lu(too big xnames %u xcount %u) at %d:%d, in %s",
-			 inum, ino_node->xnms, ino_node->xcnt,
-			 lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(too big xnames %u xcount %u) at %d:%d, in %s",
+				 inum, ino_node->xnms, ino_node->xcnt,
+				 lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(too big xnames %u xcount %u) at %d:%d",
+				inum, ino_node->xnms, ino_node->xcnt,
+				lnum, offs);
 		goto out;
 	}
 
 	if (data_len < 0 || data_len > UBIFS_MAX_INO_DATA) {
-		dbg_fsck("bad inode node %lu(invalid data len %d) at %d:%d, in %s",
-			 inum, data_len, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(invalid data len %d) at %d:%d, in %s",
+				 inum, data_len, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(invalid data len %d) at %d:%d",
+				inum, data_len, lnum, offs);
 		goto out;
 	}
 
 	if (UBIFS_INO_NODE_SZ + data_len != node_len) {
-		dbg_fsck("bad inode node %lu(inconsistent data len %d vs node len %d) at %d:%d, in %s",
-			 inum, data_len, node_len, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(inconsistent data len %d vs node len %d) at %d:%d, in %s",
+				 inum, data_len, node_len, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(inconsistent data len %d vs node len %d) at %d:%d",
+				inum, data_len, node_len, lnum, offs);
 		goto out;
 	}
 
 	if (ino_node->is_xattr) {
 		if (!S_ISREG(ino_node->mode)) {
-			dbg_fsck("bad inode node %lu(bad type %u for xattr) at %d:%d, in %s",
-				 inum, ino_node->mode & S_IFMT,
-				 lnum, offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad inode node %lu(bad type %u for xattr) at %d:%d, in %s",
+					 inum, ino_node->mode & S_IFMT,
+					 lnum, offs, c->dev_name);
+			else
+				log_out(c, "bad inode node %lu(bad type %u for xattr) at %d:%d",
+					inum, ino_node->mode & S_IFMT,
+					lnum, offs);
 			goto out;
 		}
 		if (data_len != ino_node->size) {
-			dbg_fsck("bad inode node %lu(inconsistent data_len %d vs size %llu for xattr) at %d:%d, in %s",
-				 inum, data_len, ino_node->size,
-				 lnum, offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad inode node %lu(inconsistent data_len %d vs size %llu for xattr) at %d:%d, in %s",
+					 inum, data_len, ino_node->size,
+					 lnum, offs, c->dev_name);
+			else
+				log_out(c, "bad inode node %lu(inconsistent data_len %d vs size %llu for xattr) at %d:%d",
+					inum, data_len, ino_node->size,
+					lnum, offs);
 			goto out;
 		}
 		if (ino_node->xcnt || ino_node->xsz || ino_node->xnms) {
-			dbg_fsck("bad inode node %lu(non zero xattr count %u xattr size %u xattr names %u for xattr) at %d:%d, in %s",
-				 inum, ino_node->xcnt, ino_node->xsz,
-				 ino_node->xnms, lnum, offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad inode node %lu(non zero xattr count %u xattr size %u xattr names %u for xattr) at %d:%d, in %s",
+					 inum, ino_node->xcnt, ino_node->xsz,
+					 ino_node->xnms, lnum, offs, c->dev_name);
+			else
+				log_out(c, "bad inode node %lu(non zero xattr count %u xattr size %u xattr names %u for xattr) at %d:%d",
+					inum, ino_node->xcnt, ino_node->xsz,
+					ino_node->xnms, lnum, offs);
 			goto out;
 		}
 	}
@@ -162,15 +212,23 @@ bool parse_ino_node(struct ubifs_info *c, int lnum, int offs, void *node,
 	switch (ino_node->mode & S_IFMT) {
 	case S_IFREG:
 		if (!ino_node->is_xattr && data_len != 0) {
-			dbg_fsck("bad inode node %lu(bad data len %d for reg file) at %d:%d, in %s",
-				 inum, data_len, lnum, offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad inode node %lu(bad data len %d for reg file) at %d:%d, in %s",
+					 inum, data_len, lnum, offs, c->dev_name);
+			else
+				log_out(c, "bad inode node %lu(bad data len %d for reg file) at %d:%d",
+					inum, data_len, lnum, offs);
 			goto out;
 		}
 		break;
 	case S_IFDIR:
 		if (data_len != 0) {
-			dbg_fsck("bad inode node %lu(bad data len %d for dir file) at %d:%d, in %s",
-				 inum, data_len, lnum, offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad inode node %lu(bad data len %d for dir file) at %d:%d, in %s",
+					 inum, data_len, lnum, offs, c->dev_name);
+			else
+				log_out(c, "bad inode node %lu(bad data len %d for dir file) at %d:%d",
+					inum, data_len, lnum, offs);
 			goto out;
 		}
 		break;
@@ -187,8 +245,12 @@ bool parse_ino_node(struct ubifs_info *c, int lnum, int offs, void *node,
 			 * Just drop the inode node when above class of
 			 * exceptions are found.
 			 */
-			dbg_fsck("bad symlink inode node %lu(bad data len %d) at %d:%d, in %s",
-				 inum, data_len, lnum, offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad symlink inode node %lu(bad data len %d) at %d:%d, in %s",
+					 inum, data_len, lnum, offs, c->dev_name);
+			else
+				log_out(c, "bad symlink inode node %lu(bad data len %d) at %d:%d",
+					inum, data_len, lnum, offs);
 			goto out;
 		}
 		break;
@@ -200,9 +262,14 @@ bool parse_ino_node(struct ubifs_info *c, int lnum, int offs, void *node,
 		int sz_new = sizeof(dev->new), sz_huge = sizeof(dev->huge);
 
 		if (data_len != sz_new && data_len != sz_huge) {
-			dbg_fsck("bad inode node %lu(bad data len %d for char/block file, expect %d or %d) at %d:%d, in %s",
-				 inum, data_len, sz_new, sz_huge, lnum,
-				 offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad inode node %lu(bad data len %d for char/block file, expect %d or %d) at %d:%d, in %s",
+					 inum, data_len, sz_new, sz_huge, lnum,
+					 offs, c->dev_name);
+			else
+				log_out(c, "bad inode node %lu(bad data len %d for char/block file, expect %d or %d) at %d:%d",
+					inum, data_len, sz_new, sz_huge, lnum,
+					offs);
 			goto out;
 		}
 		break;
@@ -211,22 +278,35 @@ bool parse_ino_node(struct ubifs_info *c, int lnum, int offs, void *node,
 		fallthrough;
 	case S_IFIFO:
 		if (data_len != 0) {
-			dbg_fsck("bad inode node %lu(bad data len %d for fifo/sock file) at %d:%d, in %s",
-				 inum, data_len, lnum, offs, c->dev_name);
+			if (FSCK(c)->mode == REBUILD_MODE)
+				dbg_fsck("bad inode node %lu(bad data len %d for fifo/sock file) at %d:%d, in %s",
+					 inum, data_len, lnum, offs, c->dev_name);
+			else
+				log_out(c, "bad inode node %lu(bad data len %d for fifo/sock file) at %d:%d",
+					inum, data_len, lnum, offs);
 			goto out;
 		}
 		break;
 	default:
 		/* invalid file type. */
-		dbg_fsck("bad inode node %lu(unknown type %u) at %d:%d, in %s",
-			 inum, ino_node->mode & S_IFMT, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(unknown type %u) at %d:%d, in %s",
+				 inum, ino_node->mode & S_IFMT, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(unknown type %u) at %d:%d",
+				inum, ino_node->mode & S_IFMT, lnum, offs);
 		goto out;
 	}
 
 	if (ino_node->is_encrypted && !inode_can_be_encrypted(c, ino_node)) {
-		dbg_fsck("bad inode node %lu(encrypted but cannot be encrypted, type %u, is_xattr %d, fs_encrypted %d) at %d:%d, in %s",
-			 inum, ino_node->mode & S_IFMT, ino_node->is_xattr,
-			 c->encrypted, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad inode node %lu(encrypted but cannot be encrypted, type %u, is_xattr %d, fs_encrypted %d) at %d:%d, in %s",
+				 inum, ino_node->mode & S_IFMT, ino_node->is_xattr,
+				 c->encrypted, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad inode node %lu(encrypted but cannot be encrypted, type %u, is_xattr %d, fs_encrypted %d) at %d:%d",
+				inum, ino_node->mode & S_IFMT, ino_node->is_xattr,
+				c->encrypted, lnum, offs);
 		goto out;
 	}
 
@@ -272,10 +352,16 @@ bool parse_dent_node(struct ubifs_info *c, int lnum, int offs, void *node,
 	    (key_type == UBIFS_XENT_KEY &&
 	     strnlen((const char *)dent->name, nlen) != nlen) ||
 	    inum > INUM_WATERMARK || key_type != ch->node_type) {
-		dbg_fsck("bad %s node(len %d nlen %d type %d inum %lu key_type %d node_type %d) at %d:%d, in %s",
-			 ch->node_type == UBIFS_XENT_NODE ? "xattr entry" : "directory entry",
-			 node_len, nlen, dent->type, inum, key_type,
-			 ch->node_type, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad %s node(len %d nlen %d type %d inum %lu key_type %d node_type %d) at %d:%d, in %s",
+				 ch->node_type == UBIFS_XENT_NODE ? "xattr entry" : "directory entry",
+				 node_len, nlen, dent->type, inum, key_type,
+				 ch->node_type, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad %s node(len %d nlen %d type %d inum %lu key_type %d node_type %d) at %d:%d",
+				ch->node_type == UBIFS_XENT_NODE ? "xattr entry" : "directory entry",
+				node_len, nlen, dent->type, inum, key_type,
+				ch->node_type, lnum, offs);
 		goto out;
 	}
 
@@ -318,15 +404,23 @@ bool parse_data_node(struct ubifs_info *c, int lnum, int offs, void *node,
 	ino_t inum = key_inum(c, key);
 
 	if (ch->node_type != key_type(c, key)) {
-		dbg_fsck("bad data node(inconsistent node type %d vs key_type %d) at %d:%d, in %s",
-			 ch->node_type, key_type(c, key),
-			 lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad data node(inconsistent node type %d vs key_type %d) at %d:%d, in %s",
+				 ch->node_type, key_type(c, key),
+				 lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad data node(inconsistent node type %d vs key_type %d) at %d:%d",
+				ch->node_type, key_type(c, key), lnum, offs);
 		goto out;
 	}
 
 	if (!inum || inum > INUM_WATERMARK) {
-		dbg_fsck("bad data node(bad inum %lu) at %d:%d, in %s",
-			 inum, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad data node(bad inum %lu) at %d:%d, in %s",
+				 inum, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad data node(bad inum %lu) at %d:%d",
+				inum, lnum, offs);
 		goto out;
 	}
 
@@ -336,14 +430,22 @@ bool parse_data_node(struct ubifs_info *c, int lnum, int offs, void *node,
 	data_node->size = le32_to_cpu(dn->size);
 
 	if (!data_node->size || data_node->size > UBIFS_BLOCK_SIZE) {
-		dbg_fsck("bad data node(invalid size %u) at %d:%d, in %s",
-			 data_node->size, lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad data node(invalid size %u) at %d:%d, in %s",
+				 data_node->size, lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad data node(invalid size %u) at %d:%d",
+				data_node->size, lnum, offs);
 		goto out;
 	}
 
 	if (le16_to_cpu(dn->compr_type) >= UBIFS_COMPR_TYPES_CNT) {
-		dbg_fsck("bad data node(invalid compression type %d) at %d:%d, in %s",
-			 le16_to_cpu(dn->compr_type), lnum, offs, c->dev_name);
+		if (FSCK(c)->mode == REBUILD_MODE)
+			dbg_fsck("bad data node(invalid compression type %d) at %d:%d, in %s",
+				 le16_to_cpu(dn->compr_type), lnum, offs, c->dev_name);
+		else
+			log_out(c, "bad data node(invalid compression type %d) at %d:%d",
+				le16_to_cpu(dn->compr_type), lnum, offs);
 		goto out;
 	}
 

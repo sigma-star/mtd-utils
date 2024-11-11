@@ -434,7 +434,17 @@ void handle_error(const struct ubifs_info *c, int reason_set)
  */
 static int do_fsck(void)
 {
-	return 0;
+	int err;
+
+	log_out(c, "Traverse TNC and construct files");
+	err = traverse_tnc_and_construct_files(c);
+	if (err) {
+		handle_error(c, HAS_TNC_CORRUPTED);
+		return err;
+	}
+
+	destroy_file_tree(c, &FSCK(c)->scanned_files);
+	return err;
 }
 
 int main(int argc, char *argv[])
@@ -468,6 +478,9 @@ int main(int argc, char *argv[])
 		goto out_close;
 	}
 
+	/*
+	 * Step 6: Traverse tnc and construct files
+	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {
 		ubifs_destroy_filesystem(c);

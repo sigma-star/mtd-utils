@@ -51,7 +51,7 @@ static const char *get_key_hash(int hash)
 	}
 }
 
-static const char *get_key_type(int type)
+const char *ubifs_get_key_name(int type)
 {
 	switch (type) {
 	case UBIFS_INO_KEY:
@@ -102,23 +102,25 @@ const char *dbg_snprintf_key(const struct ubifs_info *c,
 		case UBIFS_INO_KEY:
 			len -= snprintf(p, len, "(%lu, %s)",
 					(unsigned long)key_inum(c, key),
-					get_key_type(type));
+					ubifs_get_key_name(type));
 			break;
 		case UBIFS_DENT_KEY:
 		case UBIFS_XENT_KEY:
 			len -= snprintf(p, len, "(%lu, %s, %#08x)",
 					(unsigned long)key_inum(c, key),
-					get_key_type(type), key_hash(c, key));
+					ubifs_get_key_name(type),
+					key_hash(c, key));
 			break;
 		case UBIFS_DATA_KEY:
 			len -= snprintf(p, len, "(%lu, %s, %u)",
 					(unsigned long)key_inum(c, key),
-					get_key_type(type), key_block(c, key));
+					ubifs_get_key_name(type),
+					key_block(c, key));
 			break;
 		case UBIFS_TRUN_KEY:
 			len -= snprintf(p, len, "(%lu, %s)",
 					(unsigned long)key_inum(c, key),
-					get_key_type(type));
+					ubifs_get_key_name(type));
 			break;
 		default:
 			len -= snprintf(p, len, "(bad key type: %#08x, %#08x)",

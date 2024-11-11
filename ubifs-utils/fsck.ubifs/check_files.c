@@ -1,0 +1,201 @@
+// SPDX-License-Identifier: GPL-2.0
+/*
+ * Copyright (C) 2024, Huawei Technologies Co, Ltd.
+ *
+ * Authors: Zhihao Cheng <chengzhihao1@huawei.com>
+ */
+
+#include <stdio.h>
+#include <stdlib.h>
+
+#include "bitops.h"
+#include "kmem.h"
+#include "ubifs.h"
+#include "defs.h"
+#include "debug.h"
+#include "key.h"
+#include "fsck.ubifs.h"
+
+struct invalid_node {
+	union ubifs_key key;
+	int lnum;
+	int offs;
+	struct list_head list;
+};
+
+struct iteration_info {
+	struct list_head invalid_nodes;
+};
+
+static int add_invalid_node(struct ubifs_info *c, union ubifs_key *key,
+			    int lnum, int offs, struct iteration_info *iter)
+{
+	struct invalid_node *in;
+
+	in = kmalloc(sizeof(struct invalid_node), GFP_KERNEL);
+	if (!in) {
+		log_err(c, errno, "can not allocate invalid node");
+		return -ENOMEM;
+	}
+
+	key_copy(c, key, &in->key);
+	in->lnum = lnum;
+	in->offs = offs;
+	list_add(&in->list, &iter->invalid_nodes);
+
+	return 0;
+}
+
+static int construct_file(struct ubifs_info *c, union ubifs_key *key,
+			  int lnum, int offs, void *node,
+			  struct iteration_info *iter)
+{
+	ino_t inum = 0;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
+	struct scanned_node *sn = NULL;
+	struct ubifs_ch *ch = (struct ubifs_ch *)node;
+
+	switch (ch->node_type) {
+	case UBIFS_INO_NODE:
+	{
+		struct scanned_ino_node ino_node;
+
+		if (!parse_ino_node(c, lnum, offs, node, key, &ino_node)) {
+			if (fix_problem(c, INVALID_INO_NODE, NULL))
+				return add_invalid_node(c, key, lnum, offs, iter);
+		}
+		inum = key_inum(c, key);
+		sn = (struct scanned_node *)&ino_node;
+		break;
+	}
+	case UBIFS_DENT_NODE:
+	case UBIFS_XENT_NODE:
+	{
+		struct scanned_dent_node dent_node;
+
+		if (!parse_dent_node(c, lnum, offs, node, key, &dent_node)) {
+			if (fix_problem(c, INVALID_DENT_NODE, NULL))
+				return add_invalid_node(c, key, lnum, offs, iter);
+		}
+		inum = dent_node.inum;
+		sn = (struct scanned_node *)&dent_node;
+		break;
+	}
+	case UBIFS_DATA_NODE:
+	{
+		struct scanned_data_node data_node;
+
+		if (!parse_data_node(c, lnum, offs, node, key, &data_node)) {
+			if (fix_problem(c, INVALID_DATA_NODE, NULL))
+				return add_invalid_node(c, key, lnum, offs, iter);
+		}
+		inum = key_inum(c, key);
+		sn = (struct scanned_node *)&data_node;
+		break;
+	}
+	default:
+		ubifs_assert(c, 0);
+	}
+
+	dbg_fsck("construct file(%lu) for %s node, TNC location %d:%d, in %s",
+		 inum, ubifs_get_key_name(key_type(c, key)), sn->lnum, sn->offs,
+		 c->dev_name);
+	return insert_or_update_file(c, tree, sn, key_type(c, key), inum);
+}
+
+static int check_leaf(struct ubifs_info *c, struct ubifs_zbranch *zbr,
+		      void *priv)
+{
+	void *node;
+	struct iteration_info *iter = (struct iteration_info *)priv;
+	union ubifs_key *key = &zbr->key;
+	int lnum = zbr->lnum, offs = zbr->offs, len = zbr->len, err = 0;
+
+	if (len < UBIFS_CH_SZ) {
+		ubifs_err(c, "bad leaf length %d (LEB %d:%d)",
+			  len, lnum, offs);
+		set_failure_reason_callback(c, FR_TNC_CORRUPTED);
+		return -EINVAL;
+	}
+	if (key_type(c, key) != UBIFS_INO_KEY &&
+	    key_type(c, key) != UBIFS_DATA_KEY &&
+	    key_type(c, key) != UBIFS_DENT_KEY &&
+	    key_type(c, key) != UBIFS_XENT_KEY) {
+		ubifs_err(c, "bad key type %d (LEB %d:%d)",
+			  key_type(c, key), lnum, offs);
+		set_failure_reason_callback(c, FR_TNC_CORRUPTED);
+		return -EINVAL;
+	}
+
+	node = kmalloc(len, GFP_NOFS);
+	if (!node)
+		return -ENOMEM;
+
+	err = ubifs_tnc_read_node(c, zbr, node);
+	if (err) {
+		if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED)) {
+			if (fix_problem(c, TNC_DATA_CORRUPTED, NULL))
+				err = add_invalid_node(c, key, lnum, offs, iter);
+		}
+		goto out;
+	}
+
+	err = construct_file(c, key, lnum, offs, node, iter);
+
+out:
+	kfree(node);
+	return err;
+}
+
+static int remove_invalid_nodes(struct ubifs_info *c,
+				struct list_head *invalid_nodes, int error)
+{
+	int ret = 0;;
+	struct invalid_node *in;
+
+	while (!list_empty(invalid_nodes)) {
+		in = list_entry(invalid_nodes->next, struct invalid_node, list);
+
+		if (!error) {
+			error = ubifs_tnc_remove_node(c, &in->key, in->lnum, in->offs);
+			if (error) {
+				/* TNC traversing is finished, any TNC path is accessible */
+				ubifs_assert(c, !get_failure_reason_callback(c));
+				ret = error;
+			}
+		}
+
+		list_del(&in->list);
+		kfree(in);
+	}
+
+	return ret;
+}
+
+/**
+ * traverse_tnc_and_construct_files - traverse TNC and construct all files.
+ * @c: UBIFS file-system description object
+ *
+ * This function checks all index nodes and non-index nodes by traversing TNC,
+ * then construct file according to scanned non-index nodes and insert file
+ * into file tree. Returns zero in case of success, a negative error code in
+ * case of failure.
+ */
+int traverse_tnc_and_construct_files(struct ubifs_info *c)
+{
+	int err, ret;
+	struct iteration_info iter;
+
+	FSCK(c)->scanned_files = RB_ROOT;
+	INIT_LIST_HEAD(&iter.invalid_nodes);
+
+	err = dbg_walk_index(c, check_leaf, NULL, &iter);
+
+	ret = remove_invalid_nodes(c, &iter.invalid_nodes, err);
+	if (!err)
+		err = ret;
+
+	if (err)
+		destroy_file_tree(c, &FSCK(c)->scanned_files);
+	return err;
+}
