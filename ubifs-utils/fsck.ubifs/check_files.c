@@ -499,3 +499,28 @@ int handle_dentry_tree(struct ubifs_info *c)
 
 	return 0;
 }
+
+/**
+ * tnc_is_empty - Check whether the TNC is empty.
+ * @c: UBIFS file-system description object
+ *
+ * Returns %true if the TNC is empty, otherwise %false is returned.
+ */
+bool tnc_is_empty(struct ubifs_info *c)
+{
+	/*
+	 * Check whether the TNC is empty, turn to rebuild_fs if it is empty.
+	 * Can we recreate a new root dir to avoid empty TNC? The answer is no,
+	 * lpt fixing should be done before creating new entry, but lpt fixing
+	 * needs a committing before new dirty data generated to ensure that
+	 * bud data won't be overwritten(bud LEB could become freeable after
+	 * replaying journal, corrected lpt may treat it as a free one to hold
+	 * new data, see details in space checking & correcting step). Then we
+	 * have to create the new root dir after fixing lpt and a committing,
+	 * znode without children(empty TNC) maybe written on disk at the
+	 * moment of committing, which corrupts the UBIFS image. So we choose
+	 * to rebuild the filesystem if the TNC is empty, this case is
+	 * equivalent to corrupted TNC.
+	 */
+	return c->zroot.znode->child_cnt == 0;
+}

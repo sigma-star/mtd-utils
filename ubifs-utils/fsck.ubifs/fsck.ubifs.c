@@ -467,6 +467,12 @@ static int do_fsck(void)
 		goto free_disconnected_files;
 	}
 
+	log_out(c, "Check whether the TNC is empty");
+	if (tnc_is_empty(c) && fix_problem(c, EMPTY_TNC, NULL)) {
+		err = -EINVAL;
+		FSCK(c)->try_rebuild = true;
+	}
+
 free_disconnected_files:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
 free_used_lebs:
@@ -512,6 +518,7 @@ int main(int argc, char *argv[])
 	 * Step 8: Check and handle invalid files
 	 * Step 9: Check and handle unreachable files
 	 * Step 10: Check and correct files
+	 * Step 11: Check whether the TNC is empty
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {
