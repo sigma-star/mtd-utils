@@ -707,8 +707,6 @@ static void extract_dentry_tree(struct ubifs_info *c)
 
 static void init_root_ino(struct ubifs_info *c, struct ubifs_ino_node *ino)
 {
-#define S_IRUGO		(S_IRUSR|S_IRGRP|S_IROTH)
-#define S_IXUGO		(S_IXUSR|S_IXGRP|S_IXOTH)
 	__le64 tmp_le64;
 
 	/* Create default root inode */

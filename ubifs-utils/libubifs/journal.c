@@ -47,9 +47,11 @@
  */
 
 #include "bitops.h"
+#include "kmem.h"
 #include "ubifs.h"
 #include "defs.h"
 #include "debug.h"
+#include "key.h"
 #include "misc.h"
 
 /**
@@ -436,4 +438,196 @@ static void set_dent_cookie(struct ubifs_info *c, struct ubifs_dent_node *dent)
 		dent->cookie = (__force __le32) get_random_u32();
 	else
 		dent->cookie = 0;
+}
+
+/**
+ * pack_inode - pack an ubifs inode node.
+ * @c: UBIFS file-system description object
+ * @ino: buffer in which to pack inode node
+ * @ui: ubifs inode to pack
+ * @last: indicates the last node of the group
+ */
+static void pack_inode(struct ubifs_info *c, struct ubifs_ino_node *ino,
+		       const struct ubifs_inode *ui, int last)
+{
+	const struct inode *inode = &ui->vfs_inode;
+	int data_len = 0, last_reference = !inode->nlink;
+
+	ino->ch.node_type = UBIFS_INO_NODE;
+	ino_key_init_flash(c, &ino->key, inode->inum);
+	ino->creat_sqnum = cpu_to_le64(ui->creat_sqnum);
+	ino->atime_sec  = cpu_to_le64(inode->atime_sec);
+	ino->atime_nsec = cpu_to_le32(inode->atime_nsec);
+	ino->ctime_sec  = cpu_to_le64(inode->ctime_sec);
+	ino->ctime_nsec = cpu_to_le32(inode->ctime_nsec);
+	ino->mtime_sec  = cpu_to_le64(inode->mtime_sec);
+	ino->mtime_nsec = cpu_to_le32(inode->mtime_nsec);
+	ino->uid   = cpu_to_le32(inode->uid);
+	ino->gid   = cpu_to_le32(inode->gid);
+	ino->mode  = cpu_to_le32(inode->mode);
+	ino->flags = cpu_to_le32(ui->flags);
+	ino->size  = cpu_to_le64(ui->ui_size);
+	ino->nlink = cpu_to_le32(inode->nlink);
+	ino->compr_type  = cpu_to_le16(ui->compr_type);
+	ino->data_len    = cpu_to_le32(ui->data_len);
+	ino->xattr_cnt   = cpu_to_le32(ui->xattr_cnt);
+	ino->xattr_size  = cpu_to_le32(ui->xattr_size);
+	ino->xattr_names = cpu_to_le32(ui->xattr_names);
+	zero_ino_node_unused(ino);
+
+	/*
+	 * Drop the attached data if this is a deletion inode, the data is not
+	 * needed anymore.
+	 */
+	if (!last_reference) {
+		memcpy(ino->data, ui->data, ui->data_len);
+		data_len = ui->data_len;
+	}
+
+	ubifs_prep_grp_node(c, ino, UBIFS_INO_NODE_SZ + data_len, last);
+}
+
+/**
+ * ubifs_jnl_update_file - update file.
+ * @c: UBIFS file-system description object
+ * @dir_ui: parent ubifs inode
+ * @nm: directory entry name
+ * @ui: ubifs inode to update
+ *
+ * This function updates an file by writing a directory entry node, the inode
+ * node itself, and the parent directory inode node to the journal. If the
+ * @dir_ui and @nm are NULL, only update @ui.
+ *
+ * Returns zero on success. In case of failure, a negative error code is
+ * returned.
+ */
+int ubifs_jnl_update_file(struct ubifs_info *c,
+			  const struct ubifs_inode *dir_ui,
+			  const struct fscrypt_name *nm,
+			  const struct ubifs_inode *ui)
+{
+	const struct inode *dir = NULL, *inode = &ui->vfs_inode;
+	int err, dlen, ilen, len, lnum, ino_offs, dent_offs, dir_ilen;
+	int aligned_dlen, aligned_ilen;
+	struct ubifs_dent_node *dent;
+	struct ubifs_ino_node *ino;
+	union ubifs_key dent_key, ino_key;
+	u8 hash_dent[UBIFS_HASH_ARR_SZ];
+	u8 hash_ino[UBIFS_HASH_ARR_SZ];
+	u8 hash_ino_dir[UBIFS_HASH_ARR_SZ];
+
+	ubifs_assert(c, (!nm && !dir_ui) || (nm && dir_ui));
+	ubifs_assert(c, inode->nlink != 0);
+
+	ilen = UBIFS_INO_NODE_SZ + ui->data_len;
+
+	if (nm)
+		dlen = UBIFS_DENT_NODE_SZ + fname_len(nm) + 1;
+	else
+		dlen = 0;
+
+	if (dir_ui) {
+		dir = &dir_ui->vfs_inode;
+		ubifs_assert(c, dir->nlink != 0);
+		dir_ilen = UBIFS_INO_NODE_SZ + dir_ui->data_len;
+	} else
+		dir_ilen = 0;
+
+	aligned_dlen = ALIGN(dlen, 8);
+	aligned_ilen = ALIGN(ilen, 8);
+	len = aligned_dlen + aligned_ilen + dir_ilen;
+	if (ubifs_authenticated(c))
+		len += ALIGN(dir_ilen, 8) + ubifs_auth_node_sz(c);
+
+	dent = kzalloc(len, GFP_NOFS);
+	if (!dent)
+		return -ENOMEM;
+
+	/* Make reservation before allocating sequence numbers */
+	err = make_reservation(c, BASEHD, len);
+	if (err)
+		goto out_free;
+
+	if (nm) {
+		dent->ch.node_type = UBIFS_DENT_NODE;
+		dent_key_init(c, &dent_key, dir->inum, nm);
+
+		key_write(c, &dent_key, dent->key);
+		dent->inum = cpu_to_le64(inode->inum);
+		dent->type = ubifs_get_dent_type(inode->mode);
+		dent->nlen = cpu_to_le16(fname_len(nm));
+		memcpy(dent->name, fname_name(nm), fname_len(nm));
+		dent->name[fname_len(nm)] = '\0';
+		set_dent_cookie(c, dent);
+
+		zero_dent_node_unused(dent);
+		ubifs_prep_grp_node(c, dent, dlen, 0);
+		err = ubifs_node_calc_hash(c, dent, hash_dent);
+		if (err)
+			goto out_release;
+	}
+
+	ino = (void *)dent + aligned_dlen;
+	pack_inode(c, ino, ui, dir_ui == NULL ? 1 : 0);
+	err = ubifs_node_calc_hash(c, ino, hash_ino);
+	if (err)
+		goto out_release;
+
+	if (dir_ui) {
+		ino = (void *)ino + aligned_ilen;
+		pack_inode(c, ino, dir_ui, 1);
+		err = ubifs_node_calc_hash(c, ino, hash_ino_dir);
+		if (err)
+			goto out_release;
+	}
+
+	err = write_head(c, BASEHD, dent, len, &lnum, &dent_offs, 0);
+	if (err)
+		goto out_release;
+	release_head(c, BASEHD);
+	kfree(dent);
+	ubifs_add_auth_dirt(c, lnum);
+
+	if (nm) {
+		err = ubifs_tnc_add_nm(c, &dent_key, lnum, dent_offs, dlen,
+				       hash_dent, nm);
+		if (err) {
+			ubifs_assert(c, !get_failure_reason_callback(c));
+			goto out_ro;
+		}
+	}
+
+	ino_key_init(c, &ino_key, inode->inum);
+	ino_offs = dent_offs + aligned_dlen;
+	err = ubifs_tnc_add(c, &ino_key, lnum, ino_offs, ilen, hash_ino);
+	if (err) {
+		ubifs_assert(c, !get_failure_reason_callback(c));
+		goto out_ro;
+	}
+
+	if (dir_ui) {
+		ino_key_init(c, &ino_key, dir->inum);
+		ino_offs += aligned_ilen;
+		err = ubifs_tnc_add(c, &ino_key, lnum, ino_offs, dir_ilen,
+				    hash_ino_dir);
+		if (err) {
+			ubifs_assert(c, !get_failure_reason_callback(c));
+			goto out_ro;
+		}
+	}
+
+	finish_reservation(c);
+	return 0;
+
+out_free:
+	kfree(dent);
+	return err;
+
+out_release:
+	release_head(c, BASEHD);
+	kfree(dent);
+out_ro:
+	ubifs_ro_mode(c, err);
+	finish_reservation(c);
+	return err;
 }

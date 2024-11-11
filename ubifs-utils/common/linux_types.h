@@ -28,6 +28,9 @@ struct fscrypt_name {
 #define fname_name(p)	((p)->disk_name.name)
 #define fname_len(p)	((p)->disk_name.len)
 
+#define S_IRUGO		(S_IRUSR|S_IRGRP|S_IROTH)
+#define S_IXUGO		(S_IXUSR|S_IXGRP|S_IXOTH)
+
 #define t16(x) ({ \
 	uint16_t __b = (x); \
 	(__LITTLE_ENDIAN==__BYTE_ORDER) ? __b : bswap_16(__b); \

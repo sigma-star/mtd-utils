@@ -262,7 +262,36 @@ struct ubifs_gced_idx_leb {
 };
 
 /**
+ * struct inode - inode description.
+ * @uid: owner ID
+ * @gid: group ID
+ * @mode: access flags
+ * @nlink: number of hard links
+ * @inum: inode number
+ * @atime_sec: access time seconds
+ * @ctime_sec: creation time seconds
+ * @mtime_sec: modification time seconds
+ * @atime_nsec: access time nanoseconds
+ * @ctime_nsec: creation time nanoseconds
+ * @mtime_nsec: modification time nanoseconds
+ */
+struct inode {
+	unsigned int uid;
+	unsigned int gid;
+	unsigned int mode;
+	unsigned int nlink;
+	ino_t inum;
+	unsigned long long atime_sec;
+	unsigned long long ctime_sec;
+	unsigned long long mtime_sec;
+	unsigned int atime_nsec;
+	unsigned int ctime_nsec;
+	unsigned int mtime_nsec;
+};
+
+/**
  * struct ubifs_inode - UBIFS in-memory inode description.
+ * @vfs_inode: VFS inode description object
  * @creat_sqnum: sequence number at time of creation
  * @xattr_size: summarized size of all extended attributes in bytes
  * @xattr_cnt: count of extended attributes this inode has
@@ -275,6 +304,7 @@ struct ubifs_gced_idx_leb {
  * @data: inode's data
  */
 struct ubifs_inode {
+	struct inode vfs_inode;
 	unsigned long long creat_sqnum;
 	unsigned int xattr_size;
 	unsigned int xattr_cnt;
@@ -1640,6 +1670,10 @@ int ubifs_consolidate_log(struct ubifs_info *c);
 
 /* journal.c */
 int ubifs_get_dent_type(int mode);
+int ubifs_jnl_update_file(struct ubifs_info *c,
+			  const struct ubifs_inode *dir_ui,
+			  const struct fscrypt_name *nm,
+			  const struct ubifs_inode *ui);
 
 /* budget.c */
 int ubifs_budget_space(struct ubifs_info *c, struct ubifs_budget_req *req);
@@ -1822,6 +1856,17 @@ const struct ubifs_lprops *ubifs_fast_find_empty(struct ubifs_info *c);
 const struct ubifs_lprops *ubifs_fast_find_freeable(struct ubifs_info *c);
 const struct ubifs_lprops *ubifs_fast_find_frdi_idx(struct ubifs_info *c);
 int ubifs_calc_dark(const struct ubifs_info *c, int spc);
+
+/* dir.c */
+struct ubifs_inode *ubifs_lookup_by_inum(struct ubifs_info *c, ino_t inum);
+struct ubifs_inode *ubifs_lookup(struct ubifs_info *c,
+				 struct ubifs_inode *dir_ui,
+				 const struct fscrypt_name *nm);
+int ubifs_mkdir(struct ubifs_info *c, struct ubifs_inode *dir_ui,
+		const struct fscrypt_name *nm, unsigned int mode);
+int ubifs_link_recovery(struct ubifs_info *c, struct ubifs_inode *dir_ui,
+			struct ubifs_inode *ui, const struct fscrypt_name *nm);
+int ubifs_create_root(struct ubifs_info *c);
 
 /* super.c */
 int open_ubi(struct ubifs_info *c, const char *node);

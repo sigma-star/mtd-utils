@@ -70,6 +70,15 @@ ubifs_tnc_find_child(struct ubifs_znode *znode, int start)
 }
 
 /**
+ * ubifs_inode - get UBIFS inode information by VFS 'struct inode' object.
+ * @inode: the VFS 'struct inode' pointer
+ */
+static inline struct ubifs_inode *ubifs_inode(const struct inode *inode)
+{
+	return container_of(inode, struct ubifs_inode, vfs_inode);
+}
+
+/**
  * ubifs_wbuf_sync - synchronize write-buffer.
  * @wbuf: write-buffer to synchronize
  *
