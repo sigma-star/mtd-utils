@@ -46,15 +46,15 @@
 #include <zstd.h>
 #endif
 
-#include "linux_types.h"
-#include "defs.h"
+#include "bitops.h"
 #include "crypto.h"
 #include "fscrypt.h"
 #include "ubifs.h"
-#include "lpt.h"
-#include "compr.h"
+#include "defs.h"
+#include "debug.h"
 #include "key.h"
-#include "sign.h"
+#include "compr.h"
+#include "misc.h"
 #include "devtable.h"
 
 /* Size (prime number) of hash table for link counting */
@@ -290,11 +290,6 @@ static const char *helptext =
 "\n"
 "mkfs.ubifs supports building signed images. For this the \"--hash-algo\",\n"
 "\"--auth-key\" and \"--auth-cert\" options have to be specified.\n";
-
-static inline uint8_t *ubifs_branch_hash(struct ubifs_branch *br)
-{
-	return (void *)br + sizeof(*br) + c->key_len;
-}
 
 /**
  * make_path - make a path name from a directory and a name.
@@ -914,97 +909,13 @@ static int get_options(int argc, char**argv)
 }
 
 /**
- * prepare_node - fill in the common header.
- * @node: node
- * @len: node length
- */
-static void prepare_node(void *node, int len)
-{
-	uint32_t crc;
-	struct ubifs_ch *ch = node;
-
-	ch->magic = cpu_to_le32(UBIFS_NODE_MAGIC);
-	ch->len = cpu_to_le32(len);
-	ch->group_type = UBIFS_NO_NODE_GROUP;
-	ch->sqnum = cpu_to_le64(++c->max_sqnum);
-	ch->padding[0] = ch->padding[1] = 0;
-	crc = mtd_crc32(UBIFS_CRC32_INIT, node + 8, len - 8);
-	ch->crc = cpu_to_le32(crc);
-}
-
-/**
- * write_leb - copy the image of a LEB to the output target.
- * @c: the UBIFS file-system description object
- * @lnum: LEB number
- * @len: length of data in the buffer
- * @buf: buffer (must be at least c->leb_size bytes)
- */
-int write_leb(struct ubifs_info *c, int lnum, int len, void *buf)
-{
-	off_t pos = (off_t)lnum * c->leb_size;
-
-	pr_debug("LEB %d len %d\n", lnum, len);
-	memset(buf + len, 0xff, c->leb_size - len);
-	if (c->libubi)
-		if (ubi_leb_change_start(c->libubi, c->dev_fd, lnum, c->leb_size))
-			return sys_errmsg("ubi_leb_change_start failed");
-
-	if (lseek(c->dev_fd, pos, SEEK_SET) != pos)
-		return sys_errmsg("lseek failed seeking %lld", (long long)pos);
-
-	if (write(c->dev_fd, buf, c->leb_size) != c->leb_size)
-		return sys_errmsg("write failed writing %d bytes at pos %lld",
-				   c->leb_size, (long long)pos);
-
-	return 0;
-}
-
-/**
  * write_empty_leb - copy the image of an empty LEB to the output target.
  * @lnum: LEB number
  */
 static int write_empty_leb(int lnum)
 {
-	return write_leb(c, lnum, 0, leb_buf);
-}
-
-/**
- * do_pad - pad a buffer to the minimum I/O size.
- * @buf: buffer
- * @len: buffer length
- */
-static int do_pad(void *buf, int len)
-{
-	int pad_len, alen = ALIGN(len, 8), wlen = ALIGN(alen, c->min_io_size);
-	uint32_t crc;
-
-	memset(buf + len, 0xff, alen - len);
-	pad_len = wlen - alen;
-	pr_debug("len %d pad_len %d\n", len, pad_len);
-	buf += alen;
-	if (pad_len >= (int)UBIFS_PAD_NODE_SZ) {
-		struct ubifs_ch *ch = buf;
-		struct ubifs_pad_node *pad_node = buf;
-
-		ch->magic      = cpu_to_le32(UBIFS_NODE_MAGIC);
-		ch->node_type  = UBIFS_PAD_NODE;
-		ch->group_type = UBIFS_NO_NODE_GROUP;
-		ch->padding[0] = ch->padding[1] = 0;
-		ch->sqnum      = cpu_to_le64(0);
-		ch->len        = cpu_to_le32(UBIFS_PAD_NODE_SZ);
-
-		pad_len -= UBIFS_PAD_NODE_SZ;
-		pad_node->pad_len = cpu_to_le32(pad_len);
-
-		crc = mtd_crc32(UBIFS_CRC32_INIT, buf + 8,
-				  UBIFS_PAD_NODE_SZ - 8);
-		ch->crc = cpu_to_le32(crc);
-
-		memset(buf + UBIFS_PAD_NODE_SZ, 0, pad_len);
-	} else if (pad_len > 0)
-		memset(buf, UBIFS_PADDING_BYTE, pad_len);
-
-	return wlen;
+	memset(leb_buf, 0xff, c->leb_size);
+	return ubifs_leb_change(c, lnum, leb_buf, c->leb_size);
 }
 
 /**
@@ -1015,13 +926,16 @@ static int do_pad(void *buf, int len)
  */
 static int write_node(void *node, int len, int lnum)
 {
-	prepare_node(node, len);
+	int alen = ALIGN(len, 8), wlen = ALIGN(len, c->min_io_size);
 
+	ubifs_prepare_node(c, node, len, 0);
 	memcpy(leb_buf, node, len);
+	memset(leb_buf + len, 0xff, alen - len);
+	ubifs_pad(c, leb_buf + alen, wlen - alen);
 
-	len = do_pad(leb_buf, len);
+	memset(leb_buf + wlen, 0xff, c->leb_size - wlen);
 
-	return write_leb(c, lnum, len, leb_buf);
+	return ubifs_leb_change(c, lnum, leb_buf, c->leb_size);
 }
 
 /**
@@ -1133,8 +1047,10 @@ static int flush_nodes(void)
 
 	if (!head_offs)
 		return 0;
-	len = do_pad(leb_buf, head_offs);
-	err = write_leb(c, head_lnum, len, leb_buf);
+	len = ALIGN(head_offs, c->min_io_size);
+	ubifs_pad(c, leb_buf + head_offs, len - head_offs);
+	memset(leb_buf + len, 0xff, c->leb_size - len);
+	err = ubifs_leb_change(c, head_lnum, leb_buf, c->leb_size);
 	if (err)
 		return err;
 	set_lprops(head_lnum, head_offs, head_flags);
@@ -1172,7 +1088,7 @@ static int reserve_space(int len, int *lnum, int *offs)
  */
 static int add_node(union ubifs_key *key, char *name, int name_len, void *node, int len)
 {
-	int err, lnum, offs, type = key_type(key);
+	int err, lnum, offs, type = key_type(c, key);
 	uint8_t hash[UBIFS_MAX_HASH_LEN];
 
 	if (type == UBIFS_DENT_KEY || type == UBIFS_XENT_KEY) {
@@ -1184,7 +1100,7 @@ static int add_node(union ubifs_key *key, char *name, int name_len, void *node, 
 			return errmsg("Name given for non dir/xattr node!");
 	}
 
-	prepare_node(node, len);
+	ubifs_prepare_node(c, node, len, 0);
 
 	err = reserve_space(len, &lnum, &offs);
 	if (err)
@@ -1193,7 +1109,7 @@ static int add_node(union ubifs_key *key, char *name, int name_len, void *node, 
 	memcpy(leb_buf + offs, node, len);
 	memset(leb_buf + offs + len, 0xff, ALIGN(len, 8) - len);
 
-	ubifs_node_calc_hash(node, hash);
+	ubifs_node_calc_hash(c, node, hash);
 
 	add_to_index(key, name, name_len, lnum, offs, len, hash);
 
@@ -1206,43 +1122,43 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st,
 {
 	struct ubifs_ino_node *ino;
 	struct ubifs_dent_node *xent;
-	struct qstr nm;
+	struct fscrypt_name nm;
 	char *tmp_name;
 	union ubifs_key xkey, nkey;
 	int len, ret;
 
-	nm.len = strlen(name);
-	tmp_name = xmalloc(nm.len + 1);
-	memcpy(tmp_name, name, nm.len + 1);
-	nm.name = tmp_name;
+	fname_len(&nm) = strlen(name);
+	tmp_name = xmalloc(fname_len(&nm) + 1);
+	memcpy(tmp_name, name, fname_len(&nm) + 1);
+	fname_name(&nm) = tmp_name;
 
 	host_ino->xattr_cnt++;
-	host_ino->xattr_size += CALC_DENT_SIZE(nm.len);
+	host_ino->xattr_size += CALC_DENT_SIZE(fname_len(&nm));
 	host_ino->xattr_size += CALC_XATTR_BYTES(data_len);
-	host_ino->xattr_names += nm.len;
+	host_ino->xattr_names += fname_len(&nm);
 
-	xent = xzalloc(sizeof(*xent) + nm.len + 1);
+	xent = xzalloc(sizeof(*xent) + fname_len(&nm) + 1);
 	ino = xzalloc(sizeof(*ino) + data_len);
 
 	xent_key_init(c, &xkey, inum, &nm);
 	xent->ch.node_type = UBIFS_XENT_NODE;
-	key_write(&xkey, &xent->key);
+	key_write(c, &xkey, &xent->key);
 
-	len = UBIFS_XENT_NODE_SZ + nm.len + 1;
+	len = UBIFS_XENT_NODE_SZ + fname_len(&nm) + 1;
 
 	xent->ch.len = len;
 	xent->padding1 = 0;
 	xent->type = UBIFS_ITYPE_REG;
-	xent->nlen = cpu_to_le16(nm.len);
+	xent->nlen = cpu_to_le16(fname_len(&nm));
 
-	memcpy(xent->name, nm.name, nm.len + 1);
+	memcpy(xent->name, fname_name(&nm), fname_len(&nm) + 1);
 
 	inum = ++c->highest_inum;
 	creat_sqnum = ++c->max_sqnum;
 
 	xent->inum = cpu_to_le64(inum);
 
-	ret = add_node(&xkey, tmp_name, nm.len, xent, len);
+	ret = add_node(&xkey, tmp_name, fname_len(&nm), xent, len);
 	if (ret)
 		goto out;
 
@@ -1263,8 +1179,8 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st,
 	ino->compr_type = cpu_to_le16(c->default_compr);
 	ino->ch.node_type = UBIFS_INO_NODE;
 
-	ino_key_init(&nkey, inum);
-	key_write(&nkey, &ino->key);
+	ino_key_init(c, &nkey, inum);
+	key_write(c, &nkey, &ino->key);
 
 	ino->size       = cpu_to_le64(data_len);
 	ino->mode       = cpu_to_le32(S_IFREG);
@@ -1557,9 +1473,9 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 		use_flags |= UBIFS_CRYPT_FL;
 	memset(ino, 0, UBIFS_INO_NODE_SZ);
 
-	ino_key_init(&key, inum);
+	ino_key_init(c, &key, inum);
 	ino->ch.node_type = UBIFS_INO_NODE;
-	key_write(&key, &ino->key);
+	key_write(c, &key, &ino->key);
 	ino->creat_sqnum = cpu_to_le64(creat_sqnum);
 	ino->size       = cpu_to_le64(st->st_size);
 	ino->nlink      = cpu_to_le32(st->st_nlink);
@@ -1710,6 +1626,7 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	struct ubifs_dent_node *dent = node_buf;
 	union ubifs_key key;
 	struct qstr dname;
+	struct fscrypt_name nm;
 	char *kname;
 	int len;
 
@@ -1747,13 +1664,15 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 		*kname_len = ret;
 	}
 
-	dent_key_init(c, &key, dir_inum, kname, *kname_len);
+	fname_name(&nm) = kname;
+	fname_len(&nm) = *kname_len;
+	dent_key_init(c, &key, dir_inum, &nm);
 	dent->nlen = cpu_to_le16(*kname_len);
 	memcpy(dent->name, kname, *kname_len);
 	dent->name[*kname_len] = '\0';
 	len = UBIFS_DENT_NODE_SZ + *kname_len + 1;
 
-	key_write(&key, dent->key);
+	key_write(c, &key, dent->key);
 
 	return add_node(&key, kname, *kname_len, dent, len);
 }
@@ -1849,9 +1768,9 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 		}
 		/* Make data node */
 		memset(dn, 0, UBIFS_DATA_NODE_SZ);
-		data_key_init(&key, inum, block_no);
+		data_key_init(c, &key, inum, block_no);
 		dn->ch.node_type = UBIFS_DATA_NODE;
-		key_write(&key, &dn->key);
+		key_write(c, &key, &dn->key);
 		out_len = NODE_BUFFER_SIZE - UBIFS_DATA_NODE_SZ;
 		if (c->default_compr == UBIFS_COMPR_NONE &&
 		    !c->encrypted && (flags & FS_COMPR_FL))
@@ -2313,7 +2232,7 @@ static int cmp_idx(const void *a, const void *b)
 	const struct idx_entry *e2 = *(const struct idx_entry **)b;
 	int cmp;
 
-	cmp = keys_cmp(&e1->key, &e2->key);
+	cmp = keys_cmp(c, &e1->key, &e2->key);
 	if (cmp)
 		return cmp;
 	return namecmp(e1, e2);
@@ -2330,7 +2249,7 @@ static int add_idx_node(void *node, int child_cnt)
 
 	len = ubifs_idx_node_sz(c, child_cnt);
 
-	prepare_node(node, len);
+	ubifs_prepare_node(c, node, len, 0);
 
 	err = reserve_space(len, &lnum, &offs);
 	if (err)
@@ -2339,10 +2258,10 @@ static int add_idx_node(void *node, int child_cnt)
 	memcpy(leb_buf + offs, node, len);
 	memset(leb_buf + offs + len, 0xff, ALIGN(len, 8) - len);
 
-	c->old_idx_sz += ALIGN(len, 8);
+	c->bi.old_idx_sz += ALIGN(len, 8);
 
 	pr_debug("at %d:%d len %d index size %llu\n", lnum, offs, len,
-		 c->old_idx_sz);
+		 c->bi.old_idx_sz);
 
 	/* The last index node written will be the root */
 	c->zroot.lnum = lnum;
@@ -2409,15 +2328,15 @@ static int write_index(void)
 		idx->level = cpu_to_le16(0);
 		for (j = 0; j < child_cnt; j++, p++) {
 			br = ubifs_idx_branch(c, idx, j);
-			key_write_idx(&(*p)->key, &br->key);
+			key_write_idx(c, &(*p)->key, &br->key);
 			br->lnum = cpu_to_le32((*p)->lnum);
 			br->offs = cpu_to_le32((*p)->offs);
 			br->len = cpu_to_le32((*p)->len);
-			memcpy(ubifs_branch_hash(br), (*p)->hash, c->hash_len);
+			memcpy(ubifs_branch_hash(c, br), (*p)->hash, c->hash_len);
 		}
 		add_idx_node(idx, child_cnt);
 
-		ubifs_node_calc_hash(idx, hashes + i * c->hash_len);
+		ubifs_node_calc_hash(c, idx, hashes + i * c->hash_len);
 	}
 	/* Write level 1 index nodes and above */
 	level = 0;
@@ -2484,7 +2403,7 @@ static int write_index(void)
 				 * of the index node from the level below.
 				 */
 				br = ubifs_idx_branch(c, idx, j);
-				key_write_idx(&(*p)->key, &br->key);
+				key_write_idx(c, &(*p)->key, &br->key);
 				br->lnum = cpu_to_le32(blnum);
 				br->offs = cpu_to_le32(boffs);
 				br->len = cpu_to_le32(blen);
@@ -2495,12 +2414,12 @@ static int write_index(void)
 				boffs += ALIGN(blen, 8);
 				p += pstep;
 
-				memcpy(ubifs_branch_hash(br),
+				memcpy(ubifs_branch_hash(c, br),
 				       hashes + bn * c->hash_len,
 				       c->hash_len);
 			}
 			add_idx_node(idx, child_cnt);
-			ubifs_node_calc_hash(idx, hashes + i * c->hash_len);
+			ubifs_node_calc_hash(c, idx, hashes + i * c->hash_len);
 		}
 	}
 
@@ -2571,7 +2490,7 @@ static int finalize_leb_cnt(void)
 	pr_debug("total_used:  %llu\n", c->lst.total_used);
 	pr_debug("total_dead:  %llu\n", c->lst.total_dead);
 	pr_debug("total_dark:  %llu\n", c->lst.total_dark);
-	pr_debug("index size:  %llu\n", c->old_idx_sz);
+	pr_debug("index size:  %llu\n", c->bi.old_idx_sz);
 	pr_debug("empty_lebs:  %d\n", c->lst.empty_lebs);
 	return 0;
 }
@@ -2598,7 +2517,6 @@ static int write_super(void)
 	buf = xzalloc(c->leb_size);
 
 	sup = buf;
-	sig = buf + UBIFS_SB_NODE_SZ;
 
 	sup->ch.node_type  = UBIFS_SB_NODE;
 	sup->key_hash      = c->key_hash_type;
@@ -2634,27 +2552,27 @@ static int write_super(void)
 		sup->flags |= cpu_to_le32(UBIFS_FLG_DOUBLE_HASH);
 	if (c->encrypted)
 		sup->flags |= cpu_to_le32(UBIFS_FLG_ENCRYPTION);
-	if (authenticated()) {
+	if (ubifs_authenticated(c)) {
 		sup->flags |= cpu_to_le32(UBIFS_FLG_AUTHENTICATION);
 		memcpy(sup->hash_mst, c->mst_hash, c->hash_len);
 	}
 
-	prepare_node(sup, UBIFS_SB_NODE_SZ);
+	ubifs_prepare_node(c, sup, UBIFS_SB_NODE_SZ, 0);
 
-	err = sign_superblock_node(sup);
+	err = ubifs_sign_superblock_node(c, sup);
 	if (err)
 		goto out;
 
 	sig = (void *)(sup + 1);
-	prepare_node(sig, UBIFS_SIG_NODE_SZ + le32_to_cpu(sig->len));
+	ubifs_prepare_node(c, sig, UBIFS_SIG_NODE_SZ + le32_to_cpu(sig->len), 1);
 
-	len = do_pad(sig, UBIFS_SIG_NODE_SZ + le32_to_cpu(sig->len));
+	len = ALIGN(ALIGN(UBIFS_SIG_NODE_SZ + le32_to_cpu(sig->len), 8), c->min_io_size);
+	memset(buf + UBIFS_SB_NODE_SZ + len, 0xff, c->leb_size - (UBIFS_SB_NODE_SZ + len));
 
-	err = write_leb(c, UBIFS_SB_LNUM, UBIFS_SB_NODE_SZ + len, sup);
+	err = ubifs_leb_change(c, UBIFS_SB_LNUM, buf, c->leb_size);
 	if (err)
 		goto out;
 
-	err = 0;
 out:
 	free(buf);
 
@@ -2682,7 +2600,7 @@ static int write_master(void)
 	mst.gc_lnum      = cpu_to_le32(c->gc_lnum);
 	mst.ihead_lnum   = cpu_to_le32(c->ihead_lnum);
 	mst.ihead_offs   = cpu_to_le32(c->ihead_offs);
-	mst.index_size   = cpu_to_le64(c->old_idx_sz);
+	mst.index_size   = cpu_to_le64(c->bi.old_idx_sz);
 	mst.lpt_lnum     = cpu_to_le32(c->lpt_lnum);
 	mst.lpt_offs     = cpu_to_le32(c->lpt_offs);
 	mst.nhead_lnum   = cpu_to_le32(c->nhead_lnum);
@@ -2701,7 +2619,7 @@ static int write_master(void)
 	mst.total_dark   = cpu_to_le64(c->lst.total_dark);
 	mst.leb_cnt      = cpu_to_le32(c->leb_cnt);
 
-	if (authenticated()) {
+	if (ubifs_authenticated(c)) {
 		memcpy(mst.hash_root_idx, c->root_idx_hash, c->hash_len);
 		memcpy(mst.hash_lpt, c->lpt_hash, c->hash_len);
 	}
@@ -2714,7 +2632,9 @@ static int write_master(void)
 	if (err)
 		return err;
 
-	mst_node_calc_hash(&mst, c->mst_hash);
+	err = ubifs_master_node_calc_hash(c, &mst, c->mst_hash);
+	if (err)
+		return err;
 
 	return 0;
 }
@@ -2754,7 +2674,8 @@ static int write_lpt(void)
 {
 	int err, lnum;
 
-	err = create_lpt(c);
+	c->lscan_lnum = c->main_first;
+	err = ubifs_create_lpt(c, c->lpt, c->main_lebs, c->lpt_hash);
 	if (err)
 		return err;
 
@@ -2789,7 +2710,7 @@ static int write_orphan_area(void)
  */
 static int init(void)
 {
-	int err, i, main_lebs, big_lpt = 0, sz;
+	int err, main_lebs, big_lpt = 0, sz;
 
 	c->highest_inum = UBIFS_FIRST_INO;
 
@@ -2798,7 +2719,7 @@ static int init(void)
 	main_lebs = c->max_leb_cnt - UBIFS_SB_LEBS - UBIFS_MST_LEBS;
 	main_lebs -= c->log_lebs + c->orph_lebs;
 
-	err = calc_dflt_lpt_geom(c, &main_lebs, &big_lpt);
+	err = ubifs_calc_dflt_lpt_geom(c, &main_lebs, &big_lpt);
 	if (err)
 		return err;
 
@@ -2811,13 +2732,6 @@ static int init(void)
 	c->lpt_last = c->lpt_first + c->lpt_lebs - 1;
 
 	c->lpt = xmalloc(c->main_lebs * sizeof(struct ubifs_lprops));
-	c->ltab = xmalloc(c->lpt_lebs * sizeof(struct ubifs_lprops));
-
-	/* Initialize LPT's own lprops */
-	for (i = 0; i < c->lpt_lebs; i++) {
-		c->ltab[i].free = c->leb_size;
-		c->ltab[i].dirty = 0;
-	}
 
 	c->dead_wm = ALIGN(MIN_WRITE_SZ, c->min_io_size);
 	c->dark_wm = ALIGN(UBIFS_MAX_NODE_SZ, c->min_io_size);
@@ -2877,7 +2791,6 @@ static void deinit(void)
 #endif
 
 	free(c->lpt);
-	free(c->ltab);
 	free(leb_buf);
 	free(node_buf);
 	free(block_buf);
@@ -2885,6 +2798,7 @@ static void deinit(void)
 	free(hash_table);
 	destroy_compression();
 	free_devtable_info();
+	ubifs_exit_authentication(c);
 }
 
 /**
@@ -2904,7 +2818,7 @@ static int mkfs(void)
 	if (err)
 		goto out;
 
-	err = init_authentication();
+	err = ubifs_init_authentication(c);
 	if (err)
 		goto out;
 
@@ -2951,9 +2865,7 @@ int main(int argc, char *argv[])
 {
 	int err;
 
-	info_.program_name = MKFS_PROGRAM_NAME;
-	info_.program_type = MKFS_PROGRAM_TYPE;
-	info_.debug_level = WARN_LEVEL;
+	init_ubifs_info(c, MKFS_PROGRAM_TYPE);
 
 	if (crypto_init())
 		return -1;

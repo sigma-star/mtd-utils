@@ -30,19 +30,14 @@
 
 #include "linux_types.h"
 #include "sign.h"
-#include "defs.h"
 #include "ubifs.h"
+#include "defs.h"
 
 extern struct ubifs_info info_;
 static struct ubifs_info *c = &info_;
 
 EVP_MD_CTX *hash_md;
 const EVP_MD *md;
-
-int authenticated(void)
-{
-	return c->hash_algo_name != NULL;
-}
 
 static int match_string(const char * const *array, size_t n, const char *string)
 {
@@ -242,36 +237,32 @@ out:
 	return x509;
 }
 
-int sign_superblock_node(void *node)
+int hash_sign_node(const char *auth_key_filename, const char *auth_cert_filename,
+		   void *buf, int *len, void *outbuf)
 {
 	EVP_PKEY *private_key;
 	CMS_ContentInfo *cms = NULL;
 	X509 *cert = NULL;
 	BIO *bd, *bm;
 	void *obuf;
-	long len;
 	int ret;
 	void *pret;
-	struct ubifs_sig_node *sig = node + UBIFS_SB_NODE_SZ;
-
-	if (!authenticated())
-		return 0;
 
 	ERR_load_crypto_strings();
 	ERR_clear_error();
 
 	key_pass = getenv("MKFS_UBIFS_SIGN_PIN");
 
-	bm = BIO_new_mem_buf(node, UBIFS_SB_NODE_SZ);
+	bm = BIO_new_mem_buf(buf, UBIFS_SB_NODE_SZ);
 
-	private_key = read_private_key(c->auth_key_filename, &cert);
+	private_key = read_private_key(auth_key_filename, &cert);
 	if (!private_key)
 		return -1;
 
 	if (!cert) {
-		if (!c->auth_cert_filename)
+		if (!auth_cert_filename)
 			return errmsg("authentication certificate not provided (--auth-cert)");
-		cert = read_x509(c->auth_cert_filename);
+		cert = read_x509(auth_cert_filename);
 	}
 
 	if (!cert)
@@ -302,13 +293,9 @@ int sign_superblock_node(void *node)
 	if (!ret)
 		return errmsg("i2d_CMS_bio_stream failed");
 
-	len = BIO_get_mem_data(bd, &obuf);
+	*len = BIO_get_mem_data(bd, &obuf);
 
-	sig->type = UBIFS_SIGNATURE_TYPE_PKCS7;
-	sig->len = cpu_to_le32(len);
-	sig->ch.node_type  = UBIFS_SIG_NODE;
-
-	memcpy(sig + 1, obuf, len);
+	memcpy(outbuf, obuf, *len);
 
 	BIO_free(bd);
 	BIO_free(bm);
@@ -316,83 +303,61 @@ int sign_superblock_node(void *node)
 	return 0;
 }
 
-/**
- * ubifs_node_calc_hash - calculate the hash of a UBIFS node
- * @c: UBIFS file-system description object
- * @node: the node to calculate a hash for
- * @hash: the returned hash
- */
-void ubifs_node_calc_hash(const void *node, uint8_t *hash)
+int hash_digest(const void *buf, unsigned int len, uint8_t *hash)
 {
-	const struct ubifs_ch *ch = node;
+	int err;
 	unsigned int md_len;
 
-	if (!authenticated())
-		return;
+	err = EVP_DigestInit_ex(hash_md, md, NULL);
+	if (!err)
+		return errmsg("Init hash digest failed");
+	err = EVP_DigestUpdate(hash_md, buf, len);
+	if (!err)
+		return errmsg("Update hash digest failed");
+	err = EVP_DigestFinal_ex(hash_md, hash, &md_len);
+	if (!err)
+		return errmsg("Finalize hash digest failed");
 
-	EVP_DigestInit_ex(hash_md, md, NULL);
-	EVP_DigestUpdate(hash_md, node, le32_to_cpu(ch->len));
-	EVP_DigestFinal_ex(hash_md, hash, &md_len);
+	return 0;
 }
 
-/**
- * mst_node_calc_hash - calculate the hash of a UBIFS master node
- * @c: UBIFS file-system description object
- * @node: the node to calculate a hash for
- * @hash: the returned hash
- */
-void mst_node_calc_hash(const void *node, uint8_t *hash)
+int hash_digest_init(void)
 {
+	int err;
+
+	err = EVP_DigestInit_ex(hash_md, md, NULL);
+	if (!err)
+		return errmsg("Init hash digest failed");
+
+	return 0;
+}
+
+int hash_digest_update(const void *buf, int len)
+{
+	int err;
+
+	err = EVP_DigestUpdate(hash_md, buf, len);
+	if (!err)
+		return errmsg("Update hash digest failed");
+
+	return 0;
+}
+
+int hash_digest_final(void *hash)
+{
+	int err;
 	unsigned int md_len;
 
-	if (!authenticated())
-		return;
+	err = EVP_DigestFinal_ex(hash_md, hash, &md_len);
+	if (!err)
+		return errmsg("Finalize hash digest failed");
 
-	EVP_DigestInit_ex(hash_md, md, NULL);
-	EVP_DigestUpdate(hash_md, node + sizeof(struct ubifs_ch),
-			 UBIFS_MST_NODE_SZ - sizeof(struct ubifs_ch));
-	EVP_DigestFinal_ex(hash_md, hash, &md_len);
+	return 0;
 }
 
-void hash_digest_init(void)
+int init_authentication(const char *algo_name, int *hash_len, int *hash_algo)
 {
-	if (!authenticated())
-		return;
-
-	EVP_DigestInit_ex(hash_md, md, NULL);
-}
-
-void hash_digest_update(const void *buf, int len)
-{
-	if (!authenticated())
-		return;
-
-	EVP_DigestUpdate(hash_md, buf, len);
-}
-
-void hash_digest_final(void *hash, unsigned int *len)
-{
-	if (!authenticated())
-		return;
-
-	EVP_DigestFinal_ex(hash_md, hash, len);
-}
-
-int init_authentication(void)
-{
-	int hash_algo;
-
-	if (!c->auth_key_filename && !c->auth_cert_filename && !c->hash_algo_name)
-		return 0;
-
-	if (!c->auth_key_filename)
-		return errmsg("authentication key not given (--auth-key)");
-
-	if (!c->hash_algo_name)
-		return errmsg("Hash algorithm not given (--hash-algo)");
-
 	OPENSSL_config(NULL);
-
 	OpenSSL_add_all_algorithms();
 	ERR_load_crypto_strings();
 
@@ -401,13 +366,30 @@ int init_authentication(void)
 		return errmsg("Unknown message digest %s", c->hash_algo_name);
 
 	hash_md = EVP_MD_CTX_create();
-	c->hash_len = EVP_MD_size(md);
+	if (!hash_md)
+		return errmsg("Cannot create md ctx");
 
-	hash_algo = match_string(hash_algo_name, HASH_ALGO__LAST, c->hash_algo_name);
-	if (hash_algo < 0)
-		return errmsg("Unsupported message digest %s", c->hash_algo_name);
+	*hash_len = EVP_MD_size(md);
+	if (*hash_len < 0) {
+		EVP_MD_CTX_destroy(hash_md);
+		hash_md = NULL;
+		return errmsg("Cannot init hash len");
+	}
 
-	c->hash_algo = hash_algo;
+	*hash_algo = match_string(hash_algo_name, HASH_ALGO__LAST, algo_name);
+	if (*hash_algo < 0) {
+		EVP_MD_CTX_destroy(hash_md);
+		hash_md = NULL;
+		return errmsg("Unsupported message digest %s", algo_name);
+	}
 
 	return 0;
+}
+
+void exit_authentication(void)
+{
+	if (hash_md) {
+		EVP_MD_CTX_destroy(hash_md);
+		hash_md = NULL;
+	}
 }

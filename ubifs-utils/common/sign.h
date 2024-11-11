@@ -20,61 +20,20 @@
 #ifndef __UBIFS_SIGN_H__
 #define __UBIFS_SIGN_H__
 
-#ifdef WITH_CRYPTO
 #include <openssl/evp.h>
 
-void ubifs_node_calc_hash(const void *node, uint8_t *hash);
+struct shash_desc {
+	void *ctx;
+};
+
+int hash_digest(const void *buf, unsigned int len, uint8_t *hash);
+int hash_digest_init(void);
+int hash_digest_update(const void *buf, int len);
+int hash_digest_final(void *hash);
+int init_authentication(const char *algo_name, int *hash_len, int *hash_algo);
+void exit_authentication(void);
 void mst_node_calc_hash(const void *node, uint8_t *hash);
-void hash_digest_init(void);
-void hash_digest_update(const void *buf, int len);
-void hash_digest_final(void *hash, unsigned int *len);
-int init_authentication(void);
-int sign_superblock_node(void *node);
-int authenticated(void);
-
-extern EVP_MD_CTX *hash_md;
-extern const EVP_MD *md;
-
-#else
-static inline void ubifs_node_calc_hash(__attribute__((unused)) const void *node,
-					__attribute__((unused)) uint8_t *hash)
-{
-}
-
-static inline void mst_node_calc_hash(__attribute__((unused)) const void *node,
-				      __attribute__((unused)) uint8_t *hash)
-{
-}
-
-static inline void hash_digest_init(void)
-{
-}
-
-static inline void hash_digest_update(__attribute__((unused)) const void *buf,
-				      __attribute__((unused)) int len)
-{
-}
-
-static inline void hash_digest_final(__attribute__((unused)) void *hash,
-				     __attribute__((unused)) unsigned int *len)
-{
-}
-
-static inline int init_authentication(void)
-{
-	return 0;
-}
-
-static inline int sign_superblock_node(__attribute__((unused)) void *node)
-{
-	return 0;
-}
-
-static inline int authenticated(void)
-{
-	return 0;
-}
-
-#endif
+int hash_sign_node(const char *auth_key_filename, const char *auth_cert_filename,
+		   void *buf, int *len, void *outbuf);
 
 #endif /* __UBIFS_SIGN_H__ */

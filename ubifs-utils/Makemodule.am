@@ -24,25 +24,51 @@ common_SOURCES = \
 	ubifs-utils/common/hashtable/hashtable_itr.c \
 	ubifs-utils/common/devtable.h \
 	ubifs-utils/common/devtable.c \
-	ubifs-utils/common/hexdump.c \
-	ubifs-utils/common/ubifs.h \
-	ubifs-utils/common/key.h \
-	ubifs-utils/common/lpt.h \
-	ubifs-utils/common/lpt.c \
-	ubifs-utils/common/super.c \
-	ubifs-utils/common/sign.h \
-	ubifs-utils/libubifs/ubifs-media.h
+	ubifs-utils/common/hexdump.c
+
+libubifs_SOURCES = \
+	ubifs-utils/libubifs/ubifs-media.h \
+	ubifs-utils/libubifs/ubifs.h \
+	ubifs-utils/libubifs/key.h \
+	ubifs-utils/libubifs/misc.h \
+	ubifs-utils/libubifs/io.c \
+	ubifs-utils/libubifs/sb.c \
+	ubifs-utils/libubifs/super.c \
+	ubifs-utils/libubifs/master.c \
+	ubifs-utils/libubifs/debug.h \
+	ubifs-utils/libubifs/debug.c \
+	ubifs-utils/libubifs/scan.c \
+	ubifs-utils/libubifs/find.c \
+	ubifs-utils/libubifs/dir.c \
+	ubifs-utils/libubifs/budget.c \
+	ubifs-utils/libubifs/journal.c \
+	ubifs-utils/libubifs/gc.c \
+	ubifs-utils/libubifs/lpt.c \
+	ubifs-utils/libubifs/lpt_commit.c \
+	ubifs-utils/libubifs/lprops.c \
+	ubifs-utils/libubifs/tnc_misc.c \
+	ubifs-utils/libubifs/tnc.c \
+	ubifs-utils/libubifs/tnc_commit.c \
+	ubifs-utils/libubifs/commit.c \
+	ubifs-utils/libubifs/orphan.c \
+	ubifs-utils/libubifs/log.c \
+	ubifs-utils/libubifs/replay.c \
+	ubifs-utils/libubifs/recovery.c
 
 if WITH_CRYPTO
 common_SOURCES += ubifs-utils/common/crypto.c \
 		ubifs-utils/common/crypto.h \
 		ubifs-utils/common/fscrypt.c \
 		ubifs-utils/common/fscrypt.h \
+		ubifs-utils/common/sign.h \
 		ubifs-utils/common/sign.c
+
+libubifs_SOURCES += ubifs-utils/libubifs/auth.c
 endif
 
 mkfs_ubifs_SOURCES = \
 	$(common_SOURCES) \
+	$(libubifs_SOURCES) \
 	ubifs-utils/mkfs.ubifs/mkfs.ubifs.c
 
 mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(ZSTD_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) $(OPENSSL_LIBS) \

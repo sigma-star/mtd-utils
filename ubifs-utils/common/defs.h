@@ -15,7 +15,6 @@
 #include <assert.h>
 #include <execinfo.h>
 
-#include "linux_types.h"
 #include "ubifs.h"
 
 /* common.h requires the PROGRAM_NAME macro */
@@ -26,8 +25,6 @@ extern struct ubifs_info info_;
 #define MKFS_PROGRAM_NAME "mkfs.ubifs"
 
 enum { MKFS_PROGRAM_TYPE = 0 };
-
-enum { ERR_LEVEL = 1, WARN_LEVEL, INFO_LEVEL, DEBUG_LEVEL };
 
 enum {
 	DUMP_PREFIX_NONE,
@@ -113,12 +110,6 @@ static inline u64 div_u64(u64 dividend, u32 divisor)
 {
 	return dividend / divisor;
 }
-
-#define do_div(n,base) ({ \
-int __res; \
-__res = ((unsigned long) n) % (unsigned) base; \
-n = ((unsigned long) n) / (unsigned) base; \
-__res; })
 
 #if INT_MAX != 0x7fffffff
 #error : sizeof(int) must be 4 for this program
