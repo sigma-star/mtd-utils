@@ -39,6 +39,7 @@ dist_man8_MANS =
 testdir = @TESTBINDIR@
 test_PROGRAMS =
 test_SCRIPTS =
+test_DATA =
 
 TESTS =
 EXTRA_DIST = COPYING CHANGELOG.md README.txt

@@ -6,3 +6,58 @@ test_SCRIPTS += \
 	tests/ubifs_tools-tests/fsck_tests/cycle_corrupted_fsck_fault_inject.sh \
 	tests/ubifs_tools-tests/fsck_tests/cycle_powercut_mount_fsck.sh \
 	tests/ubifs_tools-tests/fsck_tests/random_corrupted_fsck.sh
+
+test_DATA += \
+	tests/ubifs_tools-tests/images/good.gz \
+	tests/ubifs_tools-tests/images/sb_fanout.gz \
+	tests/ubifs_tools-tests/images/sb_fmt_version.gz \
+	tests/ubifs_tools-tests/images/sb_leb_size.gz \
+	tests/ubifs_tools-tests/images/sb_log_lebs.gz \
+	tests/ubifs_tools-tests/images/sb_min_io_size.gz \
+	tests/ubifs_tools-tests/images/master_highest_inum.gz \
+	tests/ubifs_tools-tests/images/master_lpt.gz \
+	tests/ubifs_tools-tests/images/master_tnc.gz \
+	tests/ubifs_tools-tests/images/master_total_dead.gz \
+	tests/ubifs_tools-tests/images/master_total_dirty.gz \
+	tests/ubifs_tools-tests/images/master_total_free.gz \
+	tests/ubifs_tools-tests/images/journal_log.gz \
+	tests/ubifs_tools-tests/images/journal_bud.gz \
+	tests/ubifs_tools-tests/images/orphan_node.gz \
+	tests/ubifs_tools-tests/images/lpt_dirty.gz \
+	tests/ubifs_tools-tests/images/lpt_flags.gz \
+	tests/ubifs_tools-tests/images/lpt_free.gz \
+	tests/ubifs_tools-tests/images/lpt_pos.gz \
+	tests/ubifs_tools-tests/images/ltab_dirty.gz \
+	tests/ubifs_tools-tests/images/ltab_free.gz \
+	tests/ubifs_tools-tests/images/index_size.gz \
+	tests/ubifs_tools-tests/images/tnc_lv0_key.gz \
+	tests/ubifs_tools-tests/images/tnc_lv0_len.gz \
+	tests/ubifs_tools-tests/images/tnc_lv0_pos.gz \
+	tests/ubifs_tools-tests/images/tnc_noleaf_key.gz \
+	tests/ubifs_tools-tests/images/tnc_noleaf_len.gz \
+	tests/ubifs_tools-tests/images/tnc_noleaf_pos.gz \
+	tests/ubifs_tools-tests/images/corrupted_data_leb.gz \
+	tests/ubifs_tools-tests/images/corrupted_idx_leb.gz \
+	tests/ubifs_tools-tests/images/inode_data.gz \
+	tests/ubifs_tools-tests/images/inode_mode.gz \
+	tests/ubifs_tools-tests/images/inode_nlink.gz \
+	tests/ubifs_tools-tests/images/inode_size.gz \
+	tests/ubifs_tools-tests/images/inode_xcnt.gz \
+	tests/ubifs_tools-tests/images/soft_link_inode_mode.gz \
+	tests/ubifs_tools-tests/images/soft_link_data_len.gz \
+	tests/ubifs_tools-tests/images/dentry_key.gz \
+	tests/ubifs_tools-tests/images/dentry_nlen.gz \
+	tests/ubifs_tools-tests/images/dentry_type.gz \
+	tests/ubifs_tools-tests/images/xinode_flags.gz \
+	tests/ubifs_tools-tests/images/xinode_key.gz \
+	tests/ubifs_tools-tests/images/xinode_mode.gz \
+	tests/ubifs_tools-tests/images/xentry_key.gz \
+	tests/ubifs_tools-tests/images/xentry_nlen.gz \
+	tests/ubifs_tools-tests/images/xentry_type.gz \
+	tests/ubifs_tools-tests/images/xent_host.gz \
+	tests/ubifs_tools-tests/images/dir_many_dentry.gz \
+	tests/ubifs_tools-tests/images/dir_lost.gz \
+	tests/ubifs_tools-tests/images/dir_lost_duplicated.gz \
+	tests/ubifs_tools-tests/images/dir_lost_not_recover.gz \
+	tests/ubifs_tools-tests/images/root_dir.gz \
+	tests/ubifs_tools-tests/images/empty_tnc.gz
