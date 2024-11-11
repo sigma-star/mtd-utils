@@ -434,6 +434,7 @@ int main(int argc, char *argv[])
 	 * Step 2: Replay journal
 	 * Step 3: Handle orphan nodes
 	 * Step 4: Consolidate log
+	 * Step 5: Recover isize
 	 */
 	err = ubifs_load_filesystem(c);
 	if (err) {

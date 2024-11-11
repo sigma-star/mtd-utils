@@ -1272,8 +1272,18 @@ static int fix_size_in_place(struct ubifs_info *c, struct size_entry *e)
 	/* Locate the inode node LEB number and offset */
 	ino_key_init(c, &key, e->inum);
 	err = ubifs_tnc_locate(c, &key, ino, &lnum, &offs);
-	if (err)
+	if (err) {
+		unsigned int reason = get_failure_reason_callback(c);
+
+		if (reason & FR_DATA_CORRUPTED) {
+			test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED);
+			if (handle_failure_callback(c, FR_H_TNC_DATA_CORRUPTED, NULL)) {
+				/* Leave the inode to be deleted by subsequent steps */
+				return 0;
+			}
+		}
 		goto out;
+	}
 	/*
 	 * If the size recorded on the inode node is greater than the size that
 	 * was calculated from nodes in the journal then don't change the inode.
@@ -1320,10 +1330,10 @@ out:
  */
 static int inode_fix_size(struct ubifs_info *c, __unused struct size_entry *e)
 {
-	ubifs_assert(c, 0);
-
-	// To be implemented
-	return -EINVAL;
+	/* Don't remove entry, keep it in the size tree. */
+	/* Remove this assertion after supporting authentication. */
+	ubifs_assert(c, c->ro_mount);
+	return 0;
 }
 
 /**
@@ -1353,8 +1363,19 @@ int ubifs_recover_size(struct ubifs_info *c, bool in_place)
 
 			ino_key_init(c, &key, e->inum);
 			err = ubifs_tnc_lookup(c, &key, c->sbuf);
-			if (err && err != -ENOENT)
+			if (err && err != -ENOENT) {
+				unsigned int reason;
+
+				reason = get_failure_reason_callback(c);
+				if (reason & FR_DATA_CORRUPTED) {
+					test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED);
+					if (handle_failure_callback(c, FR_H_TNC_DATA_CORRUPTED, NULL)) {
+						/* Leave the inode to be deleted by subsequent steps */
+						goto delete_entry;
+					}
+				}
 				return err;
+			}
 			if (err == -ENOENT) {
 				/* Remove data nodes that have no inode */
 				dbg_rcvry("removing ino %lu",
@@ -1390,6 +1411,7 @@ int ubifs_recover_size(struct ubifs_info *c, bool in_place)
 			}
 		}
 
+delete_entry:
 		rb_erase(&e->rb, &c->size_tree);
 		kfree(e);
 	}

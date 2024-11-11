@@ -17,6 +17,33 @@
 #include "misc.h"
 #include "fsck.ubifs.h"
 
+enum { HAS_DATA_CORRUPTED = 1, HAS_TNC_CORRUPTED = 2 };
+
+static void handle_error(const struct ubifs_info *c, int reason_set)
+{
+	bool handled = false;
+	unsigned int reason = get_failure_reason_callback(c);
+
+	clear_failure_reason_callback(c);
+	if ((reason_set & HAS_DATA_CORRUPTED) && (reason & FR_DATA_CORRUPTED)) {
+		handled = true;
+		reason &= ~FR_DATA_CORRUPTED;
+		if (fix_problem(c, LOG_CORRUPTED, NULL))
+			FSCK(c)->try_rebuild = true;
+	}
+	if ((reason_set & HAS_TNC_CORRUPTED) && (reason & FR_TNC_CORRUPTED)) {
+		ubifs_assert(c, !handled);
+		handled = true;
+		reason &= ~FR_TNC_CORRUPTED;
+		if (fix_problem(c, TNC_CORRUPTED, NULL))
+			FSCK(c)->try_rebuild = true;
+	}
+
+	ubifs_assert(c, reason == 0);
+	if (!handled)
+		exit_code |= FSCK_ERROR;
+}
+
 int ubifs_load_filesystem(struct ubifs_info *c)
 {
 	int err;
@@ -164,19 +191,7 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 	log_out(c, "Replay journal");
 	err = ubifs_replay_journal(c);
 	if (err) {
-		unsigned int reason = get_failure_reason_callback(c);
-
-		clear_failure_reason_callback(c);
-		if (reason & FR_DATA_CORRUPTED) {
-			if (fix_problem(c, LOG_CORRUPTED, NULL))
-				FSCK(c)->try_rebuild = true;
-		} else if (reason & FR_TNC_CORRUPTED) {
-			if (fix_problem(c, TNC_CORRUPTED, NULL))
-				FSCK(c)->try_rebuild = true;
-		} else {
-			ubifs_assert(c, reason == 0);
-			exit_code |= FSCK_ERROR;
-		}
+		handle_error(c, HAS_DATA_CORRUPTED | HAS_TNC_CORRUPTED);
 		goto out_journal;
 	}
 
@@ -186,16 +201,7 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 	log_out(c, "Handle orphan nodes");
 	err = ubifs_mount_orphans(c, c->need_recovery, c->ro_mount);
 	if (err) {
-		unsigned int reason = get_failure_reason_callback(c);
-
-		clear_failure_reason_callback(c);
-		if (reason & FR_TNC_CORRUPTED) {
-			if (fix_problem(c, TNC_CORRUPTED, NULL))
-				FSCK(c)->try_rebuild = true;
-		} else {
-			ubifs_assert(c, reason == 0);
-			exit_code |= FSCK_ERROR;
-		}
+		handle_error(c, HAS_TNC_CORRUPTED);
 		goto out_orphans;
 	}
 
@@ -210,18 +216,25 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 			log_out(c, "Consolidate log");
 			err = ubifs_consolidate_log(c);
 			if (err) {
-				unsigned int reason = get_failure_reason_callback(c);
-
-				clear_failure_reason_callback(c);
-				if (reason & FR_DATA_CORRUPTED) {
-					if (fix_problem(c, LOG_CORRUPTED, NULL))
-						FSCK(c)->try_rebuild = true;
-				} else {
-					ubifs_assert(c, reason == 0);
-					exit_code |= FSCK_ERROR;
-				}
+				handle_error(c, HAS_DATA_CORRUPTED);
 				goto out_orphans;
 			}
+		}
+
+		if (c->need_recovery) {
+			log_out(c, "Recover isize");
+			err = ubifs_recover_size(c, true);
+			if (err) {
+				handle_error(c, HAS_TNC_CORRUPTED);
+				goto out_orphans;
+			}
+		}
+	} else if (c->need_recovery) {
+		log_out(c, "Recover isize");
+		err = ubifs_recover_size(c, false);
+		if (err) {
+			handle_error(c, HAS_TNC_CORRUPTED);
+			goto out_orphans;
 		}
 	}
 
