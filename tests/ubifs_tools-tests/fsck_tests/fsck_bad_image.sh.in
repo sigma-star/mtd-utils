@@ -1,0 +1,355 @@
+#!/bin/sh
+# Copyright (c), 2024, Huawei Technologies Co, Ltd.
+# Author: Zhihao Cheng <chengzhihao1@huawei.com>
+#
+# Test Description: Tests whether all inconsistent UBIFS images can be fixed
+# as expected.
+# Origin UBIFS image content:
+# /
+# ├── corrupt_file (xattr - user.corrupt:123, 2K data)
+# ├── dir
+# │   ├── block_dev
+# │   ├── char_dev
+# │   ├── dir
+# │   └── file (content: '123')
+# ├── hardl_corrupt_file => corrupt_file
+# └── softl_corrupt_file -> corrupt_file
+#
+# Running time: 2min
+
+TESTBINDIR=@TESTBINDIR@
+source $TESTBINDIR/common.sh
+
+CORRUPT_FILE=corrupt_file
+CORRUPT_FILE_INUM=INO_65
+XATTR_NAME="user.corrupt"
+XATTR_VAL=123
+CORRUPT_FILE_MD5=7d2f953e91033c743ab6a801d5ee6e15
+SOFT_LINK_FILE=softl_corrupt_file
+HARD_LINK_FILE=hardl_corrupt_file
+DIR=dir
+BLOCK_DEV=block_dev
+CHAR_DEV=char_dev
+FILE=file
+FILE_INUM=INO_72
+FILE_MD5=ba1f2511fc30423bdbb183fe33f3dd0f
+LOST_FOUND="lost+found"
+
+function fsck_image()
+{
+	local img_type=$1;
+	local img=$2;
+	local fsck_mode=$3;
+	local file_exist=$4;
+	local file_nochange=$5
+	local file_xattr_exist=$6;
+	local hard_link_exist=$7;
+	local hard_link_no_change=$8;
+	local hard_link_xattr_exist=$9;
+	local soft_link_exist=${10};
+	local dir_exist=${11};
+	local dir_file_no_change=${12};
+	local lost_found=${13};
+
+	echo "======================================================================"
+	echo "fsck $img_type, success_fsck_mode:$fsck_mode file_exist:$file_exist file_nochange:$file_nochange file_xattr_exist:$file_xattr_exist hard_link_exist:$hard_link_exist hard_link_no_change:$hard_link_no_change:hard_link_xattr_exist $hard_link_xattr_exist:soft_link_exist:$soft_link_exist dir_exist:$dir_exist $lost_found"
+
+	load_mtdram 1 16 || echo "cannot load mtdram"
+	mtdnum="$(find_mtd_device "$mtdram_patt")"
+
+	dmesg -c > /dev/null
+	gzip -f -k -d $TESTBINDIR/${img}.gz || fatal "gzip failed"
+	flash_eraseall /dev/mtd$mtdnum
+	dd if=$TESTBINDIR/$img of=/dev/mtd$mtdnum bs=1M
+	rm -f $TESTBINDIR/$img
+	modprobe ubi mtd="$mtdnum,0" || fatal "modprobe ubi fail"
+	modprobe ubifs || fatal "modprobe ubifs fail"
+
+	fsck.ubifs -a $DEV
+	let "ret=$?&~$FSCK_NONDESTRUCT"
+	if [[ $ret != $FSCK_OK ]]; then
+		if [[ "$fsck_mode" == "safe" ]]; then
+			fatal "The image should be fixed in $fsck_mode mode, but it fails"
+		fi
+
+		fsck.ubifs -y $DEV
+		let "ret=$?&~$FSCK_NONDESTRUCT"
+		if [[ $ret != $FSCK_OK ]]; then
+			if [[ "$fsck_mode" == "danger_default" ]]; then
+				fatal "The image should be fixed in $fsck_mode mode, but it fails"
+			fi
+
+			fsck.ubifs -yb $DEV
+			let "ret=$?&~$FSCK_NONDESTRUCT"
+			if [[ $ret != $FSCK_OK ]]; then
+				if [[ "$fsck_mode" == "danger_rebuild" ]]; then
+					fatal "The image should be fixed in $fsck_mode mode, but it fails"
+				fi
+
+				echo "fsck failed is expected, skip"
+
+				modprobe -r ubifs
+				modprobe -r ubi
+				modprobe -r mtdram
+				echo "----------------------------------------------------------------------"
+
+				return;
+			elif [[ "$fsck_mode" != "danger_rebuild" ]]; then
+				fatal "The image should not be fixed in $fsck_mode mode, but it succeeds"
+			fi
+		elif [[ "$fsck_mode" != "danger_default" ]]; then
+			fatal "The image should not be fixed in $fsck_mode mode, but it succeeds"
+		fi
+	elif [[ "$fsck_mode" != "safe" ]]; then
+		fatal "The image should not be fixed in $fsck_mode mode, but it succeeds"
+	fi
+
+	enable_chkfs
+
+	mount_ubifs $DEV $MNT
+	ret=$?
+	if [[ $ret != 0 ]]; then
+		fatal "mount failed $ret"
+	fi
+
+	du -sh $MNT > /dev/null  # Make sure all files are accessible
+	ret=$?
+	if [[ $ret != 0 ]]; then
+		fatal "cannot access all files $ret"
+	fi
+
+	if [[ $file_exist == 1 ]]; then
+		if ! [ -f $MNT/$CORRUPT_FILE ]; then
+			fatal "$MNT/$CORRUPT_FILE is lost"
+		fi
+	else
+		if [ -f $MNT/$CORRUPT_FILE ]; then
+			fatal "$MNT/$CORRUPT_FILE should not exist"
+		fi
+	fi
+
+	md5_after=`md5sum $MNT/$CORRUPT_FILE 2>/dev/null | awk '{print $1}'`
+	if [[ $file_nochange == 1 ]]; then
+		if [[ $CORRUPT_FILE_MD5 != $md5_after ]]; then
+			fatal "content changed for $MNT/$CORRUPT_FILE"
+		fi
+	else
+		if [[ $CORRUPT_FILE_MD5 == $md5_after ]]; then
+			fatal "content not changed for $MNT/$CORRUPT_FILE"
+		fi
+	fi
+
+	xattr=`getfattr -n $XATTR_NAME $MNT/$CORRUPT_FILE 2>/dev/null | grep $XATTR_NAME | awk -F '=' '{ print $2 }'`
+	if [[ $file_xattr_exist == 1 ]]; then
+		if ! [[ "$xattr" =~ "$XATTR_VAL" ]]; then
+			fatal "wrong xattr $xattr for $MNT/$CORRUPT_DENT_NAME"
+		fi
+	else
+		if [[ "$xattr" =~ "$XATTR_VAL" ]]; then
+			fatal "xattr $xattr for $MNT/$CORRUPT_DENT_NAME should not exist"
+		fi
+	fi
+
+	if [[ $hard_link_exist == 1 ]]; then
+		if ! [ -f $MNT/$HARD_LINK_FILE ]; then
+			fatal "$MNT/$HARD_LINK_FILE should is lost"
+		fi
+	else
+		if [ -f $MNT/$HARD_LINK_FILE ]; then
+			fatal "$MNT/$HARD_LINK_FILE should not exist"
+		fi
+	fi
+
+	md5_after=`md5sum $MNT/$HARD_LINK_FILE 2>/dev/null | awk '{print $1}'`
+	if [[ $hard_link_no_change == 1 ]]; then
+		if [[ $CORRUPT_FILE_MD5 != $md5_after ]]; then
+			fatal "content changed for $MNT/$HARD_LINK_FILE"
+		fi
+	else
+		if [[ $CORRUPT_FILE_MD5 == $md5_after ]]; then
+			fatal "content not changed for $MNT/$HARD_LINK_FILE"
+		fi
+	fi
+
+	xattr=`getfattr -n $XATTR_NAME $MNT/$HARD_LINK_FILE 2>/dev/null | grep $XATTR_NAME | awk -F '=' '{ print $2 }'`
+	if [[ $hard_link_xattr_exist == 1 ]]; then
+		if ! [[ "$xattr" =~ "$XATTR_VAL" ]]; then
+			fatal "wrong xattr $xattr for $MNT/$HARD_LINK_FILE"
+		fi
+	else
+		if [[ "$xattr" =~ "$XATTR_VAL" ]]; then
+			fatal "xattr $xattr for $MNT/$HARD_LINK_FILE should not exist"
+		fi
+	fi
+
+	link=`stat -c %N $MNT/$SOFT_LINK_FILE 2>/dev/null | grep $SOFT_LINK_FILE | grep $CORRUPT_FILE`
+	if [[ $soft_link_exist == 1 ]]; then
+		if [[ "$link" == "" ]]; then
+			fatal "$MNT/$SOFT_LINK_FILE is lost"
+		fi
+	else
+		if [[ "$link" != "" ]]; then
+			fatal "$MNT/$SOFT_LINK_FILE should not exist"
+		fi
+	fi
+
+	if [[ $dir_exist == 1 ]]; then
+		if ! [ -d $MNT/$DIR ]; then
+			fatal "$MNT/$DIR is lost"
+		fi
+		if ! [ -d $MNT/$DIR/$DIR ]; then
+			fatal "$MNT/$DIR/$DIR is lost"
+		fi
+		if ! [ -f $MNT/$DIR/$FILE ]; then
+			fatal "$MNT/$DIR/$FILE is lost"
+		fi
+		f_md5=`md5sum $MNT/$DIR/$FILE 2>/dev/null | awk '{print $1}'`
+		if [[ $dir_file_no_change == 1 ]]; then
+			if [[ $FILE_MD5 != $f_md5 ]]; then
+				fatal "content changed for $MNT/$DIR/$FILE"
+			fi
+		else
+			if [[ $FILE_MD5 == $f_md5 ]]; then
+				fatal "content not changed for $MNT/$DIR/$FILE"
+			fi
+		fi
+		if ! [ -b $MNT/$DIR/$BLOCK_DEV ]; then
+			fatal "$MNT/$DIR/$BLOCK_DEV is lost"
+		fi
+		major=`stat -c %t $MNT/$DIR/$BLOCK_DEV`
+		minor=`stat -c %T $MNT/$DIR/$BLOCK_DEV`
+		if [[ $major != 1 ]] || [[ $minor != 2 ]]; then
+			echo "major/minor changed for $MNT/$DIR/$BLOCK_DEV"
+		fi
+		if ! [ -c $MNT/$DIR/$CHAR_DEV ]; then
+			fatal "$MNT/$DIR/$CHAR_DEV is lost"
+		fi
+		major=`stat -c %t $MNT/$DIR/$CHAR_DEV`
+		minor=`stat -c %T $MNT/$DIR/$CHAR_DEV`
+		if [[ $major != 0 ]] || [[ $minor != 1 ]]; then
+			echo "major/minor changed for $MNT/$DIR/$CHAR_DEV"
+		fi
+	else
+		if [ -d $MNT/$DIR ]; then
+			fatal "$MNT/$DIR should not exist"
+		fi
+	fi
+
+	if [[ "$lost_found" == "no lost+found" ]]; then
+		if [ -d $MNT/$LOST_FOUND ]; then
+			fatal "$MNT/$LOST_FOUND should not exist"
+		fi
+	elif [[ "$lost_found" == "lost+found is regular" ]]; then
+		if ! [ -f $MNT/$LOST_FOUND ]; then
+			fatal "$MNT/$LOST_FOUND is not regular file"
+		fi
+	else
+		if ! [ -d $MNT/$LOST_FOUND ]; then
+			fatal "$MNT/$LOST_FOUND is lost"
+		fi
+
+		if ! [ -f $MNT/$LOST_FOUND/${FILE_INUM}_0 ]; then
+			fatal "$MNT/$LOST_FOUND/${FILE_INUM}_0 is lost"
+		fi
+		if [[ "$lost_found" == "lost+found has one" ]]; then
+			f_md5=`md5sum $MNT/$LOST_FOUND/${FILE_INUM}_0 2>/dev/null | awk '{print $1}'`
+			if [[ $FILE_MD5 != $f_md5 ]]; then
+				fatal "content changed for $MNT/$LOST_FOUND/${FILE_INUM}_0"
+			fi
+		elif [[ "$lost_found" == "lost+found has two" ]]; then
+			f_md5=`md5sum $MNT/$LOST_FOUND/${CORRUPT_FILE_INUM}_0 2>/dev/null | awk '{print $1}'`
+			if [[ $CORRUPT_FILE_MD5 != $f_md5 ]]; then
+				fatal "content changed for $MNT/$LOST_FOUND/${CORRUPT_FILE_INUM}_0"
+			fi
+			f_md5=`md5sum $MNT/$LOST_FOUND/${FILE_INUM}_0 2>/dev/null | awk '{print $1}'`
+			if [[ $FILE_MD5 != $f_md5 ]]; then
+				fatal "content changed for $MNT/$LOST_FOUND/${FILE_INUM}_0"
+			fi
+		else
+			if ! [ -f $MNT/$LOST_FOUND/${FILE_INUM}_1 ]; then
+				fatal "$MNT/$LOST_FOUND/${FILE_INUM}_1 is lost"
+			fi
+			f_md5=`md5sum $MNT/$LOST_FOUND/${FILE_INUM}_1 2>/dev/null | awk '{print $1}'`
+			if [[ $FILE_MD5 != $f_md5 ]]; then
+				fatal "content changed for $MNT/$LOST_FOUND/${FILE_INUM}_1"
+			fi
+		fi
+	fi
+
+	umount $MNT
+	res=$?
+	if [[ $res != 0 ]]
+	then
+		fatal "unmount fail $res"
+	fi
+
+	disable_chkfs
+
+	check_err_msg
+
+	modprobe -r ubifs
+	modprobe -r ubi
+	modprobe -r mtdram
+
+	echo "----------------------------------------------------------------------"
+}
+
+start_t=$(date +%s)
+echo "Do inconsistent UBIFS images fscking test"
+fsck_image "good image" good "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad sb fanout image" sb_fanout "none" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad sb fmt_version image" sb_fmt_version "none" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad sb leb_size image" sb_leb_size "none" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad sb log_lebs image" sb_log_lebs "none" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad sb min_io_size image" sb_min_io_size "none" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad master highest_inum image" master_highest_inum "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad master lpt image" master_lpt "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad master tnc image" master_tnc "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad master total_dead image" master_total_dead "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad master total_dirty image" master_total_dirty "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad master total_free image" master_total_free "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "corrupted journal log area image" journal_log "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "corrupted journal bud area image" journal_bud "danger_default" 1 0 1 1 0 1 1 1 0 "no lost+found"
+fsck_image "bad orphan node image" orphan_node "danger_default" 0 0 0 0 0 0 1 1 1 "no lost+found"
+fsck_image "bad lpt dirty image" lpt_dirty "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad lpt lpt_flags image" lpt_flags "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad lpt free image" lpt_free "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad lpt pos image" lpt_pos "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad lprops table dirty image" ltab_dirty "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad lprops table free image" ltab_free "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad index size image" index_size "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad tnc lv0 key image" tnc_lv0_key "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad tnc lv0 len image" tnc_lv0_len "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad tnc lv0 pos image" tnc_lv0_pos "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad tnc non-leaf key image" tnc_noleaf_key "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad tnc non-leaf len image" tnc_noleaf_len "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad tnc non-leaf pos image" tnc_noleaf_pos "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "corrupted leb for file data image" corrupted_data_leb "danger_default" 1 0 1 1 0 1 1 1 1 "no lost+found"
+fsck_image "corrupted leb for TNC image" corrupted_idx_leb "danger_rebuild" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad inode data image" inode_data "danger_default" 1 0 1 1 0 1 1 1 1 "no lost+found"
+fsck_image "bad inode mode image" inode_mode "danger_default" 0 0 0 0 0 0 1 1 1 "no lost+found"
+fsck_image "bad inode nlink image" inode_nlink "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad inode size image" inode_size "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad inode xattr_cnt image" inode_xcnt "safe" 1 1 1 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad softlink inode mode image" soft_link_inode_mode "danger_default" 1 1 1 1 1 1 0 1 1 "no lost+found"
+fsck_image "bad softlink inode data_len image" soft_link_data_len "danger_default" 1 1 1 1 1 1 0 1 1 "no lost+found"
+fsck_image "bad dentry key image" dentry_key "danger_default" 0 0 0 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad dentry nlen image" dentry_nlen "danger_default" 0 0 0 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad dentry type image" dentry_type "danger_default" 0 0 0 1 1 1 1 1 1 "no lost+found"
+fsck_image "bad xattr inode flags image" xinode_flags "danger_default" 1 1 0 1 1 0 1 1 1 "no lost+found"
+fsck_image "bad xattr inode key image" xinode_key "danger_default" 1 1 0 1 1 0 1 1 1 "no lost+found"
+fsck_image "bad xattr inode mode image" xinode_mode "danger_default" 1 1 0 1 1 0 1 1 1 "no lost+found"
+fsck_image "bad xattr dentry key image" xentry_key "danger_default" 1 1 0 1 1 0 1 1 1 "no lost+found"
+fsck_image "bad xattr dentry nlen image" xentry_nlen "danger_default" 1 1 0 1 1 0 1 1 1 "no lost+found"
+fsck_image "bad xattr dentry type image" xentry_type "danger_default" 1 1 0 1 1 0 1 1 1 "no lost+found"
+fsck_image "bad xattr host image" xent_host "danger_default" 0 0 0 0 0 0 1 1 1 "no lost+found"
+fsck_image "dir has too many dentry image" dir_many_dentry "danger_default" 1 1 1 0 0 0 1 1 1 "no lost+found"
+fsck_image "bad dir image" dir_lost "danger_default" 1 1 1 1 1 1 1 0 1 "lost+found has one"
+fsck_image "bad dir and duplicated file name in lost+found image" dir_lost_duplicated "danger_default" 1 1 1 1 1 1 1 0 1 "lost+found has duplicated files"
+fsck_image "bad dir and lost+found image" dir_lost_not_recover "danger_default" 1 1 1 1 1 1 1 0 1 "lost+found is regular"
+fsck_image "bad root dir image" root_dir "danger_default" 0 0 0 0 0 0 0 0 1 "lost+found has two"
+fsck_image "empty TNC image" empty_tnc "danger_rebuild" 0 0 0 0 0 0 0 0 1 "no lost+found"
+end_t=$(date +%s)
+time_cost=$(( end_t - start_t ))
+echo "Success, cost $time_cost seconds"
+exit 0

@@ -5,7 +5,8 @@ test_SCRIPTS += \
 	tests/ubifs_tools-tests/fsck_tests/powercut_fsck_mount.sh \
 	tests/ubifs_tools-tests/fsck_tests/cycle_corrupted_fsck_fault_inject.sh \
 	tests/ubifs_tools-tests/fsck_tests/cycle_powercut_mount_fsck.sh \
-	tests/ubifs_tools-tests/fsck_tests/random_corrupted_fsck.sh
+	tests/ubifs_tools-tests/fsck_tests/random_corrupted_fsck.sh \
+	tests/ubifs_tools-tests/fsck_tests/fsck_bad_image.sh
 
 test_DATA += \
 	tests/ubifs_tools-tests/images/good.gz \
