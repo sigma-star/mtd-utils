@@ -277,6 +277,7 @@ struct ubifs_znode
  *		 2 - files, 3 - more details
  * @program_type: used to identify the type of current program
  * @program_name: program name
+ * @dev_name: device name
  *
  * @jhead_cnt: count of journal heads
  * @max_bud_bytes: maximum number of bytes allowed in buds
@@ -368,6 +369,7 @@ struct ubifs_info
 	int debug_level;
 	int program_type;
 	const char *program_name;
+	char *dev_name;
 
 	int jhead_cnt;
 	long long max_bud_bytes;

@@ -145,7 +145,6 @@ static char *root;
 static int root_len;
 static struct fscrypt_context *root_fctx;
 static struct stat root_st;
-static char *output;
 static int out_fd;
 static int out_ubi;
 static int squash_owner;
@@ -407,10 +406,10 @@ static int validate_options(void)
 {
 	int tmp;
 
-	if (!output)
+	if (!c->dev_name)
 		return errmsg("no output file or UBI volume specified");
 	if (root) {
-		tmp = is_contained(output, root);
+		tmp = is_contained(c->dev_name, root);
 		if (tmp < 0)
 			return errmsg("failed to perform output file root check");
 		else if (tmp)
@@ -641,7 +640,7 @@ static int get_options(int argc, char**argv)
 				return errmsg("bad maximum LEB count");
 			break;
 		case 'o':
-			output = xstrdup(optarg);
+			c->dev_name = xstrdup(optarg);
 			break;
 		case 'D':
 			tbl_file = optarg;
@@ -835,13 +834,13 @@ static int get_options(int argc, char**argv)
 		}
 	}
 
-	if (optind != argc && !output)
-		output = xstrdup(argv[optind]);
+	if (optind != argc && !c->dev_name)
+		c->dev_name = xstrdup(argv[optind]);
 
-	if (!output)
+	if (!c->dev_name)
 		return errmsg("not output device or file specified");
 
-	out_ubi = !open_ubi(output);
+	out_ubi = !open_ubi(c->dev_name);
 
 	if (out_ubi) {
 		c->min_io_size = c->di.min_io_size;
@@ -921,7 +920,7 @@ static int get_options(int argc, char**argv)
 		printf("\tmin_io_size:  %d\n", c->min_io_size);
 		printf("\tleb_size:     %d\n", c->leb_size);
 		printf("\tmax_leb_cnt:  %d\n", c->max_leb_cnt);
-		printf("\toutput:       %s\n", output);
+		printf("\toutput:       %s\n", c->dev_name);
 		printf("\tjrn_size:     %llu\n", c->max_bud_bytes);
 		printf("\treserved:     %llu\n", c->rp_size);
 		switch (c->default_compr) {
@@ -2855,11 +2854,11 @@ static int check_volume_empty(void)
 static int open_target(void)
 {
 	if (out_ubi) {
-		out_fd = open(output, O_RDWR | O_EXCL);
+		out_fd = open(c->dev_name, O_RDWR | O_EXCL);
 
 		if (out_fd == -1)
 			return sys_errmsg("cannot open the UBI volume '%s'",
-					   output);
+					   c->dev_name);
 		if (ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 1)) {
 			close(out_fd);
 			return sys_errmsg("ubi_set_property(set direct_write) failed");
@@ -2872,11 +2871,11 @@ static int open_target(void)
 			}
 		}
 	} else {
-		out_fd = open(output, O_CREAT | O_RDWR | O_TRUNC,
+		out_fd = open(c->dev_name, O_CREAT | O_RDWR | O_TRUNC,
 			      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 		if (out_fd == -1)
 			return sys_errmsg("cannot create output file '%s'",
-					   output);
+					   c->dev_name);
 	}
 	return 0;
 }
@@ -2896,7 +2895,7 @@ static int close_target(void)
 		if (ubi && ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 0))
 			return sys_errmsg("ubi_set_property(clear direct_write) failed");
 		if (close(out_fd) == -1)
-			return sys_errmsg("cannot close the target '%s'", output);
+			return sys_errmsg("cannot close the target '%s'", c->dev_name);
 	}
 	return 0;
 }
@@ -3094,7 +3093,7 @@ int main(int argc, char *argv[])
 		printf("Success!\n");
 
 out:
-	free(output);
+	free(c->dev_name);
 	close_ubi();
 	crypto_cleanup();
 	return err;
