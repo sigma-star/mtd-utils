@@ -526,8 +526,20 @@ static int do_fsck(void)
 
 	log_out(c, "Check and create root dir");
 	err = check_and_create_root(c);
-	if (err)
+	if (err) {
 		exit_code |= FSCK_ERROR;
+		goto free_disconnected_files_2;
+	}
+
+	if (list_empty(&FSCK(c)->disconnected_files))
+		return err;
+
+	log_out(c, "Check and create lost+found");
+	err = check_and_create_lost_found(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto free_disconnected_files_2;
+	}
 
 free_disconnected_files_2:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
@@ -583,6 +595,7 @@ int main(int argc, char *argv[])
 	 * Step 13: Commit problem fixing modifications
 	 * Step 14: Check and correct the index size
 	 * Step 15: Check and create root dir
+	 * Step 16: Check and create lost+found
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {

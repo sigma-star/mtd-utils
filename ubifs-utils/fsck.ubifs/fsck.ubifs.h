@@ -277,6 +277,7 @@ struct ubifs_rebuild_info {
  * @lpts: lprops table
  * @try_rebuild: %true means that try to rebuild fs when fsck failed
  * @rebuild: rebuilding-related information
+ * @lost_and_found: inode number of the lost+found directory, %0 means invalid
  */
 struct ubifs_fsck_info {
 	int mode;
@@ -288,6 +289,7 @@ struct ubifs_fsck_info {
 	struct ubifs_lprops *lpts;
 	bool try_rebuild;
 	struct ubifs_rebuild_info *rebuild;
+	ino_t lost_and_found;
 };
 
 #define FSCK(c) ((struct ubifs_fsck_info*)c->private)
@@ -382,5 +384,8 @@ int build_lpt(struct ubifs_info *c, calculate_lp_callback calculate_lp_cb,
 	      bool free_ltab);
 int check_and_correct_space(struct ubifs_info *c);
 int check_and_correct_index_size(struct ubifs_info *c);
+
+/* handle_disconnected.c */
+int check_and_create_lost_found(struct ubifs_info *c);
 
 #endif
