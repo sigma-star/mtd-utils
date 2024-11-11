@@ -432,28 +432,25 @@ void handle_error(const struct ubifs_info *c, int reason_set)
 		exit_code |= FSCK_ERROR;
 }
 
-static int commit_fix_modifications(struct ubifs_info *c)
+static int commit_fix_modifications(struct ubifs_info *c, bool final_commit)
 {
 	int err;
 
-	if (exit_code & FSCK_NONDESTRUCT) {
+	if (final_commit) {
+		log_out(c, "Final committing");
+		c->mst_node->flags &= ~cpu_to_le32(UBIFS_MST_DIRTY);
+		c->mst_node->gc_lnum = cpu_to_le32(c->gc_lnum);
+		/* Force UBIFS to do commit by setting @c->mounting. */
+		c->mounting = 1;
+	} else if (exit_code & FSCK_NONDESTRUCT) {
 		log_out(c, "Commit problem fixing modifications");
-
-		/*
-		 * Force UBIFS to do commit by setting @c->mounting if changes
-		 * happen on disk. Committing is required once before allocating
-		 * new space(subsequent steps may need), because building lpt
-		 * could mark LEB(which holds stale data nodes) as unused, if
-		 * the LEB is overwritten by new data, old data won't be found
-		 * in next fsck run(assume that first fsck run is interrupted by
-		 * the powercut), which could affect the correctness of LEB
-		 * properties after replaying journal in the second fsck run.
-		 */
+		/* Force UBIFS to do commit by setting @c->mounting. */
 		c->mounting = 1;
 	}
+
 	err = ubifs_run_commit(c);
 
-	if (exit_code & FSCK_NONDESTRUCT)
+	if (c->mounting)
 		c->mounting = 0;
 
 	return err;
@@ -511,7 +508,16 @@ static int do_fsck(void)
 		goto free_disconnected_files_2;
 	}
 
-	err = commit_fix_modifications(c);
+	/*
+	 * Committing is required once before allocating new space(subsequent
+	 * steps may need), because building lpt could mark LEB(which holds
+	 * stale data nodes) as unused, if the LEB is overwritten by new data,
+	 * old data won't be found in the next fsck run(assume that first fsck
+	 * run is interrupted by the powercut), which could affect the
+	 * correctness of LEB properties after replaying journal in the second
+	 * fsck run.
+	 */
+	err = commit_fix_modifications(c, false);
 	if (err) {
 		exit_code |= FSCK_ERROR;
 		goto free_disconnected_files_2;
@@ -532,7 +538,7 @@ static int do_fsck(void)
 	}
 
 	if (list_empty(&FSCK(c)->disconnected_files))
-		return err;
+		goto final_commit;
 
 	log_out(c, "Check and create lost+found");
 	err = check_and_create_lost_found(c);
@@ -547,6 +553,13 @@ static int do_fsck(void)
 		exit_code |= FSCK_ERROR;
 		goto free_disconnected_files_2;
 	}
+
+final_commit:
+	err = commit_fix_modifications(c, true);
+	if (err)
+		exit_code |= FSCK_ERROR;
+
+	return err;
 
 free_disconnected_files_2:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
@@ -604,6 +617,7 @@ int main(int argc, char *argv[])
 	 * Step 15: Check and create root dir
 	 * Step 16: Check and create lost+found
 	 * Step 17: Handle disconnected files
+	 * Step 18: Do final committing
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {
