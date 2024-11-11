@@ -48,19 +48,29 @@ static int init_rebuild_info(struct ubifs_info *c)
 	if (!FSCK(c)->rebuild) {
 		err = -ENOMEM;
 		log_err(c, errno, "can not allocate rebuild info");
-		goto out;
+		goto free_sbuf;
 	}
 	FSCK(c)->rebuild->scanned_files = RB_ROOT;
+	FSCK(c)->rebuild->used_lebs = kcalloc(BITS_TO_LONGS(c->main_lebs),
+					      sizeof(unsigned long), GFP_KERNEL);
+	if (!FSCK(c)->rebuild->used_lebs) {
+		err = -ENOMEM;
+		log_err(c, errno, "can not allocate bitmap of used lebs");
+		goto free_rebuild;
+	}
 
 	return 0;
 
-out:
+free_rebuild:
+	kfree(FSCK(c)->rebuild);
+free_sbuf:
 	vfree(c->sbuf);
 	return err;
 }
 
 static void destroy_rebuild_info(struct ubifs_info *c)
 {
+	kfree(FSCK(c)->rebuild->used_lebs);
 	kfree(FSCK(c)->rebuild);
 	vfree(c->sbuf);
 }
@@ -451,6 +461,9 @@ static void remove_del_nodes(struct ubifs_info *c, struct scanned_info *si)
 
 		valid_ino_node = lookup_valid_ino_node(c, si, del_ino_node);
 		if (valid_ino_node) {
+			int lnum = del_ino_node->header.lnum;
+
+			set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
 			rb_erase(&valid_ino_node->rb, &si->valid_inos);
 			kfree(valid_ino_node);
 		}
@@ -466,6 +479,9 @@ static void remove_del_nodes(struct ubifs_info *c, struct scanned_info *si)
 
 		valid_dent_node = lookup_valid_dent_node(c, si, del_dent_node);
 		if (valid_dent_node) {
+			int lnum = del_dent_node->header.lnum;
+
+			set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
 			rb_erase(&valid_dent_node->rb, &si->valid_dents);
 			kfree(valid_dent_node);
 		}
@@ -627,6 +643,94 @@ static void extract_dentry_tree(struct ubifs_info *c)
 	}
 }
 
+static const char *get_file_name(struct ubifs_info *c, struct scanned_file *file)
+{
+	static char name[UBIFS_MAX_NLEN + 1];
+	struct rb_node *node;
+	struct scanned_dent_node *dent_node;
+
+	node = rb_first(&file->dent_nodes);
+	if (!node) {
+		ubifs_assert(c, file->inum == UBIFS_ROOT_INO);
+		return "/";
+	}
+
+	if (c->encrypted && !file->ino.is_xattr)
+		/* Encrypted file name. */
+		return "<encrypted>";
+
+	/* Get name from any one dentry. */
+	dent_node = rb_entry(node, struct scanned_dent_node, rb);
+	memcpy(name, dent_node->name, dent_node->nlen);
+	/* @dent->name could be non '\0' terminated. */
+	name[dent_node->nlen] = '\0';
+	return name;
+}
+
+static void record_file_used_lebs(struct ubifs_info *c,
+				  struct scanned_file *file)
+{
+	int lnum;
+	struct rb_node *node;
+	struct scanned_file *xattr_file;
+	struct scanned_dent_node *dent_node;
+	struct scanned_data_node *data_node;
+
+	dbg_fsck("recovered file(inum:%lu name:%s type:%s), in %s",
+		 file->inum, get_file_name(c, file),
+		 file->ino.is_xattr ? "xattr" :
+		 ubifs_get_type_name(ubifs_get_dent_type(file->ino.mode)),
+		 c->dev_name);
+
+	lnum = file->ino.header.lnum;
+	set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+
+	if (file->trun.header.exist) {
+		lnum = file->trun.header.lnum;
+		set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+	}
+
+	for (node = rb_first(&file->data_nodes); node; node = rb_next(node)) {
+		data_node = rb_entry(node, struct scanned_data_node, rb);
+
+		lnum = data_node->header.lnum;
+		set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+	}
+
+	for (node = rb_first(&file->dent_nodes); node; node = rb_next(node)) {
+		dent_node = rb_entry(node, struct scanned_dent_node, rb);
+
+		lnum = dent_node->header.lnum;
+		set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+	}
+
+	for (node = rb_first(&file->xattr_files); node; node = rb_next(node)) {
+		xattr_file = rb_entry(node, struct scanned_file, rb);
+
+		record_file_used_lebs(c, xattr_file);
+	}
+}
+
+/**
+ * record_used_lebs - record used LEBs.
+ * @c: UBIFS file-system description object
+ *
+ * This function records all used LEBs which may hold useful nodes, then left
+ * unused LEBs could be taken for storing new index tree.
+ */
+static void record_used_lebs(struct ubifs_info *c)
+{
+	struct rb_node *node;
+	struct scanned_file *file;
+	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		record_file_used_lebs(c, file);
+	}
+}
+
 /**
  * ubifs_rebuild_filesystem - Rebuild filesystem.
  * @c: UBIFS file-system description object
@@ -680,8 +784,14 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 	/* Step 6: Check & correct files' information. */
 	log_out(c, "Check & correct file information");
 	err = check_and_correct_files(c);
-	if (err)
+	if (err) {
 		exit_code |= FSCK_ERROR;
+		goto out;
+	}
+
+	/* Step 7: Record used LEBs. */
+	log_out(c, "Record used LEBs");
+	record_used_lebs(c);
 
 out:
 	destroy_scanned_info(c, &si);
