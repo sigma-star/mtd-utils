@@ -425,12 +425,20 @@ int main(int argc, char *argv[])
 
 	/* Init: Read superblock */
 	err = ubifs_load_filesystem(c);
-	if (err)
+	if (err) {
+		if (FSCK(c)->try_rebuild)
+			ubifs_rebuild_filesystem(c);
 		goto out_close;
+	}
 
 	err = do_fsck();
+	if (err && FSCK(c)->try_rebuild) {
+		ubifs_destroy_filesystem(c);
+		ubifs_rebuild_filesystem(c);
+	} else {
+		ubifs_destroy_filesystem(c);
+	}
 
-	ubifs_destroy_filesystem(c);
 out_close:
 	ubifs_close_volume(c);
 out_destroy_fsck:

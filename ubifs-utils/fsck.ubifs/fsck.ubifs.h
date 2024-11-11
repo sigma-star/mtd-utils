@@ -175,16 +175,28 @@ struct scanned_file {
 };
 
 /**
+ * ubifs_rebuild_info - UBIFS rebuilding information.
+ * @scanned_files: tree of all scanned files
+ */
+struct ubifs_rebuild_info {
+	struct rb_root scanned_files;
+};
+
+/**
  * struct ubifs_fsck_info - UBIFS fsck information.
  * @mode: working mode
  * @failure_reason: reasons for failed operations
  * @lpt_status: the status of lpt, could be: %0(OK), %FR_LPT_CORRUPTED or
  *		%FR_LPT_INCORRECT
+ * @try_rebuild: %true means that try to rebuild fs when fsck failed
+ * @rebuild: rebuilding-related information
  */
 struct ubifs_fsck_info {
 	int mode;
 	unsigned int failure_reason;
 	unsigned int lpt_status;
+	bool try_rebuild;
+	struct ubifs_rebuild_info *rebuild;
 };
 
 #define FSCK(c) ((struct ubifs_fsck_info*)c->private)
@@ -250,5 +262,8 @@ int insert_or_update_file(struct ubifs_info *c, struct rb_root *file_tree,
 			  struct scanned_node *sn, int key_type, ino_t inum);
 void destroy_file_content(struct ubifs_info *c, struct scanned_file *file);
 void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree);
+
+/* rebuild_fs.c */
+int ubifs_rebuild_filesystem(struct ubifs_info *c);
 
 #endif
