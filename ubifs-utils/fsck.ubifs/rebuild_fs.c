@@ -58,9 +58,18 @@ static int init_rebuild_info(struct ubifs_info *c)
 		log_err(c, errno, "can not allocate bitmap of used lebs");
 		goto free_rebuild;
 	}
+	FSCK(c)->rebuild->lpts = kzalloc(sizeof(struct ubifs_lprops) * c->main_lebs,
+					 GFP_KERNEL);
+	if (!FSCK(c)->rebuild->lpts) {
+		err = -ENOMEM;
+		log_err(c, errno, "can not allocate lpts");
+		goto free_used_lebs;
+	}
 
 	return 0;
 
+free_used_lebs:
+	kfree(FSCK(c)->rebuild->used_lebs);
 free_rebuild:
 	kfree(FSCK(c)->rebuild);
 free_sbuf:
@@ -70,6 +79,7 @@ free_sbuf:
 
 static void destroy_rebuild_info(struct ubifs_info *c)
 {
+	kfree(FSCK(c)->rebuild->lpts);
 	kfree(FSCK(c)->rebuild->used_lebs);
 	kfree(FSCK(c)->rebuild);
 	vfree(c->sbuf);
@@ -461,9 +471,13 @@ static void remove_del_nodes(struct ubifs_info *c, struct scanned_info *si)
 
 		valid_ino_node = lookup_valid_ino_node(c, si, del_ino_node);
 		if (valid_ino_node) {
-			int lnum = del_ino_node->header.lnum;
+			int lnum = del_ino_node->header.lnum - c->main_first;
+			int pos = del_ino_node->header.offs +
+				  ALIGN(del_ino_node->header.len, 8);
 
-			set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+			set_bit(lnum, FSCK(c)->rebuild->used_lebs);
+			FSCK(c)->rebuild->lpts[lnum].end =
+				max_t(int, FSCK(c)->rebuild->lpts[lnum].end, pos);
 			rb_erase(&valid_ino_node->rb, &si->valid_inos);
 			kfree(valid_ino_node);
 		}
@@ -479,9 +493,13 @@ static void remove_del_nodes(struct ubifs_info *c, struct scanned_info *si)
 
 		valid_dent_node = lookup_valid_dent_node(c, si, del_dent_node);
 		if (valid_dent_node) {
-			int lnum = del_dent_node->header.lnum;
+			int lnum = del_dent_node->header.lnum - c->main_first;
+			int pos = del_dent_node->header.offs +
+				  ALIGN(del_dent_node->header.len, 8);
 
-			set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+			set_bit(lnum, FSCK(c)->rebuild->used_lebs);
+			FSCK(c)->rebuild->lpts[lnum].end =
+				max_t(int, FSCK(c)->rebuild->lpts[lnum].end, pos);
 			rb_erase(&valid_dent_node->rb, &si->valid_dents);
 			kfree(valid_dent_node);
 		}
@@ -667,10 +685,21 @@ static const char *get_file_name(struct ubifs_info *c, struct scanned_file *file
 	return name;
 }
 
+static void parse_node_location(struct ubifs_info *c, struct scanned_node *sn)
+{
+	int lnum, pos;
+
+	lnum = sn->lnum - c->main_first;
+	pos = sn->offs + ALIGN(sn->len, 8);
+
+	set_bit(lnum, FSCK(c)->rebuild->used_lebs);
+	FSCK(c)->rebuild->lpts[lnum].end = max_t(int,
+					FSCK(c)->rebuild->lpts[lnum].end, pos);
+}
+
 static void record_file_used_lebs(struct ubifs_info *c,
 				  struct scanned_file *file)
 {
-	int lnum;
 	struct rb_node *node;
 	struct scanned_file *xattr_file;
 	struct scanned_dent_node *dent_node;
@@ -682,26 +711,21 @@ static void record_file_used_lebs(struct ubifs_info *c,
 		 ubifs_get_type_name(ubifs_get_dent_type(file->ino.mode)),
 		 c->dev_name);
 
-	lnum = file->ino.header.lnum;
-	set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+	parse_node_location(c, &file->ino.header);
 
-	if (file->trun.header.exist) {
-		lnum = file->trun.header.lnum;
-		set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
-	}
+	if (file->trun.header.exist)
+		parse_node_location(c, &file->trun.header);
 
 	for (node = rb_first(&file->data_nodes); node; node = rb_next(node)) {
 		data_node = rb_entry(node, struct scanned_data_node, rb);
 
-		lnum = data_node->header.lnum;
-		set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+		parse_node_location(c, &data_node->header);
 	}
 
 	for (node = rb_first(&file->dent_nodes); node; node = rb_next(node)) {
 		dent_node = rb_entry(node, struct scanned_dent_node, rb);
 
-		lnum = dent_node->header.lnum;
-		set_bit(lnum - c->main_first, FSCK(c)->rebuild->used_lebs);
+		parse_node_location(c, &dent_node->header);
 	}
 
 	for (node = rb_first(&file->xattr_files); node; node = rb_next(node)) {
@@ -712,23 +736,57 @@ static void record_file_used_lebs(struct ubifs_info *c,
 }
 
 /**
- * record_used_lebs - record used LEBs.
+ * traverse_files_and_nodes - traverse all nodes from valid files.
  * @c: UBIFS file-system description object
  *
- * This function records all used LEBs which may hold useful nodes, then left
- * unused LEBs could be taken for storing new index tree.
+ * This function traverses all nodes from valid files and does following
+ * things:
+ * 1. Record all used LEBs which may hold useful nodes, then left unused
+ *    LEBs could be taken for storing new index tree.
+ * 2. Re-write data to prevent failed gc scanning in the subsequent mounting
+ *    process caused by corrupted data.
  */
-static void record_used_lebs(struct ubifs_info *c)
+static int traverse_files_and_nodes(struct ubifs_info *c)
 {
+	int i, err = 0;
 	struct rb_node *node;
 	struct scanned_file *file;
 	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
 
+	log_out(c, "Record used LEBs");
 	for (node = rb_first(tree); node; node = rb_next(node)) {
 		file = rb_entry(node, struct scanned_file, rb);
 
 		record_file_used_lebs(c, file);
 	}
+
+	/* Re-write data. */
+	log_out(c, "Re-write data");
+	for (i = 0; i < c->main_lebs; ++i) {
+		int lnum, len, end;
+
+		if (!test_bit(i, FSCK(c)->rebuild->used_lebs))
+			continue;
+
+		lnum = i + c->main_first;
+		dbg_fsck("re-write LEB %d, in %s", lnum, c->dev_name);
+
+		end = FSCK(c)->rebuild->lpts[i].end;
+		len = ALIGN(end, c->min_io_size);
+
+		err = ubifs_leb_read(c, lnum, c->sbuf, 0, len, 0);
+		if (err && err != -EBADMSG)
+			return err;
+
+		if (len > end)
+			ubifs_pad(c, c->sbuf + end, len - end);
+
+		err = ubifs_leb_change(c, lnum, c->sbuf, len);
+		if (err)
+			return err;
+	}
+
+	return err;
 }
 
 /**
@@ -789,9 +847,13 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 		goto out;
 	}
 
-	/* Step 7: Record used LEBs. */
-	log_out(c, "Record used LEBs");
-	record_used_lebs(c);
+	/*
+	 * Step 7: Record used LEBs.
+	 * Step 8: Re-write data to clean corrupted data.
+	 */
+	err = traverse_files_and_nodes(c);
+	if (err)
+		exit_code |= FSCK_ERROR;
 
 out:
 	destroy_scanned_info(c, &si);

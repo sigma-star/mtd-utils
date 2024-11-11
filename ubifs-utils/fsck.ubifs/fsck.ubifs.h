@@ -181,10 +181,12 @@ struct scanned_file {
 /**
  * ubifs_rebuild_info - UBIFS rebuilding information.
  * @used_lebs: a bitmap used for recording used lebs
+ * @lpts: lprops table
  * @scanned_files: tree of all scanned files
  */
 struct ubifs_rebuild_info {
 	unsigned long *used_lebs;
+	struct ubifs_lprops *lpts;
 	struct rb_root scanned_files;
 };
 

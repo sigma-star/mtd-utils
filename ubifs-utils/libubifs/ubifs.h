@@ -337,6 +337,7 @@ enum {
  * @dirty: amount of dirty space in bytes
  * @flags: LEB properties flags (see above)
  * @lnum: LEB number
+ * @end: the end postition of LEB calculated by the last node
  * @list: list of same-category lprops (for LPROPS_EMPTY and LPROPS_FREEABLE)
  * @hpos: heap position in heap of same-category lprops (other categories)
  */
@@ -345,6 +346,7 @@ struct ubifs_lprops {
 	int dirty;
 	int flags;
 	int lnum;
+	int end;
 	union {
 		struct list_head list;
 		int hpos;
