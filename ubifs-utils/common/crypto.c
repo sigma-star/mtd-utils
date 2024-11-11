@@ -27,11 +27,6 @@
 #include "defs.h"
 #include "ubifs.h"
 
-/* common.h requires the PROGRAM_NAME macro */
-extern struct ubifs_info info_;
-#define PROGRAM_NAME (info_.program_name)
-#include "common.h"
-
 static int do_hash(const EVP_MD *md, const unsigned char *in, size_t len, unsigned char *out)
 {
 	unsigned int out_len;

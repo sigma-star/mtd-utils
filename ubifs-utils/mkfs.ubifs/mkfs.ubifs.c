@@ -46,9 +46,6 @@
 #include <zstd.h>
 #endif
 
-/* common.h requires the PROGRAM_NAME macro */
-#define PROGRAM_NAME "mkfs.ubifs"
-#include "common.h"
 #include "defs.h"
 #include "crypto.h"
 #include "fscrypt.h"
@@ -413,61 +410,61 @@ static int validate_options(void)
 	int tmp;
 
 	if (!output)
-		return err_msg("no output file or UBI volume specified");
+		return errmsg("no output file or UBI volume specified");
 	if (root) {
 		tmp = is_contained(output, root);
 		if (tmp < 0)
-			return err_msg("failed to perform output file root check");
+			return errmsg("failed to perform output file root check");
 		else if (tmp)
-			return err_msg("output file cannot be in the UBIFS root "
+			return errmsg("output file cannot be in the UBIFS root "
 			               "directory");
 	}
 	if (!is_power_of_2(c->min_io_size))
-		return err_msg("min. I/O unit size should be power of 2");
+		return errmsg("min. I/O unit size should be power of 2");
 	if (c->leb_size < c->min_io_size)
-		return err_msg("min. I/O unit cannot be larger than LEB size");
+		return errmsg("min. I/O unit cannot be larger than LEB size");
 	if (c->leb_size < UBIFS_MIN_LEB_SZ)
-		return err_msg("too small LEB size %d, minimum is %d",
+		return errmsg("too small LEB size %d, minimum is %d",
 			       c->leb_size, UBIFS_MIN_LEB_SZ);
 	if (c->leb_size % c->min_io_size)
-		return err_msg("LEB should be multiple of min. I/O units");
+		return errmsg("LEB should be multiple of min. I/O units");
 	if (c->leb_size % 8)
-		return err_msg("LEB size has to be multiple of 8");
+		return errmsg("LEB size has to be multiple of 8");
 	if (c->leb_size > UBIFS_MAX_LEB_SZ)
-		return err_msg("too large LEB size %d, maximum is %d",
+		return errmsg("too large LEB size %d, maximum is %d",
 				c->leb_size, UBIFS_MAX_LEB_SZ);
 	if (c->max_leb_cnt < UBIFS_MIN_LEB_CNT)
-		return err_msg("too low max. count of LEBs, minimum is %d",
+		return errmsg("too low max. count of LEBs, minimum is %d",
 			       UBIFS_MIN_LEB_CNT);
 	if (c->fanout < UBIFS_MIN_FANOUT)
-		return err_msg("too low fanout, minimum is %d",
+		return errmsg("too low fanout, minimum is %d",
 			       UBIFS_MIN_FANOUT);
 	tmp = c->leb_size - UBIFS_IDX_NODE_SZ;
 	tmp /= UBIFS_BRANCH_SZ + UBIFS_MAX_KEY_LEN;
 	if (c->fanout > tmp)
-		return err_msg("too high fanout, maximum is %d", tmp);
+		return errmsg("too high fanout, maximum is %d", tmp);
 	if (c->log_lebs < UBIFS_MIN_LOG_LEBS)
-		return err_msg("too few log LEBs, minimum is %d",
+		return errmsg("too few log LEBs, minimum is %d",
 			       UBIFS_MIN_LOG_LEBS);
 	if (c->log_lebs >= c->max_leb_cnt - UBIFS_MIN_LEB_CNT)
-		return err_msg("too many log LEBs, maximum is %d",
+		return errmsg("too many log LEBs, maximum is %d",
 			       c->max_leb_cnt - UBIFS_MIN_LEB_CNT);
 	if (c->orph_lebs < UBIFS_MIN_ORPH_LEBS)
-		return err_msg("too few orphan LEBs, minimum is %d",
+		return errmsg("too few orphan LEBs, minimum is %d",
 			       UBIFS_MIN_ORPH_LEBS);
 	if (c->orph_lebs >= c->max_leb_cnt - UBIFS_MIN_LEB_CNT)
-		return err_msg("too many orphan LEBs, maximum is %d",
+		return errmsg("too many orphan LEBs, maximum is %d",
 			       c->max_leb_cnt - UBIFS_MIN_LEB_CNT);
 	tmp = UBIFS_SB_LEBS + UBIFS_MST_LEBS + c->log_lebs + c->lpt_lebs;
 	tmp += c->orph_lebs + 4;
 	if (tmp > c->max_leb_cnt)
-		return err_msg("too low max. count of LEBs, expected at "
+		return errmsg("too low max. count of LEBs, expected at "
 			       "least %d", tmp);
 	tmp = calc_min_log_lebs(c->max_bud_bytes);
 	if (c->log_lebs < calc_min_log_lebs(c->max_bud_bytes))
-		return err_msg("too few log LEBs, expected at least %d", tmp);
+		return errmsg("too few log LEBs, expected at least %d", tmp);
 	if (c->rp_size >= ((long long)c->leb_size * c->max_leb_cnt) / 2)
-		return err_msg("too much reserved space %lld", c->rp_size);
+		return errmsg("too much reserved space %lld", c->rp_size);
 	return 0;
 }
 
@@ -513,13 +510,13 @@ static long long get_bytes(const char *str)
 	long long bytes = strtoull(str, &endp, 0);
 
 	if (endp == str || bytes < 0)
-		return err_msg("incorrect amount of bytes: \"%s\"", str);
+		return errmsg("incorrect amount of bytes: \"%s\"", str);
 
 	if (*endp != '\0') {
 		int mult = get_multiplier(endp);
 
 		if (mult == -1)
-			return err_msg("bad size specifier: \"%s\" - "
+			return errmsg("bad size specifier: \"%s\" - "
 				       "should be 'KiB', 'MiB' or 'GiB'", endp);
 		bytes *= mult;
 	}
@@ -627,23 +624,23 @@ static int get_options(int argc, char**argv)
 
 			/* Make sure the root directory exists */
 			if (stat(root, &st))
-				return sys_err_msg("bad root directory '%s'",
+				return sys_errmsg("bad root directory '%s'",
 						   root);
 			break;
 		case 'm':
 			c->min_io_size = get_bytes(optarg);
 			if (c->min_io_size <= 0)
-				return err_msg("bad min. I/O size");
+				return errmsg("bad min. I/O size");
 			break;
 		case 'e':
 			c->leb_size = get_bytes(optarg);
 			if (c->leb_size <= 0)
-				return err_msg("bad LEB size");
+				return errmsg("bad LEB size");
 			break;
 		case 'c':
 			c->max_leb_cnt = get_bytes(optarg);
 			if (c->max_leb_cnt <= 0)
-				return err_msg("bad maximum LEB count");
+				return errmsg("bad maximum LEB count");
 			break;
 		case 'o':
 			output = xstrdup(optarg);
@@ -651,7 +648,7 @@ static int get_options(int argc, char**argv)
 		case 'D':
 			tbl_file = optarg;
 			if (stat(tbl_file, &st) < 0)
-				return sys_err_msg("bad device table file '%s'",
+				return sys_errmsg("bad device table file '%s'",
 						   tbl_file);
 			break;
 		case 'y':
@@ -677,13 +674,13 @@ static int get_options(int argc, char**argv)
 			debug_level = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg ||
 			    debug_level < 0 || debug_level > 3)
-				return err_msg("bad debugging level '%s'",
+				return errmsg("bad debugging level '%s'",
 					       optarg);
 			break;
 		case 'f':
 			c->fanout = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || c->fanout <= 0)
-				return err_msg("bad fanout %s", optarg);
+				return errmsg("bad fanout %s", optarg);
 			break;
 		case 'F':
 			c->space_fixup = 1;
@@ -691,14 +688,14 @@ static int get_options(int argc, char**argv)
 		case 'l':
 			c->log_lebs = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg || c->log_lebs <= 0)
-				return err_msg("bad count of log LEBs '%s'",
+				return errmsg("bad count of log LEBs '%s'",
 					       optarg);
 			break;
 		case 'p':
 			c->orph_lebs = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg ||
 			    c->orph_lebs <= 0)
-				return err_msg("bad orphan LEB count '%s'",
+				return errmsg("bad orphan LEB count '%s'",
 					       optarg);
 			break;
 		case 'k':
@@ -709,7 +706,7 @@ static int get_options(int argc, char**argv)
 				c->key_hash = key_test_hash;
 				c->key_hash_type = UBIFS_KEY_HASH_TEST;
 			} else
-				return err_msg("bad key hash");
+				return errmsg("bad key hash");
 			break;
 		case 'x':
 			if (strcmp(optarg, "none") == 0)
@@ -733,28 +730,28 @@ static int get_options(int argc, char**argv)
 			}
 #endif
 			else
-				return err_msg("bad compressor name");
+				return errmsg("bad compressor name");
 			break;
 		case 'X':
 #if !defined(WITH_LZO) && !defined(WITH_ZLIB)
-			return err_msg("built without LZO or ZLIB support");
+			return errmsg("built without LZO or ZLIB support");
 #else
 			c->favor_percent = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg ||
 			    c->favor_percent <= 0 || c->favor_percent >= 100)
-				return err_msg("bad favor LZO percent '%s'",
+				return errmsg("bad favor LZO percent '%s'",
 					       optarg);
 #endif
 			break;
 		case 'j':
 			c->max_bud_bytes = get_bytes(optarg);
 			if (c->max_bud_bytes <= 0)
-				return err_msg("bad maximum amount of buds");
+				return errmsg("bad maximum amount of buds");
 			break;
 		case 'R':
 			c->rp_size = get_bytes(optarg);
 			if (c->rp_size < 0)
-				return err_msg("bad reserved bytes count");
+				return errmsg("bad reserved bytes count");
 			break;
 		case 'U':
 			squash_owner = 1;
@@ -767,24 +764,24 @@ static int get_options(int argc, char**argv)
 			context_len = strlen(optarg);
 			context = (char *) xmalloc(context_len + 1);
 			if (!context)
-				return err_msg("xmalloc failed\n");
+				return errmsg("xmalloc failed\n");
 			memcpy(context, optarg, context_len);
 			context[context_len] = '\0';
 
 			/* Make sure root directory exists */
 			if (stat(context, &context_st))
-				return sys_err_msg("bad file context %s\n",
+				return sys_errmsg("bad file context %s\n",
 								   context);
 			break;
 		case 'K':
 			if (key_file) {
-				return err_msg("key file specified more than once");
+				return errmsg("key file specified more than once");
 			}
 			key_file = optarg;
 			break;
 		case 'b':
 			if (key_desc) {
-				return err_msg("key descriptor specified more than once");
+				return errmsg("key descriptor specified more than once");
 			}
 			key_desc = optarg;
 			break;
@@ -835,7 +832,7 @@ static int get_options(int argc, char**argv)
 		case HASH_ALGO_OPTION:
 		case AUTH_KEY_OPTION:
 		case AUTH_CERT_OPTION:
-			return err_msg("mkfs.ubifs was built without crypto support.");
+			return errmsg("mkfs.ubifs was built without crypto support.");
 #endif
 		}
 	}
@@ -844,7 +841,7 @@ static int get_options(int argc, char**argv)
 		output = xstrdup(argv[optind]);
 
 	if (!output)
-		return err_msg("not output device or file specified");
+		return errmsg("not output device or file specified");
 
 	out_ubi = !open_ubi(output);
 
@@ -857,7 +854,7 @@ static int get_options(int argc, char**argv)
 	if (key_file || key_desc) {
 #ifdef WITH_CRYPTO
 		if (!key_file)
-			return err_msg("no key file specified");
+			return errmsg("no key file specified");
 
 		c->double_hash = 1;
 		c->encrypted = 1;
@@ -870,7 +867,7 @@ static int get_options(int argc, char**argv)
 		if (!root_fctx)
 			return -1;
 #else
-		return err_msg("mkfs.ubifs was built without crypto support.");
+		return errmsg("mkfs.ubifs was built without crypto support.");
 #endif
 	}
 
@@ -878,14 +875,14 @@ static int get_options(int argc, char**argv)
 		select_default_compr();
 
 	if (c->min_io_size == -1)
-		return err_msg("min. I/O unit was not specified "
+		return errmsg("min. I/O unit was not specified "
 			       "(use -h for help)");
 
 	if (c->leb_size == -1)
-		return err_msg("LEB size was not specified (use -h for help)");
+		return errmsg("LEB size was not specified (use -h for help)");
 
 	if (c->max_leb_cnt == -1)
-		return err_msg("Maximum count of LEBs was not specified "
+		return errmsg("Maximum count of LEBs was not specified "
 			       "(use -h for help)");
 
 	if (c->max_bud_bytes == -1) {
@@ -952,7 +949,7 @@ static int get_options(int argc, char**argv)
 		return -1;
 
 	if (tbl_file && parse_devtable(tbl_file))
-		return err_msg("cannot parse device table file '%s'", tbl_file);
+		return errmsg("cannot parse device table file '%s'", tbl_file);
 
 	return 0;
 }
@@ -990,13 +987,13 @@ int write_leb(int lnum, int len, void *buf)
 	memset(buf + len, 0xff, c->leb_size - len);
 	if (out_ubi)
 		if (ubi_leb_change_start(ubi, out_fd, lnum, c->leb_size))
-			return sys_err_msg("ubi_leb_change_start failed");
+			return sys_errmsg("ubi_leb_change_start failed");
 
 	if (lseek(out_fd, pos, SEEK_SET) != pos)
-		return sys_err_msg("lseek failed seeking %lld", (long long)pos);
+		return sys_errmsg("lseek failed seeking %lld", (long long)pos);
 
 	if (write(out_fd, buf, c->leb_size) != c->leb_size)
-		return sys_err_msg("write failed writing %d bytes at pos %lld",
+		return sys_errmsg("write failed writing %d bytes at pos %lld",
 				   c->leb_size, (long long)pos);
 
 	return 0;
@@ -1221,11 +1218,11 @@ static int add_node(union ubifs_key *key, char *name, int name_len, void *node, 
 
 	if (type == UBIFS_DENT_KEY || type == UBIFS_XENT_KEY) {
 		if (!name)
-			return err_msg("Directory entry or xattr "
+			return errmsg("Directory entry or xattr "
 					"without name!");
 	} else {
 		if (name)
-			return err_msg("Name given for non dir/xattr node!");
+			return errmsg("Name given for non dir/xattr node!");
 	}
 
 	prepare_node(node, len);
@@ -1378,7 +1375,7 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 		if (errno == ENOENT || errno == EOPNOTSUPP)
 			return 0;
 
-		sys_err_msg("llistxattr failed on %s", path_name);
+		sys_errmsg("llistxattr failed on %s", path_name);
 
 		return len;
 	}
@@ -1390,7 +1387,7 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 
 	len = llistxattr(path_name, buf, len);
 	if (len < 0) {
-		sys_err_msg("llistxattr failed on %s", path_name);
+		sys_errmsg("llistxattr failed on %s", path_name);
 		goto out_free;
 	}
 
@@ -1404,7 +1401,7 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 
 		attrsize = lgetxattr(path_name, name, attrbuf, sizeof(attrbuf) - 1);
 		if (attrsize < 0) {
-			sys_err_msg("lgetxattr failed on %s", path_name);
+			sys_errmsg("lgetxattr failed on %s", path_name);
 			goto out_free;
 		}
 
@@ -1414,7 +1411,7 @@ static int inode_add_xattr(struct ubifs_ino_node *host_ino,
 			inum_from_xattr = strtoull(attrbuf, NULL, 10);
 			if (inum != inum_from_xattr) {
 				errno = EINVAL;
-				sys_err_msg("calculated inum (%llu) doesn't match inum from xattr (%llu) size (%zd) on %s",
+				sys_errmsg("calculated inum (%llu) doesn't match inum from xattr (%llu) size (%zd) on %s",
 					    (unsigned long long)inum,
 					    (unsigned long long)inum_from_xattr,
 					    attrsize,
@@ -1470,7 +1467,7 @@ static int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
 		sepath = NULL;
 
 	if (!sepath)
-		return sys_err_msg("could not get sepath\n");
+		return sys_errmsg("could not get sepath\n");
 
 	if (selabel_lookup(sehnd, &secontext, sepath, st->st_mode) < 0) {
 		/* Failed to lookup context, assume unlabeled */
@@ -1626,7 +1623,7 @@ static int add_inode(struct stat *st, ino_t inum, void *data,
 		} else {
 			/* TODO: what about device files? */
 			if (!S_ISLNK(st->st_mode))
-				return err_msg("Expected symlink");
+				return errmsg("Expected symlink");
 
 			ret = encrypt_symlink(&ino->data, data, data_len, fctx);
 			if (ret < 0)
@@ -1681,7 +1678,7 @@ static int add_dir_inode(const char *path_name, DIR *dir, ino_t inum, loff_t siz
 	if (dir) {
 		fd = dirfd(dir);
 		if (fd == -1)
-			return sys_err_msg("dirfd failed");
+			return sys_errmsg("dirfd failed");
 		if (ioctl(fd, FS_IOC_GETFLAGS, &flags) == -1)
 			flags = 0;
 	}
@@ -1719,9 +1716,9 @@ static int add_symlink_inode(const char *path_name, struct stat *st, ino_t inum,
 	/* Take the symlink as is */
 	len = readlink(path_name, buf, UBIFS_MAX_INO_DATA + 1);
 	if (len <= 0)
-		return sys_err_msg("readlink failed for %s", path_name);
+		return sys_errmsg("readlink failed for %s", path_name);
 	if (len > UBIFS_MAX_INO_DATA)
-		return err_msg("symlink too long for %s", path_name);
+		return errmsg("symlink too long for %s", path_name);
 
 	return add_inode(st, inum, buf, len, flags, path_name, fctx);
 }
@@ -1773,7 +1770,7 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 		*kname_len = dname.len;
 		kname = strdup(name);
 		if (!kname)
-			return err_msg("cannot allocate memory");
+			return errmsg("cannot allocate memory");
 	} else {
 		unsigned int max_namelen = UBIFS_MAX_NLEN;
 		int ret;
@@ -1866,7 +1863,7 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 
 	fd = open(path_name, O_RDONLY | O_LARGEFILE);
 	if (fd == -1)
-		return sys_err_msg("failed to open file '%s'", path_name);
+		return sys_errmsg("failed to open file '%s'", path_name);
 	do {
 		/* Read next block */
 		bytes_read = 0;
@@ -1874,7 +1871,7 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 			ret = read(fd, buf + bytes_read,
 				   UBIFS_BLOCK_SIZE - bytes_read);
 			if (ret == -1) {
-				sys_err_msg("failed to read file '%s'",
+				sys_errmsg("failed to read file '%s'",
 					    path_name);
 				close(fd);
 				return 1;
@@ -1934,9 +1931,9 @@ static int add_file(const char *path_name, struct stat *st, ino_t inum,
 	} while (ret != 0);
 
 	if (close(fd) == -1)
-		return sys_err_msg("failed to close file '%s'", path_name);
+		return sys_errmsg("failed to close file '%s'", path_name);
 	if (file_size != st->st_size)
-		return err_msg("file size changed during writing file '%s'",
+		return errmsg("file size changed during writing file '%s'",
 			       path_name);
 
 	return add_inode(st, inum, NULL, 0, flags, path_name, fctx);
@@ -1962,12 +1959,12 @@ static int add_non_dir(const char *path_name, ino_t *inum, unsigned int nlink,
 	if (S_ISREG(st->st_mode)) {
 		fd = open(path_name, O_RDONLY);
 		if (fd == -1)
-			return sys_err_msg("failed to open file '%s'",
+			return sys_errmsg("failed to open file '%s'",
 					   path_name);
 		if (ioctl(fd, FS_IOC_GETFLAGS, &flags) == -1)
 			flags = 0;
 		if (close(fd) == -1)
-			return sys_err_msg("failed to close file '%s'",
+			return sys_errmsg("failed to close file '%s'",
 					   path_name);
 		*type = UBIFS_ITYPE_REG;
 	} else if (S_ISCHR(st->st_mode))
@@ -1981,7 +1978,7 @@ static int add_non_dir(const char *path_name, ino_t *inum, unsigned int nlink,
 	else if (S_ISFIFO(st->st_mode))
 		*type = UBIFS_ITYPE_FIFO;
 	else
-		return err_msg("file '%s' has unknown inode type", path_name);
+		return errmsg("file '%s' has unknown inode type", path_name);
 
 	if (nlink)
 		st->st_nlink = nlink;
@@ -1995,7 +1992,7 @@ static int add_non_dir(const char *path_name, ino_t *inum, unsigned int nlink,
 
 		im = lookup_inum_mapping(st->st_dev, st->st_ino);
 		if (!im)
-			return err_msg("out of memory");
+			return errmsg("out of memory");
 		if (im->use_nlink == 0) {
 			/* New entry */
 			im->use_inum = *inum;
@@ -2030,7 +2027,7 @@ static int add_non_dir(const char *path_name, ino_t *inum, unsigned int nlink,
 	if (S_ISFIFO(st->st_mode))
 		return add_inode(st, *inum, NULL, 0, flags, NULL, NULL);
 
-	return err_msg("file '%s' has unknown inode type", path_name);
+	return errmsg("file '%s' has unknown inode type", path_name);
 }
 
 /**
@@ -2062,7 +2059,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 	if (existing) {
 		dir = opendir(dir_name);
 		if (dir == NULL)
-			return sys_err_msg("cannot open directory '%s'",
+			return sys_errmsg("cannot open directory '%s'",
 					   dir_name);
 	}
 
@@ -2086,7 +2083,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		if (!entry) {
 			if (errno == 0)
 				break;
-			sys_err_msg("error reading directory '%s'", dir_name);
+			sys_errmsg("error reading directory '%s'", dir_name);
 			goto out_free;
 		}
 
@@ -2113,7 +2110,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		free(name);
 		name = make_path(dir_name, entry->d_name);
 		if (lstat(name, &dent_st) == -1) {
-			sys_err_msg("lstat failed for file '%s'", name);
+			sys_errmsg("lstat failed for file '%s'", name);
 			goto out_free;
 		}
 
@@ -2187,7 +2184,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 		 * files.
 		 */
 		if (S_ISREG(nh_elt->mode)) {
-			err_msg("Bad device table entry %s/%s - it is "
+			errmsg("Bad device table entry %s/%s - it is "
 				"prohibited to create regular files "
 				"via device table",
 				strcmp(ph_elt->path, "/") ? ph_elt->path : "",
@@ -2254,7 +2251,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 
 	free(name);
 	if (existing && closedir(dir) == -1)
-		return sys_err_msg("error closing directory '%s'", dir_name);
+		return sys_errmsg("error closing directory '%s'", dir_name);
 
 	return 0;
 
@@ -2301,7 +2298,7 @@ static int write_data(void)
 	if (root) {
 		err = stat(root, &root_st);
 		if (err)
-			return sys_err_msg("bad root file-system directory '%s'",
+			return sys_errmsg("bad root file-system directory '%s'",
 					   root);
 		if (squash_owner)
 			root_st.st_uid = root_st.st_gid = 0;
@@ -2417,7 +2414,7 @@ static int write_index(void)
 	sz = idx_cnt * sizeof(struct idx_entry *);
 	if (sz / sizeof(struct idx_entry *) != idx_cnt) {
 		free(idx);
-		return err_msg("index is too big (%zu entries)", idx_cnt);
+		return errmsg("index is too big (%zu entries)", idx_cnt);
 	}
 	idx_ptr = xmalloc(sz);
 	idx_ptr[0] = idx_list_first;
@@ -2595,7 +2592,7 @@ static int finalize_leb_cnt(void)
 {
 	c->leb_cnt = head_lnum;
 	if (c->leb_cnt > c->max_leb_cnt)
-		return err_msg("max_leb_cnt too low (%d needed)", c->leb_cnt);
+		return errmsg("max_leb_cnt too low (%d needed)", c->leb_cnt);
 	c->main_lebs = c->leb_cnt - c->main_first;
 	if (verbose) {
 		printf("\tsuper lebs:   %d\n", UBIFS_SB_LEBS);
@@ -2863,24 +2860,24 @@ static int open_target(void)
 		out_fd = open(output, O_RDWR | O_EXCL);
 
 		if (out_fd == -1)
-			return sys_err_msg("cannot open the UBI volume '%s'",
+			return sys_errmsg("cannot open the UBI volume '%s'",
 					   output);
 		if (ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 1)) {
 			close(out_fd);
-			return sys_err_msg("ubi_set_property(set direct_write) failed");
+			return sys_errmsg("ubi_set_property(set direct_write) failed");
 		}
 
 		if (!yes && check_volume_empty()) {
 			if (!prompt("UBI volume is not empty.  Format anyways?", false)) {
 				close(out_fd);
-				return err_msg("UBI volume is not empty");
+				return errmsg("UBI volume is not empty");
 			}
 		}
 	} else {
 		out_fd = open(output, O_CREAT | O_RDWR | O_TRUNC,
 			      S_IRUSR | S_IWUSR | S_IRGRP | S_IWGRP | S_IROTH);
 		if (out_fd == -1)
-			return sys_err_msg("cannot create output file '%s'",
+			return sys_errmsg("cannot create output file '%s'",
 					   output);
 	}
 	return 0;
@@ -2899,9 +2896,9 @@ static int close_target(void)
 {
 	if (out_fd >= 0) {
 		if (ubi && ubi_set_property(out_fd, UBI_VOL_PROP_DIRECT_WRITE, 0))
-			return sys_err_msg("ubi_set_property(clear direct_write) failed");
+			return sys_errmsg("ubi_set_property(clear direct_write) failed");
 		if (close(out_fd) == -1)
-			return sys_err_msg("cannot close the target '%s'", output);
+			return sys_errmsg("cannot close the target '%s'", output);
 	}
 	return 0;
 }
@@ -2964,7 +2961,7 @@ static int init(void)
 
 		sehnd = selabel_open(SELABEL_CTX_FILE, seopts, 1);
 		if (!sehnd)
-			return err_msg("could not open selinux context\n");
+			return errmsg("could not open selinux context\n");
 	}
 #endif
 

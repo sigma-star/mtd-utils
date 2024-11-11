@@ -6,13 +6,9 @@
 #include <math.h>
 
 #include "ubifs.h"
+#include "defs.h"
 #include "hashtable.h"
 #include "hashtable_private.h"
-
-/* common.h requires the PROGRAM_NAME macro */
-extern struct ubifs_info info_;
-#define PROGRAM_NAME (info_.program_name)
-#include "common.h"
 
 /*
 Credit for primes table: Aaron Krowne

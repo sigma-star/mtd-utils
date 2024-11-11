@@ -110,7 +110,7 @@ static void drain_openssl_errors(void)
 
 #define ssl_err_msg(fmt, ...) ({			\
 	display_openssl_errors(__LINE__);		\
-	err_msg(fmt, ## __VA_ARGS__);			\
+	errmsg(fmt, ## __VA_ARGS__);			\
 	-1;						\
 })
 
@@ -215,9 +215,9 @@ static X509 *read_x509(const char *x509_name)
 	n = BIO_read(b, buf, 2);
 	if (n != 2) {
 		if (BIO_should_retry(b))
-			err_msg("%s: Read wanted retry", x509_name);
+			errmsg("%s: Read wanted retry", x509_name);
 		if (n >= 0)
-			err_msg("%s: Short read", x509_name);
+			errmsg("%s: Short read", x509_name);
 		goto out;
 	}
 
@@ -270,7 +270,7 @@ int sign_superblock_node(void *node)
 
 	if (!cert) {
 		if (!c->auth_cert_filename)
-			return err_msg("authentication certificate not provided (--auth-cert)");
+			return errmsg("authentication certificate not provided (--auth-cert)");
 		cert = read_x509(c->auth_cert_filename);
 	}
 
@@ -284,23 +284,23 @@ int sign_superblock_node(void *node)
 		       CMS_NOCERTS | CMS_PARTIAL | CMS_BINARY |
 		       CMS_DETACHED | CMS_STREAM);
 	if (!cms)
-		return err_msg("CMS_sign failed");
+		return errmsg("CMS_sign failed");
 
 	pret = CMS_add1_signer(cms, cert, private_key, md,
 			      CMS_NOCERTS | CMS_BINARY |
 			      CMS_NOSMIMECAP | CMS_NOATTR);
 	if (!pret)
-		return err_msg("CMS_add1_signer failed");
+		return errmsg("CMS_add1_signer failed");
 
 	ret = CMS_final(cms, bm, NULL, CMS_NOCERTS | CMS_BINARY);
 	if (!ret)
-		return err_msg("CMS_final failed");
+		return errmsg("CMS_final failed");
 
 	bd = BIO_new(BIO_s_mem());
 
 	ret = i2d_CMS_bio_stream(bd, cms, NULL, 0);
 	if (!ret)
-		return err_msg("i2d_CMS_bio_stream failed");
+		return errmsg("i2d_CMS_bio_stream failed");
 
 	len = BIO_get_mem_data(bd, &obuf);
 
@@ -386,10 +386,10 @@ int init_authentication(void)
 		return 0;
 
 	if (!c->auth_key_filename)
-		return err_msg("authentication key not given (--auth-key)");
+		return errmsg("authentication key not given (--auth-key)");
 
 	if (!c->hash_algo_name)
-		return err_msg("Hash algorithm not given (--hash-algo)");
+		return errmsg("Hash algorithm not given (--hash-algo)");
 
 	OPENSSL_config(NULL);
 
@@ -398,14 +398,14 @@ int init_authentication(void)
 
 	md = EVP_get_digestbyname(c->hash_algo_name);
 	if (!md)
-		return err_msg("Unknown message digest %s", c->hash_algo_name);
+		return errmsg("Unknown message digest %s", c->hash_algo_name);
 
 	hash_md = EVP_MD_CTX_create();
 	c->hash_len = EVP_MD_size(md);
 
 	hash_algo = match_string(hash_algo_name, HASH_ALGO__LAST, c->hash_algo_name);
 	if (hash_algo < 0)
-		return err_msg("Unsupported message digest %s", c->hash_algo_name);
+		return errmsg("Unsupported message digest %s", c->hash_algo_name);
 
 	c->hash_algo = hash_algo;
 

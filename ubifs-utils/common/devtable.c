@@ -52,6 +52,7 @@
 #include <sys/sysmacros.h>
 
 #include "devtable.h"
+#include "ubifs.h"
 #include "defs.h"
 #include "hashtable/hashtable.h"
 #include "hashtable/hashtable_itr.h"
@@ -117,7 +118,7 @@ static int separate_last(const char *buf, int len, char **path, char **name)
 
 	*path = malloc(path_len + 1);
 	if (!*path)
-		return err_msg("cannot allocate %d bytes of memory",
+		return errmsg("cannot allocate %d bytes of memory",
 			       path_len + 1);
 	memcpy(*path, buf, path_len);
 	(*path)[path_len] = '\0';
@@ -125,7 +126,7 @@ static int separate_last(const char *buf, int len, char **path, char **name)
 	*name = malloc(name_len + 1);
 	if (!*name) {
 		free(*path);
-		return err_msg("cannot allocate %d bytes of memory",
+		return errmsg("cannot allocate %d bytes of memory",
 			       name_len + 1);
 	}
 	memcpy(*name, n, name_len + 1);
@@ -145,7 +146,7 @@ static int interpret_table_entry(const char *line)
 	if (sscanf(line, "%1023s %c %o %u %u %u %u %u %u %u",
 		   buf, &type, &mode, &uid, &gid, &major, &minor,
 		   &start, &increment, &count) < 0)
-		return sys_err_msg("sscanf failed");
+		return sys_errmsg("sscanf failed");
 
 	dbg_msg(3, "name %s, type %c, mode %o, uid %u, gid %u, major %u, "
 		"minor %u, start %u, inc %u, cnt %u",
@@ -154,20 +155,20 @@ static int interpret_table_entry(const char *line)
 
 	len = strnlen(buf, 1024);
 	if (len == 0)
-		return err_msg("empty path");
+		return errmsg("empty path");
 	if (len == 1024)
-		return err_msg("too long path");
+		return errmsg("too long path");
 
 	if (buf[0] != '/')
-		return err_msg("device table entries require absolute paths");
+		return errmsg("device table entries require absolute paths");
 	if (strstr(buf, "//"))
-		return err_msg("'//' cannot be used in the path");
+		return errmsg("'//' cannot be used in the path");
 	if (len > 1 && buf[len - 1] == '/')
-		return err_msg("do not put '/' at the end");
+		return errmsg("do not put '/' at the end");
 
 	if (strstr(buf, "/./") || strstr(buf, "/../") ||
 	    !strcmp(buf + len - 2, "/.") || !strcmp(buf + len - 3, "/.."))
-		return err_msg("'.' and '..' cannot be used in the path");
+		return errmsg("'.' and '..' cannot be used in the path");
 
 	switch (type) {
 		case 'd':
@@ -188,10 +189,10 @@ static int interpret_table_entry(const char *line)
 		case 'l':
 			mode |= S_IFLNK;
 			if ((mode & 0777) != 0777)
-				return err_msg("link permission must be 0777");
+				return errmsg("link permission must be 0777");
 			break;
 		default:
-			return err_msg("unsupported file type '%c'", type);
+			return errmsg("unsupported file type '%c'", type);
 	}
 
 	if (separate_last(buf, len, &path, &name))
@@ -206,13 +207,13 @@ static int interpret_table_entry(const char *line)
 		dbg_msg(3, "inserting '%s' into path hash table", path);
 		ph_elt = malloc(sizeof(struct path_htbl_element));
 		if (!ph_elt) {
-			err_msg("cannot allocate %zd bytes of memory",
+			errmsg("cannot allocate %zd bytes of memory",
 				sizeof(struct path_htbl_element));
 			goto out_free;
 		}
 
 		if (!hashtable_insert(path_htbl, path, ph_elt)) {
-			err_msg("cannot insert into path hash table");
+			errmsg("cannot insert into path hash table");
 			goto out_free;
 		}
 
@@ -221,13 +222,13 @@ static int interpret_table_entry(const char *line)
 		ph_elt->name_htbl = create_hashtable(128, &r5_hash,
 						     &is_equivalent);
 		if (!ph_elt->name_htbl) {
-			err_msg("cannot create name hash table");
+			errmsg("cannot create name hash table");
 			goto out_free;
 		}
 	}
 
 	if (increment != 0 && count == 0) {
-		err_msg("count cannot be zero if increment is non-zero");
+		errmsg("count cannot be zero if increment is non-zero");
 		goto out_free;
 	}
 
@@ -241,7 +242,7 @@ static int interpret_table_entry(const char *line)
 		/* This entry does not require any iterating */
 		nh_elt = malloc(sizeof(struct name_htbl_element));
 		if (!nh_elt) {
-			err_msg("cannot allocate %zd bytes of memory",
+			errmsg("cannot allocate %zd bytes of memory",
 				sizeof(struct name_htbl_element));
 			goto out_free;
 		}
@@ -255,13 +256,13 @@ static int interpret_table_entry(const char *line)
 			name, major(nh_elt->dev), minor(nh_elt->dev));
 
 		if (hashtable_search(ph_elt->name_htbl, name)) {
-			err_msg("'%s' is referred twice", buf);
+			errmsg("'%s' is referred twice", buf);
 			goto out_free;
 		}
 
 		nh_elt->name = name;
 		if (!hashtable_insert(ph_elt->name_htbl, name, nh_elt)) {
-			err_msg("cannot insert into name hash table");
+			errmsg("cannot insert into name hash table");
 			goto out_free;
 		}
 	} else {
@@ -271,7 +272,7 @@ static int interpret_table_entry(const char *line)
 		for (i = start; i < num; i++) {
 			nh_elt = malloc(sizeof(struct name_htbl_element));
 			if (!nh_elt) {
-				err_msg("cannot allocate %zd bytes of memory",
+				errmsg("cannot allocate %zd bytes of memory",
 					sizeof(struct name_htbl_element));
 				goto out_free;
 			}
@@ -283,7 +284,7 @@ static int interpret_table_entry(const char *line)
 
 			nm = malloc(len);
 			if (!nm) {
-				err_msg("cannot allocate %d bytes of memory", len);
+				errmsg("cannot allocate %d bytes of memory", len);
 				goto out_free;
 			}
 
@@ -294,13 +295,13 @@ static int interpret_table_entry(const char *line)
 			        nm, major(nh_elt->dev), minor(nh_elt->dev));
 
 			if (hashtable_search(ph_elt->name_htbl, nm)) {
-				err_msg("'%s' is referred twice", buf);
+				errmsg("'%s' is referred twice", buf);
 				free (nm);
 				goto out_free;
 			}
 
 			if (!hashtable_insert(ph_elt->name_htbl, nm, nh_elt)) {
-				err_msg("cannot insert into name hash table");
+				errmsg("cannot insert into name hash table");
 				free (nm);
 				goto out_free;
 			}
@@ -339,19 +340,19 @@ int parse_devtable(const char *tbl_file)
 
 	path_htbl = create_hashtable(128, &r5_hash, &is_equivalent);
 	if (!path_htbl)
-		return err_msg("cannot create path hash table");
+		return errmsg("cannot create path hash table");
 
 	f = fopen(tbl_file, "r");
 	if (!f)
-		return sys_err_msg("cannot open '%s'", tbl_file);
+		return sys_errmsg("cannot open '%s'", tbl_file);
 
 	if (fstat(fileno(f), &st) < 0) {
-		sys_err_msg("cannot stat '%s'", tbl_file);
+		sys_errmsg("cannot stat '%s'", tbl_file);
 		goto out_close;
 	}
 
 	if (st.st_size < 10) {
-		sys_err_msg("'%s' is too short", tbl_file);
+		sys_errmsg("'%s' is too short", tbl_file);
 		goto out_close;
 	}
 
@@ -376,7 +377,7 @@ int parse_devtable(const char *tbl_file)
 		/* If this is not a comment line, try to interpret it */
 		if (len && *line != '#') {
 			if (interpret_table_entry(line)) {
-				err_msg("cannot parse '%s'", line);
+				errmsg("cannot parse '%s'", line);
 				goto out_close;
 			}
 		}
@@ -448,13 +449,13 @@ int override_attributes(struct stat *st, struct path_htbl_element *ph_elt,
 
 	if (S_ISCHR(st->st_mode) || S_ISBLK(st->st_mode) ||
 	    S_ISFIFO(st->st_mode))
-		return err_msg("%s/%s both exists at UBIFS root at host, "
+		return errmsg("%s/%s both exists at UBIFS root at host, "
 			       "and is referred from the device table",
 			       strcmp(ph_elt->path, "/") ? ph_elt->path : "",
 			       nh_elt->name);
 
 	if ((st->st_mode & S_IFMT) != (nh_elt->mode & S_IFMT))
-		return err_msg("%s/%s is referred from the device table also exists in "
+		return errmsg("%s/%s is referred from the device table also exists in "
 			       "the UBIFS root directory at host, but the file type is "
 			       "different", strcmp(ph_elt->path, "/") ? ph_elt->path : "",
 			       nh_elt->name);

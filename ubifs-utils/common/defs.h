@@ -12,6 +12,13 @@
 #include <byteswap.h>
 #include <errno.h>
 
+#include "ubifs.h"
+
+/* common.h requires the PROGRAM_NAME macro */
+extern struct ubifs_info info_;
+#define PROGRAM_NAME (info_.program_name)
+#include "common.h"
+
 #define MKFS_PROGRAM_NAME "mkfs.ubifs"
 
 enum { MKFS_PROGRAM_TYPE = 0 };
@@ -19,20 +26,8 @@ enum { MKFS_PROGRAM_TYPE = 0 };
 extern int debug_level;
 
 #define dbg_msg(lvl, fmt, ...) do {if (debug_level >= lvl)                \
-	printf("mkfs.ubifs: %s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__); \
+	printf("%s: %s: " fmt "\n", PROGRAM_NAME, __FUNCTION__, ##__VA_ARGS__); \
 } while(0)
-
-#define err_msg(fmt, ...) ({                                \
-	fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__); \
-	-1;                                                 \
-})
-
-#define sys_err_msg(fmt, ...) ({                                         \
-	int err_ = errno;                                                \
-	fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__);              \
-	fprintf(stderr, "       %s (error %d)\n", strerror(err_), err_); \
-	-1;                                                              \
-})
 
 #define t16(x) ({ \
 	uint16_t __b = (x); \

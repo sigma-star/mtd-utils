@@ -24,11 +24,6 @@
 #include "defs.h"
 #include "ubifs.h"
 
-/* common.h requires the PROGRAM_NAME macro */
-extern struct ubifs_info info_;
-#define PROGRAM_NAME (info_.program_name)
-#include "common.h"
-
 static __u8 fscrypt_masterkey[FS_MAX_KEY_SIZE];
 static struct cipher *fscrypt_cipher;
 
@@ -40,7 +35,7 @@ unsigned char *calc_fscrypt_subkey(struct fscrypt_context *fctx)
 
 	ret = derive_key_aes(fctx->nonce, fscrypt_masterkey, fscrypt_cipher->key_length, new_key);
 	if (ret < 0) {
-		err_msg("derive_key_aes failed: %i\n", ret);
+		errmsg("derive_key_aes failed: %i\n", ret);
 
 		free(new_key);
 		new_key = NULL;
@@ -116,7 +111,7 @@ int encrypt_path(void **outbuf, void *data, unsigned int data_len,
 	if (!crypt_key) {
 		free(inbuf);
 		free(*outbuf);
-		return err_msg("could not compute subkey");
+		return errmsg("could not compute subkey");
 	}
 
 	ret = fscrypt_cipher->encrypt_fname(inbuf, cryptlen,
@@ -124,7 +119,7 @@ int encrypt_path(void **outbuf, void *data, unsigned int data_len,
 	if (ret < 0) {
 		free(inbuf);
 		free(*outbuf);
-		return err_msg("could not encrypt filename");
+		return errmsg("could not encrypt filename");
 	}
 
 	free(crypt_key);
@@ -149,7 +144,7 @@ int encrypt_data_node(struct fscrypt_context *fctx, unsigned int block_no,
 	if (!crypt_key) {
 		free(inbuf);
 		free(outbuf);
-		return err_msg("could not compute subkey");
+		return errmsg("could not compute subkey");
 	}
 
 	ret = fscrypt_cipher->encrypt_block(inbuf, pad_len,
@@ -159,7 +154,7 @@ int encrypt_data_node(struct fscrypt_context *fctx, unsigned int block_no,
 		free(inbuf);
 		free(outbuf);
 		free(crypt_key);
-		return err_msg("encrypt_block returned %zi "
+		return errmsg("encrypt_block returned %zi "
 				"instead of %zi", ret, pad_len);
 	}
 
@@ -189,11 +184,11 @@ static int parse_key_descriptor(const char *desc, __u8 *dst)
 
 	for (i = 0; i < FS_KEY_DESCRIPTOR_SIZE; ++i) {
 		if (!desc[i * 2] || !desc[i * 2 + 1]) {
-			err_msg("key descriptor '%s' is too short", desc);
+			errmsg("key descriptor '%s' is too short", desc);
 			return -1;
 		}
 		if (!isxdigit(desc[i * 2]) || !isxdigit(desc[i * 2 + 1])) {
-			err_msg("invalid key descriptor '%s'", desc);
+			errmsg("invalid key descriptor '%s'", desc);
 			return -1;
 		}
 
@@ -204,7 +199,7 @@ static int parse_key_descriptor(const char *desc, __u8 *dst)
 	}
 
 	if (desc[i * 2]) {
-		err_msg("key descriptor '%s' is too long", desc);
+		errmsg("key descriptor '%s' is too long", desc);
 		return -1;
 	}
 	return 0;
@@ -227,11 +222,11 @@ static int load_master_key(const char *key_file, struct cipher *fsc)
 		goto fail;
 	}
 	if (keysize == 0) {
-		err_msg("loading key from '%s': file is empty", key_file);
+		errmsg("loading key from '%s': file is empty", key_file);
 		goto fail;
 	}
 	if (keysize < fsc->key_length) {
-		err_msg("key '%s' is too short (at least %u bytes required)",
+		errmsg("key '%s' is too short (at least %u bytes required)",
 			key_file, fsc->key_length);
 		goto fail;
 	}

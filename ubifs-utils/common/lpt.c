@@ -30,11 +30,6 @@
 #include "crc16.h"
 #include "sign.h"
 
-/* common.h requires the PROGRAM_NAME macro */
-extern struct ubifs_info info_;
-#define PROGRAM_NAME (info_.program_name)
-#include "common.h"
-
 /**
  * do_calc_lpt_geom - calculate sizes for the LPT area.
  * @c: the UBIFS file-system description object
@@ -166,7 +161,7 @@ int calc_dflt_lpt_geom(struct ubifs_info *c, int *main_lebs, int *big_lpt)
 			continue;
 		}
 		if (c->ltab_sz > c->leb_size) {
-			err_msg("LPT ltab too big");
+			errmsg("LPT ltab too big");
 			return -EINVAL;
 		}
 		*main_lebs = c->main_lebs;
