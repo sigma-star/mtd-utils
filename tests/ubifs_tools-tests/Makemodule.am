@@ -1,3 +1,4 @@
 test_SCRIPTS += \
 	tests/ubifs_tools-tests/lib/common.sh \
-	tests/ubifs_tools-tests/fsck_tests/authentication_refuse.sh
+	tests/ubifs_tools-tests/fsck_tests/authentication_refuse.sh \
+	tests/ubifs_tools-tests/fsck_tests/cycle_mount_fsck_check.sh
