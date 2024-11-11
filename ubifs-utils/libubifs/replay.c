@@ -20,9 +20,14 @@
  * larger is the journal, the more memory its index may consume.
  */
 
+#include "linux_err.h"
+#include "bitops.h"
+#include "kmem.h"
 #include "ubifs.h"
-#include <linux/list_sort.h>
-#include <crypto/hash.h>
+#include "defs.h"
+#include "debug.h"
+#include "key.h"
+#include "misc.h"
 
 /**
  * struct replay_entry - replay list entry.
@@ -485,7 +490,8 @@ int ubifs_validate_entry(struct ubifs_info *c,
 	if (le32_to_cpu(dent->ch.len) != nlen + UBIFS_DENT_NODE_SZ + 1 ||
 	    dent->type >= UBIFS_ITYPES_CNT ||
 	    nlen > UBIFS_MAX_NLEN || dent->name[nlen] != 0 ||
-	    (key_type == UBIFS_XENT_KEY && strnlen(dent->name, nlen) != nlen) ||
+	    (key_type == UBIFS_XENT_KEY &&
+	     strnlen((const char *)dent->name, nlen) != nlen) ||
 	    le64_to_cpu(dent->inum) > MAX_INUM) {
 		ubifs_err(c, "bad %s node", key_type == UBIFS_DENT_KEY ?
 			  "directory entry" : "extended attribute entry");
@@ -558,19 +564,6 @@ static int is_last_bud(struct ubifs_info *c, struct ubifs_bud *bud)
 	return data == 0xFFFFFFFF;
 }
 
-/* authenticate_sleb_hash is split out for stack usage */
-static int noinline_for_stack
-authenticate_sleb_hash(struct ubifs_info *c,
-		       struct shash_desc *log_hash, u8 *hash)
-{
-	SHASH_DESC_ON_STACK(hash_desc, c->hash_tfm);
-
-	hash_desc->tfm = c->hash_tfm;
-
-	ubifs_shash_copy_state(c, log_hash, hash_desc);
-	return crypto_shash_final(hash_desc, hash);
-}
-
 /**
  * authenticate_sleb - authenticate one scan LEB
  * @c: UBIFS file-system description object
@@ -588,69 +581,14 @@ authenticate_sleb_hash(struct ubifs_info *c,
  * that could be authenticated or a negative error code.
  */
 static int authenticate_sleb(struct ubifs_info *c, struct ubifs_scan_leb *sleb,
-			     struct shash_desc *log_hash, int is_last)
+			     __unused struct shash_desc *log_hash,
+			     __unused int is_last)
 {
-	int n_not_auth = 0;
-	struct ubifs_scan_node *snod;
-	int n_nodes = 0;
-	int err;
-	u8 hash[UBIFS_HASH_ARR_SZ];
-	u8 hmac[UBIFS_HMAC_ARR_SZ];
-
 	if (!ubifs_authenticated(c))
 		return sleb->nodes_cnt;
 
-	list_for_each_entry(snod, &sleb->nodes, list) {
-
-		n_nodes++;
-
-		if (snod->type == UBIFS_AUTH_NODE) {
-			struct ubifs_auth_node *auth = snod->node;
-
-			err = authenticate_sleb_hash(c, log_hash, hash);
-			if (err)
-				goto out;
-
-			err = crypto_shash_tfm_digest(c->hmac_tfm, hash,
-						      c->hash_len, hmac);
-			if (err)
-				goto out;
-
-			err = ubifs_check_hmac(c, auth->hmac, hmac);
-			if (err) {
-				err = -EPERM;
-				goto out;
-			}
-			n_not_auth = 0;
-		} else {
-			err = crypto_shash_update(log_hash, snod->node,
-						  snod->len);
-			if (err)
-				goto out;
-			n_not_auth++;
-		}
-	}
-
-	/*
-	 * A powercut can happen when some nodes were written, but not yet
-	 * the corresponding authentication node. This may only happen on
-	 * the last bud though.
-	 */
-	if (n_not_auth) {
-		if (is_last) {
-			dbg_mnt("%d unauthenticated nodes found on LEB %d, Ignoring them",
-				n_not_auth, sleb->lnum);
-			err = 0;
-		} else {
-			dbg_mnt("%d unauthenticated nodes found on non-last LEB %d",
-				n_not_auth, sleb->lnum);
-			err = -EPERM;
-		}
-	} else {
-		err = 0;
-	}
-out:
-	return err ? err : n_nodes - n_not_auth;
+	// To be implemented
+	return -EINVAL;
 }
 
 /**
@@ -768,7 +706,7 @@ static int replay_bud(struct ubifs_info *c, struct bud_entry *b)
 				goto out_dump;
 
 			err = insert_dent(c, lnum, snod->offs, snod->len, hash,
-					  &snod->key, dent->name,
+					  &snod->key, (const char *)dent->name,
 					  le16_to_cpu(dent->nlen), snod->sqnum,
 					  !le64_to_cpu(dent->inum), &used);
 			break;

@@ -35,9 +35,17 @@
  * refuses to mount.
  */
 
-#include <linux/crc32.h>
-#include <linux/slab.h>
+#include <sys/types.h>
+
+#include "linux_err.h"
+#include "bitops.h"
+#include "kmem.h"
+#include "crc32.h"
 #include "ubifs.h"
+#include "defs.h"
+#include "debug.h"
+#include "key.h"
+#include "misc.h"
 
 /**
  * is_empty - determine whether a buffer is empty (contains all 0xff).
@@ -364,31 +372,6 @@ out_free:
 }
 
 /**
- * ubifs_write_rcvrd_mst_node - write the recovered master node.
- * @c: UBIFS file-system description object
- *
- * This function writes the master node that was recovered during mounting in
- * read-only mode and must now be written because we are remounting rw.
- *
- * This function returns %0 on success and a negative error code on failure.
- */
-int ubifs_write_rcvrd_mst_node(struct ubifs_info *c)
-{
-	int err;
-
-	if (!c->rcvrd_mst_node)
-		return 0;
-	c->rcvrd_mst_node->flags |= cpu_to_le32(UBIFS_MST_DIRTY);
-	c->mst_node->flags |= cpu_to_le32(UBIFS_MST_DIRTY);
-	err = write_rcvrd_mst_node(c, c->rcvrd_mst_node);
-	if (err)
-		return err;
-	kfree(c->rcvrd_mst_node);
-	c->rcvrd_mst_node = NULL;
-	return 0;
-}
-
-/**
  * is_last_write - determine if an offset was in the last write to a LEB.
  * @c: UBIFS file-system description object
  * @buf: buffer to check
@@ -530,7 +513,7 @@ static int fix_unclean_leb(struct ubifs_info *c, struct ubifs_scan_leb *sleb,
 			if (start) {
 				err = ubifs_leb_read(c, lnum, sleb->buf, 0,
 						     start, 1);
-				if (err)
+				if (err && err != -EBADMSG)
 					return err;
 			}
 			/* Pad to min_io_size */
@@ -926,7 +909,7 @@ static int recover_head(struct ubifs_info *c, int lnum, int offs, void *sbuf)
 		if (offs == 0)
 			return ubifs_leb_unmap(c, lnum);
 		err = ubifs_leb_read(c, lnum, sbuf, 0, offs, 1);
-		if (err)
+		if (err && err != -EBADMSG)
 			return err;
 		return ubifs_leb_change(c, lnum, sbuf, offs);
 	}
@@ -965,129 +948,6 @@ int ubifs_recover_inl_heads(struct ubifs_info *c, void *sbuf)
 	dbg_rcvry("checking LPT head at %d:%d", c->nhead_lnum, c->nhead_offs);
 
 	return recover_head(c, c->nhead_lnum, c->nhead_offs, sbuf);
-}
-
-/**
- * clean_an_unclean_leb - read and write a LEB to remove corruption.
- * @c: UBIFS file-system description object
- * @ucleb: unclean LEB information
- * @sbuf: LEB-sized buffer to use
- *
- * This function reads a LEB up to a point pre-determined by the mount recovery,
- * checks the nodes, and writes the result back to the flash, thereby cleaning
- * off any following corruption, or non-fatal ECC errors.
- *
- * This function returns %0 on success and a negative error code on failure.
- */
-static int clean_an_unclean_leb(struct ubifs_info *c,
-				struct ubifs_unclean_leb *ucleb, void *sbuf)
-{
-	int err, lnum = ucleb->lnum, offs = 0, len = ucleb->endpt, quiet = 1;
-	void *buf = sbuf;
-
-	dbg_rcvry("LEB %d len %d", lnum, len);
-
-	if (len == 0) {
-		/* Nothing to read, just unmap it */
-		return ubifs_leb_unmap(c, lnum);
-	}
-
-	err = ubifs_leb_read(c, lnum, buf, offs, len, 0);
-	if (err && err != -EBADMSG)
-		return err;
-
-	while (len >= 8) {
-		int ret;
-
-		cond_resched();
-
-		/* Scan quietly until there is an error */
-		ret = ubifs_scan_a_node(c, buf, len, lnum, offs, quiet);
-
-		if (ret == SCANNED_A_NODE) {
-			/* A valid node, and not a padding node */
-			struct ubifs_ch *ch = buf;
-			int node_len;
-
-			node_len = ALIGN(le32_to_cpu(ch->len), 8);
-			offs += node_len;
-			buf += node_len;
-			len -= node_len;
-			continue;
-		}
-
-		if (ret > 0) {
-			/* Padding bytes or a valid padding node */
-			offs += ret;
-			buf += ret;
-			len -= ret;
-			continue;
-		}
-
-		if (ret == SCANNED_EMPTY_SPACE) {
-			ubifs_err(c, "unexpected empty space at %d:%d",
-				  lnum, offs);
-			return -EUCLEAN;
-		}
-
-		if (quiet) {
-			/* Redo the last scan but noisily */
-			quiet = 0;
-			continue;
-		}
-
-		ubifs_scanned_corruption(c, lnum, offs, buf);
-		return -EUCLEAN;
-	}
-
-	/* Pad to min_io_size */
-	len = ALIGN(ucleb->endpt, c->min_io_size);
-	if (len > ucleb->endpt) {
-		int pad_len = len - ALIGN(ucleb->endpt, 8);
-
-		if (pad_len > 0) {
-			buf = c->sbuf + len - pad_len;
-			ubifs_pad(c, buf, pad_len);
-		}
-	}
-
-	/* Write back the LEB atomically */
-	err = ubifs_leb_change(c, lnum, sbuf, len);
-	if (err)
-		return err;
-
-	dbg_rcvry("cleaned LEB %d", lnum);
-
-	return 0;
-}
-
-/**
- * ubifs_clean_lebs - clean LEBs recovered during read-only mount.
- * @c: UBIFS file-system description object
- * @sbuf: LEB-sized buffer to use
- *
- * This function cleans a LEB identified during recovery that needs to be
- * written but was not because UBIFS was mounted read-only. This happens when
- * remounting to read-write mode.
- *
- * This function returns %0 on success and a negative error code on failure.
- */
-int ubifs_clean_lebs(struct ubifs_info *c, void *sbuf)
-{
-	dbg_rcvry("recovery");
-	while (!list_empty(&c->unclean_leb_list)) {
-		struct ubifs_unclean_leb *ucleb;
-		int err;
-
-		ucleb = list_entry(c->unclean_leb_list.next,
-				   struct ubifs_unclean_leb, list);
-		err = clean_an_unclean_leb(c, ucleb, sbuf);
-		if (err)
-			return err;
-		list_del(&ucleb->list);
-		kfree(ucleb);
-	}
-	return 0;
 }
 
 /**
@@ -1224,7 +1084,6 @@ int ubifs_rcvry_gc_commit(struct ubifs_info *c)
  * @i_size: size on inode
  * @d_size: maximum size based on data nodes
  * @exists: indicates whether the inode exists
- * @inode: inode if pinned in memory awaiting rw mode to fix it
  */
 struct size_entry {
 	struct rb_node rb;
@@ -1232,7 +1091,6 @@ struct size_entry {
 	loff_t i_size;
 	loff_t d_size;
 	int exists;
-	struct inode *inode;
 };
 
 /**
@@ -1319,7 +1177,6 @@ void ubifs_destroy_size_tree(struct ubifs_info *c)
 	struct size_entry *e, *n;
 
 	rbtree_postorder_for_each_entry_safe(e, n, &c->size_tree, rb) {
-		iput(e->inode);
 		kfree(e);
 	}
 
@@ -1422,7 +1279,7 @@ static int fix_size_in_place(struct ubifs_info *c, struct size_entry *e)
 		return 0;
 	/* Read the LEB */
 	err = ubifs_leb_read(c, lnum, c->sbuf, 0, c->leb_size, 1);
-	if (err)
+	if (err && err != -EBADMSG)
 		goto out;
 	/* Change the size field and recalculate the CRC */
 	ino = c->sbuf + offs;
@@ -1441,12 +1298,14 @@ static int fix_size_in_place(struct ubifs_info *c, struct size_entry *e)
 	if (err)
 		goto out;
 	dbg_rcvry("inode %lu at %d:%d size %lld -> %lld",
-		  (unsigned long)e->inum, lnum, offs, i_size, e->d_size);
+		  (unsigned long)e->inum, lnum, offs, (long long)i_size,
+		  (long long)e->d_size);
 	return 0;
 
 out:
 	ubifs_warn(c, "inode %lu failed to fix size %lld -> %lld error %d",
-		   (unsigned long)e->inum, e->i_size, e->d_size, err);
+		   (unsigned long)e->inum, (long long)e->i_size,
+		   (long long)e->d_size, err);
 	return err;
 }
 
@@ -1455,64 +1314,12 @@ out:
  * @c: UBIFS file-system description object
  * @e: inode size information for recovery
  */
-static int inode_fix_size(struct ubifs_info *c, struct size_entry *e)
+static int inode_fix_size(struct ubifs_info *c, __unused struct size_entry *e)
 {
-	struct inode *inode;
-	struct ubifs_inode *ui;
-	int err;
+	ubifs_assert(c, 0);
 
-	if (c->ro_mount)
-		ubifs_assert(c, !e->inode);
-
-	if (e->inode) {
-		/* Remounting rw, pick up inode we stored earlier */
-		inode = e->inode;
-	} else {
-		inode = ubifs_iget(c->vfs_sb, e->inum);
-		if (IS_ERR(inode))
-			return PTR_ERR(inode);
-
-		if (inode->i_size >= e->d_size) {
-			/*
-			 * The original inode in the index already has a size
-			 * big enough, nothing to do
-			 */
-			iput(inode);
-			return 0;
-		}
-
-		dbg_rcvry("ino %lu size %lld -> %lld",
-			  (unsigned long)e->inum,
-			  inode->i_size, e->d_size);
-
-		ui = ubifs_inode(inode);
-
-		inode->i_size = e->d_size;
-		ui->ui_size = e->d_size;
-		ui->synced_i_size = e->d_size;
-
-		e->inode = inode;
-	}
-
-	/*
-	 * In readonly mode just keep the inode pinned in memory until we go
-	 * readwrite. In readwrite mode write the inode to the journal with the
-	 * fixed size.
-	 */
-	if (c->ro_mount)
-		return 0;
-
-	err = ubifs_jnl_write_inode(c, inode);
-
-	iput(inode);
-
-	if (err)
-		return err;
-
-	rb_erase(&e->rb, &c->size_tree);
-	kfree(e);
-
-	return 0;
+	// To be implemented
+	return -EINVAL;
 }
 
 /**
@@ -1571,7 +1378,6 @@ int ubifs_recover_size(struct ubifs_info *c, bool in_place)
 				err = fix_size_in_place(c, e);
 				if (err)
 					return err;
-				iput(e->inode);
 			} else {
 				err = inode_fix_size(c, e);
 				if (err)
