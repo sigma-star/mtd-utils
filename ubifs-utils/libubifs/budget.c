@@ -201,7 +201,7 @@ long long ubifs_calc_available(const struct ubifs_info *c, int min_idx_lebs)
 static int can_use_rp(__unused struct ubifs_info *c)
 {
 	/* Fsck can always use reserved pool. */
-	return c->program_type != MKFS_PROGRAM_TYPE;
+	return c->program_type == FSCK_PROGRAM_TYPE;
 }
 
 /**

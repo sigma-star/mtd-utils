@@ -23,8 +23,9 @@ extern struct ubifs_info info_;
 #include "common.h"
 
 #define MKFS_PROGRAM_NAME "mkfs.ubifs"
+#define FSCK_PROGRAM_NAME "fsck.ubifs"
 
-enum { MKFS_PROGRAM_TYPE = 0 };
+enum { MKFS_PROGRAM_TYPE = 0, FSCK_PROGRAM_TYPE };
 
 enum {
 	DUMP_PREFIX_NONE,

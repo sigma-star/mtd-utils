@@ -1021,7 +1021,11 @@ void ubifs_assert_failed(struct ubifs_info *c, const char *expr,
 
 	/*
 	 * Different from linux kernel.
-	 * There is only one action(readonly) when assertion is failed.
+	 * Invoke callback function if there is one, otherwise make filesystem
+	 * readonly when assertion is failed.
 	 */
-	ubifs_ro_mode(c, -EINVAL);
+	if (c->assert_failed_cb)
+		c->assert_failed_cb(c);
+	else
+		ubifs_ro_mode(c, -EINVAL);
 }

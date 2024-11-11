@@ -1026,6 +1026,9 @@ struct ubifs_budg_info {
  *
  * @new_ihead_lnum: used by debugging to check @c->ihead_lnum
  * @new_ihead_offs: used by debugging to check @c->ihead_offs
+ *
+ * @private: private information related to specific situation, eg. fsck.
+ * @assert_failed_cb: callback function to handle assertion failure
  */
 struct ubifs_info {
 	struct ubifs_sb_node *sup_node;
@@ -1248,6 +1251,9 @@ struct ubifs_info {
 
 	int new_ihead_lnum;
 	int new_ihead_offs;
+
+	void *private;
+	void (*assert_failed_cb)(const struct ubifs_info *c);
 };
 
 extern atomic_long_t ubifs_clean_zn_cnt;
@@ -1684,6 +1690,8 @@ int open_ubi(struct ubifs_info *c, const char *node);
 void close_ubi(struct ubifs_info *c);
 int open_target(struct ubifs_info *c);
 int close_target(struct ubifs_info *c);
+int ubifs_open_volume(struct ubifs_info *c, const char *volume_name);
+int ubifs_close_volume(struct ubifs_info *c);
 int check_volume_empty(struct ubifs_info *c);
 void init_ubifs_info(struct ubifs_info *c, int program_type);
 int init_constants_early(struct ubifs_info *c);

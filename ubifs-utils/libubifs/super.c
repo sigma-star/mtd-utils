@@ -138,6 +138,53 @@ int close_target(struct ubifs_info *c)
 }
 
 /**
+ * ubifs_open_volume - open UBI volume.
+ * @c: the UBIFS file-system description object
+ * @volume_name: the UBI volume name
+ *
+ * Open ubi volume. This function is implemented by open_ubi + open_target.
+ *
+ * Returns %0 in case of success and a negative error code in case of failure.
+ */
+int ubifs_open_volume(struct ubifs_info *c, const char *volume_name)
+{
+	int err;
+
+	err = open_ubi(c, volume_name);
+	if (err) {
+		ubifs_err(c, "cannot open libubi. %s", strerror(errno));
+		return err;
+	}
+
+	err = open_target(c);
+	if (err)
+		close_ubi(c);
+
+	return err;
+}
+
+/**
+ * ubifs_close_volume - close UBI volume.
+ * @c: the UBIFS file-system description object
+ *
+ * Close ubi volume. This function is implemented by close_target + close_ubi.
+ *
+ * Returns %0 in case of success and a negative error code in case of failure.
+ */
+int ubifs_close_volume(struct ubifs_info *c)
+{
+	int err;
+
+	err = close_target(c);
+	if (err)
+		return err;
+
+	close_ubi(c);
+
+	return 0;
+}
+
+/**
  * check_volume_empty - check if the UBI volume is empty.
  * @c: the UBIFS file-system description object
  *
@@ -196,6 +243,11 @@ void init_ubifs_info(struct ubifs_info *c, int program_type)
 	switch (c->program_type) {
 	case MKFS_PROGRAM_TYPE:
 		c->program_name = MKFS_PROGRAM_NAME;
+		break;
+	case FSCK_PROGRAM_TYPE:
+		c->program_name = FSCK_PROGRAM_NAME;
+		/* Always check crc for data node. */
+		c->no_chk_data_crc = 0;
 		break;
 	default:
 		assert(0);
