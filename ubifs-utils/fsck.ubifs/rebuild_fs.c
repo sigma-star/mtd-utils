@@ -1312,6 +1312,39 @@ static int build_lpt(struct ubifs_info *c)
 }
 
 /**
+ * clean_log - clean up log area.
+ * @c: UBIFS file-system description object
+ *
+ * This function cleans up log area, since there is no need to do recovery
+ * in next mounting.
+ */
+static int clean_log(struct ubifs_info *c)
+{
+	int lnum, err;
+	struct ubifs_cs_node *cs;
+
+	for (lnum = UBIFS_LOG_LNUM; lnum <= c->log_last; lnum++) {
+		err = ubifs_leb_unmap(c, lnum);
+		if (err)
+			return err;
+	}
+
+	cs = kzalloc(ALIGN(UBIFS_CS_NODE_SZ, c->min_io_size), GFP_KERNEL);
+	if (!cs)
+		return -ENOMEM;
+
+	cs->ch.node_type = UBIFS_CS_NODE;
+	cs->cmt_no = cpu_to_le64(0);
+
+	err = ubifs_write_node(c, cs, UBIFS_CS_NODE_SZ, UBIFS_LOG_LNUM, 0);
+	kfree(cs);
+	if (err)
+		return err;
+
+	return 0;
+}
+
+/**
  * ubifs_rebuild_filesystem - Rebuild filesystem.
  * @c: UBIFS file-system description object
  *
@@ -1383,6 +1416,19 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 	/* Step 10. Build LPT. */
 	log_out(c, "Build LPT");
 	err = build_lpt(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto out;
+	}
+
+	/* Step 11. Clean up log & orphan. */
+	log_out(c, "Clean up log & orphan");
+	err = clean_log(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto out;
+	}
+	err = ubifs_clear_orphans(c);
 	if (err)
 		exit_code |= FSCK_ERROR;
 
