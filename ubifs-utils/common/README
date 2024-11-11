@@ -1,4 +1,4 @@
-UBIFS File System - Make File System program
+Common Library
 
 * crc16.h and crc16.c were copied from the linux kernel.
 * crc32.h and crc32.c were copied from mtd-utils and amended.

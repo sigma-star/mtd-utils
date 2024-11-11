@@ -1,37 +1,40 @@
-mkfs_ubifs_SOURCES = \
-	ubifs-utils/mkfs.ubifs/mkfs.ubifs.c \
-	ubifs-utils/mkfs.ubifs/defs.h \
-	ubifs-utils/mkfs.ubifs/lpt.h \
-	ubifs-utils/mkfs.ubifs/mkfs.ubifs.h \
-	ubifs-utils/mkfs.ubifs/crc16.h \
-	ubifs-utils/mkfs.ubifs/key.h \
-	ubifs-utils/mkfs.ubifs/compr.h \
-	ubifs-utils/mkfs.ubifs/ubifs.h \
-	ubifs-utils/mkfs.ubifs/sign.h \
-	ubifs-utils/mkfs.ubifs/crc16.c \
-	ubifs-utils/mkfs.ubifs/lpt.c \
-	ubifs-utils/mkfs.ubifs/compr.c \
-	ubifs-utils/mkfs.ubifs/hashtable/hashtable.h \
-	ubifs-utils/mkfs.ubifs/hashtable/hashtable_itr.h \
-	ubifs-utils/mkfs.ubifs/hashtable/hashtable_private.h \
-	ubifs-utils/mkfs.ubifs/hashtable/hashtable.c \
-	ubifs-utils/mkfs.ubifs/hashtable/hashtable_itr.c \
-	ubifs-utils/mkfs.ubifs/devtable.c \
+common_SOURCES = \
+	ubifs-utils/common/defs.h \
+	ubifs-utils/common/crc16.h \
+	ubifs-utils/common/crc16.c \
+	ubifs-utils/common/compr.h \
+	ubifs-utils/common/compr.c \
+	ubifs-utils/common/hashtable/hashtable.h \
+	ubifs-utils/common/hashtable/hashtable_itr.h \
+	ubifs-utils/common/hashtable/hashtable_private.h \
+	ubifs-utils/common/hashtable/hashtable.c \
+	ubifs-utils/common/hashtable/hashtable_itr.c \
+	ubifs-utils/common/devtable.c \
+	ubifs-utils/common/ubifs.h \
+	ubifs-utils/common/key.h \
+	ubifs-utils/common/lpt.h \
+	ubifs-utils/common/lpt.c \
+	ubifs-utils/common/sign.h \
 	include/mtd/ubifs-media.h
 
 if WITH_CRYPTO
-mkfs_ubifs_SOURCES += ubifs-utils/mkfs.ubifs/crypto.c \
-		ubifs-utils/mkfs.ubifs/crypto.h \
-		ubifs-utils/mkfs.ubifs/fscrypt.c \
-		ubifs-utils/mkfs.ubifs/fscrypt.h \
-		ubifs-utils/mkfs.ubifs/sign.c
+common_SOURCES += ubifs-utils/common/crypto.c \
+		ubifs-utils/common/crypto.h \
+		ubifs-utils/common/fscrypt.c \
+		ubifs-utils/common/fscrypt.h \
+		ubifs-utils/common/sign.c
 endif
 
-mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(ZSTD_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) $(OPENSSL_LIBS) -lm
-mkfs_ubifs_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS) $(ZSTD_CFLAGS) $(UUID_CFLAGS) $(LIBSELINUX_CFLAGS)\
-	-I$(top_srcdir)/ubi-utils/include -I$(top_srcdir)/ubifs-utils/mkfs.ubifs/
+mkfs_ubifs_SOURCES = \
+	$(common_SOURCES) \
+	ubifs-utils/mkfs.ubifs/mkfs.ubifs.h \
+	ubifs-utils/mkfs.ubifs/mkfs.ubifs.c
 
-EXTRA_DIST += ubifs-utils/mkfs.ubifs/README
+mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(ZSTD_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) $(OPENSSL_LIBS) -lm
+mkfs_ubifs_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS) $(ZSTD_CFLAGS) $(UUID_CFLAGS) $(LIBSELINUX_CFLAGS) \
+	-I$(top_srcdir)/ubi-utils/include -I$(top_srcdir)/ubifs-utils/mkfs.ubifs/ -I$(top_srcdir)/ubifs-utils/common
+
+EXTRA_DIST += ubifs-utils/common/README
 
 dist_sbin_SCRIPTS = ubifs-utils/mount.ubifs
 
