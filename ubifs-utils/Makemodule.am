@@ -50,7 +50,7 @@ mkfs_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(ZSTD_LIBS) $(UUI
 mkfs_ubifs_CPPFLAGS = $(AM_CPPFLAGS) $(ZLIB_CFLAGS) $(LZO_CFLAGS) $(ZSTD_CFLAGS) $(UUID_CFLAGS) $(LIBSELINUX_CFLAGS) \
 	-I$(top_srcdir)/ubi-utils/include -I$(top_srcdir)/ubifs-utils/common -I $(top_srcdir)/ubifs-utils/libubifs
 
-EXTRA_DIST += ubifs-utils/common/README
+EXTRA_DIST += ubifs-utils/common/README ubifs-utils/libubifs/README
 
 dist_sbin_SCRIPTS = ubifs-utils/mount.ubifs
 

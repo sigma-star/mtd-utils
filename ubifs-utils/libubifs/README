@@ -1,0 +1,30 @@
+UBIFS Library (Imported from linux kernel 6.8-rc2 41bccc98fb7931d63)
+
+* ubifs.h is a selection of definitions from fs/ubifs/ubifs.h from the linux kernel.
+* key.h is copied from fs/ubifs/key.h from the linux kernel.
+* ubifs-media.h is copied from fs/ubifs/ubifs-media.h from the linux kernel.
+* find.c is copied from fs/ubifs/find.c from the linux kernel.
+* scan.c is copied from fs/ubifs/scan.c from the linux kernel.
+* gc.c is copied from fs/ubifs/gc.c from the linux kernel.
+* log.c is copied from fs/ubifs/log.c from the linux kernel, and amended.
+* tnc_commit.c is copied from fs/ubifs/tnc_commit.c from the linux kernel, and amended.
+* master.c is copied from fs/ubifs/master.c from the linux kernel, and amended.
+* recovery.c is copied from fs/ubifs/recovery.c from the linux kernel, and amended.
+* lpt.c is a selection of functions copied from fs/ubifs/lpt.c from the linux kernel, and amended.
+* auth.c is a selection of functions copied from fs/ubifs/auth.c from the linux kernel, and amended.
+* budget.c is a selection of functions copied from fs/ubifs/budget.c from the linux kernel, and amended.
+* commit.c is a selection of functions copied from fs/ubifs/commit.c from the linux kernel, and amended.
+* debug.c is a selection of functions copied from fs/ubifs/debug.c from the linux kernel, and amended.
+* debug.h is a selection of functions copied from fs/ubifs/debug.h from the linux kernel, and amended.
+* io.c is a selection of functions copied from fs/ubifs/io.c from the linux kernel, and amended.
+* lprops.c is a selection of functions copied from fs/ubifs/lprops.c from the linux kernel, and amended.
+* lpt_commit.c is a selection of functions copied from fs/ubifs/lpt_commit.c from the linux kernel, and amended.
+* misc.h is a selection of functions copied from fs/ubifs/misc.h from the linux kernel, and amended.
+* orphan.c is a selection of functions copied from fs/ubifs/orphan.c from the linux kernel, and amended.
+* replay.c is a selection of functions copied from fs/ubifs/replay.c from the linux kernel, and amended.
+* sb.c is a selection of functions copied from fs/ubifs/sb.c from the linux kernel, and amended.
+* super.c is a selection of functions copied from fs/ubifs/super.c from the linux kernel, and amended.
+* tnc.c is a selection of functions copied from fs/ubifs/tnc.c from the linux kernel, and amended.
+* tnc_misc.c is a selection of functions copied from fs/ubifs/tnc_misc.c from the linux kernel, and amended.
+* journal.c is a selection of functions copied from fs/ubifs/journal.c from the linux kernel, and amended.
+* dir.c is a selection of functions copied from fs/ubifs/dir.c from the linux kernel, and amended.
