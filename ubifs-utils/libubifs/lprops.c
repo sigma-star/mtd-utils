@@ -656,13 +656,23 @@ int ubifs_change_one_lp(struct ubifs_info *c, int lnum, int free, int dirty,
 	int err = 0, flags;
 	const struct ubifs_lprops *lp;
 
+	if (!test_lpt_valid_callback(c, lnum, LPROPS_NC, LPROPS_NC, LPROPS_NC,
+				     LPROPS_NC))
+		return 0;
+
 	ubifs_get_lprops(c);
 
 	lp = ubifs_lpt_lookup_dirty(c, lnum);
 	if (IS_ERR(lp)) {
 		err = PTR_ERR(lp);
+		if (test_and_clear_failure_reason_callback(c, FR_LPT_CORRUPTED) &&
+		    can_ignore_failure_callback(c, FR_LPT_CORRUPTED))
+			err = 0;
 		goto out;
 	}
+
+	if (!test_lpt_valid_callback(c, lnum, lp->free, lp->dirty, free, dirty))
+		goto out;
 
 	flags = (lp->flags | flags_set) & ~flags_clean;
 	lp = ubifs_change_lp(c, lp, free, dirty, flags, idx_gc_cnt);
@@ -695,13 +705,24 @@ int ubifs_update_one_lp(struct ubifs_info *c, int lnum, int free, int dirty,
 	int err = 0, flags;
 	const struct ubifs_lprops *lp;
 
+	if (!test_lpt_valid_callback(c, lnum, LPROPS_NC, LPROPS_NC, LPROPS_NC,
+				     LPROPS_NC))
+		return 0;
+
 	ubifs_get_lprops(c);
 
 	lp = ubifs_lpt_lookup_dirty(c, lnum);
 	if (IS_ERR(lp)) {
 		err = PTR_ERR(lp);
+		if (test_and_clear_failure_reason_callback(c, FR_LPT_CORRUPTED) &&
+		    can_ignore_failure_callback(c, FR_LPT_CORRUPTED))
+			err = 0;
 		goto out;
 	}
+
+	if (!test_lpt_valid_callback(c, lnum, lp->free, lp->dirty, free,
+				     lp->dirty + dirty))
+		goto out;
 
 	flags = (lp->flags | flags_set) & ~flags_clean;
 	lp = ubifs_change_lp(c, lp, free, lp->dirty + dirty, flags, 0);

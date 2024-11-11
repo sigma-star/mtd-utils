@@ -94,11 +94,18 @@ static int set_bud_lprops(struct ubifs_info *c, struct bud_entry *b)
 	const struct ubifs_lprops *lp;
 	int err = 0, dirty;
 
+	if (!test_lpt_valid_callback(c, b->bud->lnum, LPROPS_NC, LPROPS_NC,
+				     LPROPS_NC, LPROPS_NC))
+		return 0;
+
 	ubifs_get_lprops(c);
 
 	lp = ubifs_lpt_lookup_dirty(c, b->bud->lnum);
 	if (IS_ERR(lp)) {
 		err = PTR_ERR(lp);
+		if (test_and_clear_failure_reason_callback(c, FR_LPT_CORRUPTED) &&
+		    can_ignore_failure_callback(c, FR_LPT_CORRUPTED))
+			err = 0;
 		goto out;
 	}
 
@@ -140,6 +147,10 @@ static int set_bud_lprops(struct ubifs_info *c, struct bud_entry *b)
 				b->bud->lnum, lp->free, lp->dirty, b->free,
 				b->dirty);
 	}
+	if (!test_lpt_valid_callback(c, b->bud->lnum, lp->free, lp->dirty,
+				     b->free, dirty + b->dirty))
+		goto out;
+
 	lp = ubifs_change_lp(c, lp, b->free, dirty + b->dirty,
 			     lp->flags | LPROPS_TAKEN, 0);
 	if (IS_ERR(lp)) {
@@ -766,6 +777,7 @@ out:
 	return err;
 
 out_dump:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	ubifs_err(c, "bad node is at LEB %d:%d", lnum, snod->offs);
 	ubifs_dump_node(c, snod->node, c->leb_size - snod->offs);
 	ubifs_scan_destroy(sleb);
@@ -781,14 +793,24 @@ out_dump:
  */
 static int replay_buds(struct ubifs_info *c)
 {
-	struct bud_entry *b;
+	struct bud_entry *b, *tmp_b;
 	int err;
 	unsigned long long prev_sqnum = 0;
 
-	list_for_each_entry(b, &c->replay_buds, list) {
+	list_for_each_entry_safe(b, tmp_b, &c->replay_buds, list) {
 		err = replay_bud(c, b);
-		if (err)
+		if (err) {
+			if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED) &&
+			    handle_failure_callback(c, FR_H_BUD_CORRUPTED, b->bud)) {
+				/* Set %FR_LPT_INCORRECT for lpt status. */
+				set_lpt_invalid_callback(c, FR_LPT_INCORRECT);
+				/* Skip replaying the bud LEB. */
+				list_del(&b->list);
+				kfree(b);
+				continue;
+			}
 			return err;
+		}
 
 		ubifs_assert(c, b->sqnum > prev_sqnum);
 		prev_sqnum = b->sqnum;
@@ -1062,6 +1084,7 @@ out:
 	return err;
 
 out_dump:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	ubifs_err(c, "log error detected while replaying the log at LEB %d:%d",
 		  lnum, offs + snod->offs);
 	ubifs_dump_node(c, snod->node, c->leb_size - snod->offs);
@@ -1086,10 +1109,19 @@ static int take_ihead(struct ubifs_info *c)
 	lp = ubifs_lpt_lookup_dirty(c, c->ihead_lnum);
 	if (IS_ERR(lp)) {
 		err = PTR_ERR(lp);
+		if (test_and_clear_failure_reason_callback(c, FR_LPT_CORRUPTED) &&
+		    can_ignore_failure_callback(c, FR_LPT_CORRUPTED))
+			err = 0;
 		goto out;
 	}
 
 	free = lp->free;
+
+	if (!test_lpt_valid_callback(c, c->ihead_lnum, LPROPS_NC, LPROPS_NC,
+				     LPROPS_NC, LPROPS_NC)) {
+		err = free;
+		goto out;
+	}
 
 	lp = ubifs_change_lp(c, lp, LPROPS_NC, LPROPS_NC,
 			     lp->flags | LPROPS_TAKEN, 0);
@@ -1123,10 +1155,17 @@ int ubifs_replay_journal(struct ubifs_info *c)
 	if (free < 0)
 		return free; /* Error code */
 
-	if (c->ihead_offs != c->leb_size - free) {
-		ubifs_err(c, "bad index head LEB %d:%d", c->ihead_lnum,
-			  c->ihead_offs);
-		return -EINVAL;
+	if (c->program_type != FSCK_PROGRAM_TYPE) {
+		/*
+		 * Skip index head checking for fsck, it is hard to check it
+		 * caused by possible corrupted/incorrect lpt, tnc updating
+		 * will report error code if index tree is really corrupted.
+		 */
+		if (c->ihead_offs != c->leb_size - free) {
+			ubifs_err(c, "bad index head LEB %d:%d", c->ihead_lnum,
+				  c->ihead_offs);
+			return -EINVAL;
+		}
 	}
 
 	dbg_mnt("start replaying the journal");
@@ -1147,6 +1186,7 @@ int ubifs_replay_journal(struct ubifs_info *c)
 			 * something went wrong and we cannot proceed mounting
 			 * the file-system.
 			 */
+			set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 			ubifs_err(c, "no UBIFS nodes found at the log head LEB %d:%d, possibly corrupted",
 				  lnum, 0);
 			err = -EINVAL;

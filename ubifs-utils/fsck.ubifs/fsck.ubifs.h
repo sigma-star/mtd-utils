@@ -37,7 +37,8 @@ enum { NORMAL_MODE = 0, SAFE_MODE, DANGER_MODE0,
        DANGER_MODE1, REBUILD_MODE, CHECK_MODE };
 
 /* Types of inconsistent problems */
-enum { SB_CORRUPTED = 0, MST_CORRUPTED };
+enum { SB_CORRUPTED = 0, MST_CORRUPTED, LOG_CORRUPTED, BUD_CORRUPTED,
+       TNC_CORRUPTED, TNC_DATA_CORRUPTED };
 
 struct scanned_file;
 
@@ -259,7 +260,7 @@ static inline const char *mode_name(const struct ubifs_info *c)
 extern int exit_code;
 
 /* problem.c */
-bool fix_problem(const struct ubifs_info *c, int problem_type);
+bool fix_problem(const struct ubifs_info *c, int problem_type, const void *priv);
 
 /* load_fs.c */
 int ubifs_load_filesystem(struct ubifs_info *c);

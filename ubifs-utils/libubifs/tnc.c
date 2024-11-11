@@ -2402,9 +2402,22 @@ int ubifs_tnc_remove_ino(struct ubifs_info *c, ino_t inum)
 
 		xent = ubifs_tnc_next_ent(c, &key1, &nm);
 		if (IS_ERR(xent)) {
+			unsigned int reason;
+
 			err = PTR_ERR(xent);
 			if (err == -ENOENT)
 				break;
+
+			reason = get_failure_reason_callback(c);
+			if (reason & FR_DATA_CORRUPTED) {
+				test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED);
+				if (handle_failure_callback(c, FR_H_TNC_DATA_CORRUPTED, NULL)) {
+					/* Set %FR_LPT_INCORRECT for lpt status. */
+					set_lpt_invalid_callback(c, FR_LPT_INCORRECT);
+					/* Leave xattrs to be deleted by subsequent steps */
+					break;
+				}
+			}
 			kfree(pxent);
 			return err;
 		}

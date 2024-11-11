@@ -72,7 +72,7 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 	err = ubifs_read_superblock(c);
 	if (err) {
 		if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED))
-			fix_problem(c, SB_CORRUPTED);
+			fix_problem(c, SB_CORRUPTED, NULL);
 		exit_code |= FSCK_ERROR;
 		goto out_mounting;
 	}
@@ -103,7 +103,7 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 	err = ubifs_read_master(c);
 	if (err) {
 		if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED)) {
-			if (fix_problem(c, MST_CORRUPTED))
+			if (fix_problem(c, MST_CORRUPTED, NULL))
 				FSCK(c)->try_rebuild = true;
 		} else
 			exit_code |= FSCK_ERROR;
@@ -161,10 +161,34 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 		c->superblock_need_write = 0;
 	}
 
+	log_out(c, "Replay journal");
+	err = ubifs_replay_journal(c);
+	if (err) {
+		unsigned int reason = get_failure_reason_callback(c);
+
+		clear_failure_reason_callback(c);
+		if (reason & FR_DATA_CORRUPTED) {
+			if (fix_problem(c, LOG_CORRUPTED, NULL))
+				FSCK(c)->try_rebuild = true;
+		} else if (reason & FR_TNC_CORRUPTED) {
+			if (fix_problem(c, TNC_CORRUPTED, NULL))
+				FSCK(c)->try_rebuild = true;
+		} else {
+			ubifs_assert(c, reason == 0);
+			exit_code |= FSCK_ERROR;
+		}
+		goto out_journal;
+	}
+
+	/* Calculate 'min_idx_lebs' after journal replay */
+	c->bi.min_idx_lebs = ubifs_calc_min_idx_lebs(c);
+
 	c->mounting = 0;
 
 	return 0;
 
+out_journal:
+	destroy_journal(c);
 out_lpt:
 	ubifs_lpt_free(c, 0);
 out_master:
@@ -188,6 +212,7 @@ out_free:
 
 void ubifs_destroy_filesystem(struct ubifs_info *c)
 {
+	destroy_journal(c);
 	free_wbufs(c);
 	ubifs_lpt_free(c, 0);
 

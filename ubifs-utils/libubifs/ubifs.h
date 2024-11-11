@@ -1286,7 +1286,7 @@ struct ubifs_info {
 	bool (*can_ignore_failure_cb)(const struct ubifs_info *c,
 				      unsigned int reason);
 	bool (*handle_failure_cb)(const struct ubifs_info *c,
-				  unsigned int reason);
+				  unsigned int reason, void *priv);
 };
 
 extern atomic_long_t ubifs_clean_zn_cnt;
@@ -1542,6 +1542,11 @@ enum {
 	FR_LPT_CORRUPTED = 4,	/* LPT is corrupted */
 	FR_LPT_INCORRECT = 8	/* Space statistics are wrong */
 };
+/* Partial failure reasons in common libs, which are handled by fsck. */
+enum {
+	FR_H_BUD_CORRUPTED = 0,		/* Bud LEB is corrupted */
+	FR_H_TNC_DATA_CORRUPTED,	/* Data searched from TNC is corrupted */
+};
 /* Callback functions for failure(which can be handled by fsck) happens. */
 static inline void set_failure_reason_callback(const struct ubifs_info *c,
 					       unsigned int reason)
@@ -1596,10 +1601,10 @@ static inline bool can_ignore_failure_callback(const struct ubifs_info *c,
 	return false;
 }
 static inline bool handle_failure_callback(const struct ubifs_info *c,
-					   unsigned int reason)
+					   unsigned int reason, void *priv)
 {
 	if (c->handle_failure_cb)
-		return c->handle_failure_cb(c, reason);
+		return c->handle_failure_cb(c, reason, priv);
 
 	return false;
 }
