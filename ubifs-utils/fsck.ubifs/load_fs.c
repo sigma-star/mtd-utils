@@ -99,10 +99,81 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 		goto out_mounting;
 	}
 
+	log_out(c, "Read master & init lpt");
+	err = ubifs_read_master(c);
+	if (err) {
+		if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED)) {
+			if (fix_problem(c, MST_CORRUPTED))
+				FSCK(c)->try_rebuild = true;
+		} else
+			exit_code |= FSCK_ERROR;
+		goto out_master;
+	}
+
+	init_constants_master(c);
+
+	if ((c->mst_node->flags & cpu_to_le32(UBIFS_MST_DIRTY)) != 0) {
+		ubifs_msg(c, "recovery needed");
+		c->need_recovery = 1;
+	}
+
+	if (c->need_recovery && !c->ro_mount) {
+		err = ubifs_recover_inl_heads(c, c->sbuf);
+		if (err) {
+			exit_code |= FSCK_ERROR;
+			goto out_master;
+		}
+	}
+
+	err = ubifs_lpt_init(c, 1, !c->ro_mount);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto out_master;
+	}
+
+	if (!c->ro_mount && c->space_fixup) {
+		err = ubifs_fixup_free_space(c);
+		if (err) {
+			exit_code |= FSCK_ERROR;
+			goto out_lpt;
+		}
+	}
+
+	if (!c->ro_mount && !c->need_recovery) {
+		/*
+		 * Set the "dirty" flag so that if we reboot uncleanly we
+		 * will notice this immediately on the next mount.
+		 */
+		c->mst_node->flags |= cpu_to_le32(UBIFS_MST_DIRTY);
+		err = ubifs_write_master(c);
+		if (err) {
+			exit_code |= FSCK_ERROR;
+			goto out_lpt;
+		}
+	}
+
+	if (!c->ro_mount && c->superblock_need_write) {
+		err = ubifs_write_sb_node(c, c->sup_node);
+		if (err) {
+			exit_code |= FSCK_ERROR;
+			goto out_lpt;
+		}
+		c->superblock_need_write = 0;
+	}
+
 	c->mounting = 0;
 
 	return 0;
 
+out_lpt:
+	ubifs_lpt_free(c, 0);
+out_master:
+	c->max_sqnum = 0;
+	c->highest_inum = 0;
+	c->calc_idx_sz = 0;
+	kfree(c->mst_node);
+	kfree(c->rcvrd_mst_node);
+	free_wbufs(c);
 out_mounting:
 	c->mounting = 0;
 out_free:
@@ -118,8 +189,15 @@ out_free:
 void ubifs_destroy_filesystem(struct ubifs_info *c)
 {
 	free_wbufs(c);
+	ubifs_lpt_free(c, 0);
+
+	c->max_sqnum = 0;
+	c->highest_inum = 0;
+	c->calc_idx_sz = 0;
 
 	kfree(c->cbuf);
+	kfree(c->rcvrd_mst_node);
+	kfree(c->mst_node);
 	kfree(c->ileb_buf);
 	kfree(c->sbuf);
 	kfree(c->bottom_up_buf);

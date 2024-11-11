@@ -423,7 +423,10 @@ int main(int argc, char *argv[])
 		goto out_destroy_fsck;
 	}
 
-	/* Init: Read superblock */
+	/*
+	 * Init: Read superblock
+	 * Step 1: Read master & init lpt
+	 */
 	err = ubifs_load_filesystem(c);
 	if (err) {
 		if (FSCK(c)->try_rebuild)

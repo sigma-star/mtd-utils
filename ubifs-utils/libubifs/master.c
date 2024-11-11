@@ -323,7 +323,12 @@ out:
 	set_failure_reason_callback(c, reason);
 	ubifs_err(c, "bad master node at offset %d error %d", c->mst_offs, err);
 	ubifs_dump_node(c, c->mst_node, c->mst_node_alsz);
-	return -EINVAL;
+	err = -EINVAL;
+	if (can_ignore_failure_callback(c, reason)) {
+		clear_failure_reason_callback(c);
+		err = 0;
+	}
+	return err;
 }
 
 /**

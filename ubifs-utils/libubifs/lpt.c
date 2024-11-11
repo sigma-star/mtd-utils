@@ -1883,8 +1883,13 @@ static int lpt_init_rd(struct ubifs_info *c)
 	c->dirty_idx.max_cnt = LPT_HEAP_SZ;
 
 	err = read_ltab(c);
-	if (err)
-		return err;
+	if (err) {
+		if (test_and_clear_failure_reason_callback(c, FR_LPT_CORRUPTED) &&
+		    can_ignore_failure_callback(c, FR_LPT_CORRUPTED))
+			err = 0;
+		else
+			return err;
+	}
 
 	err = lpt_check_hash(c);
 	if (err)
@@ -1938,8 +1943,13 @@ static int lpt_init_wr(struct ubifs_info *c)
 		if (!c->lsave)
 			return -ENOMEM;
 		err = read_lsave(c);
-		if (err)
-			return err;
+		if (err) {
+			if (test_and_clear_failure_reason_callback(c, FR_LPT_CORRUPTED) &&
+			    can_ignore_failure_callback(c, FR_LPT_CORRUPTED))
+				err = 0;
+			else
+				return err;
+		}
 	}
 
 	for (i = 0; i < c->lpt_lebs; i++)
