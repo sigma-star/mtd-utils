@@ -278,6 +278,8 @@ struct ubifs_znode
  * @program_type: used to identify the type of current program
  * @program_name: program name
  * @dev_name: device name
+ * @dev_fd: opening handler for an UBI volume or an image file
+ * @libubi: opening handler for libubi
  *
  * @jhead_cnt: count of journal heads
  * @max_bud_bytes: maximum number of bytes allowed in buds
@@ -370,6 +372,8 @@ struct ubifs_info
 	int program_type;
 	const char *program_name;
 	char *dev_name;
+	int dev_fd;
+	libubi_t libubi;
 
 	int jhead_cnt;
 	long long max_bud_bytes;
@@ -482,6 +486,13 @@ struct ubifs_branch *ubifs_idx_branch(const struct ubifs_info *c,
 				       (UBIFS_BRANCH_SZ + c->key_len + c->hash_len) * bnum);
 }
 
-int write_leb(int lnum, int len, void *buf);
+int write_leb(struct ubifs_info *c, int lnum, int len, void *buf);
+
+/* super.c */
+int open_ubi(struct ubifs_info *c, const char *node);
+void close_ubi(struct ubifs_info *c);
+int open_target(struct ubifs_info *c);
+int close_target(struct ubifs_info *c);
+int check_volume_empty(struct ubifs_info *c);
 
 #endif /* __UBIFS_H__ */
