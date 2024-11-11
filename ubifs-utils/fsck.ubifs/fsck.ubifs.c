@@ -369,6 +369,7 @@ static int init_fsck_info(struct ubifs_info *c, int argc, char *argv[])
 
 	c->private = fsck;
 	FSCK(c)->mode = mode;
+	INIT_LIST_HEAD(&FSCK(c)->disconnected_files);
 	c->assert_failed_cb = fsck_assert_failed;
 	c->set_failure_reason_cb = fsck_set_failure_reason;
 	c->get_failure_reason_cb = fsck_get_failure_reason;
@@ -445,6 +446,15 @@ static int do_fsck(void)
 
 	update_files_size(c);
 
+	log_out(c, "Check and handle invalid files");
+	err = handle_invalid_files(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto free_used_lebs;
+	}
+
+	destroy_file_list(c, &FSCK(c)->disconnected_files);
+free_used_lebs:
 	kfree(FSCK(c)->used_lebs);
 	destroy_file_tree(c, &FSCK(c)->scanned_files);
 	return err;
@@ -484,6 +494,7 @@ int main(int argc, char *argv[])
 	/*
 	 * Step 6: Traverse tnc and construct files
 	 * Step 7: Update files' size
+	 * Step 8: Check and handle invalid files
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {

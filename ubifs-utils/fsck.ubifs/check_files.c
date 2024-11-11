@@ -354,3 +354,91 @@ void update_files_size(struct ubifs_info *c)
 		kfree(e);
 	}
 }
+
+/**
+ * handle_invalid_files - Handle invalid files.
+ * @c: UBIFS file-system description object
+ *
+ * This function checks and handles invalid files, there are three situations:
+ * 1. Move unattached(file has no dentries, or file's parent file has invalid
+ *    type) regular file into disconnected list, let subsequent steps to handle
+ *    them with lost+found.
+ * 2. Make file type be consistent between inode, detries and data nodes by
+ *    deleting dentries or data blocks.
+ * 3. Delete file for other invalid cases(eg. file has no inode).
+ *
+ * Returns zero in case of success, a negative error code in case of failure.
+ */
+int handle_invalid_files(struct ubifs_info *c)
+{
+	int err;
+	struct rb_node *node;
+	struct scanned_file *file;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
+	LIST_HEAD(tmp_list);
+
+	/* Add all xattr files into a list. */
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		if (file->ino.is_xattr)
+			list_add(&file->list, &tmp_list);
+	}
+
+	/*
+	 * Round 1: Traverse xattr files, check whether the xattr file is
+	 * valid, move valid xattr file into corresponding host file's subtree.
+	 */
+	while (!list_empty(&tmp_list)) {
+		file = list_entry(tmp_list.next, struct scanned_file, list);
+
+		list_del(&file->list);
+		rb_erase(&file->rb, tree);
+		err = file_is_valid(c, file, tree, NULL);
+		if (err < 0) {
+			destroy_file_content(c, file);
+			kfree(file);
+			return err;
+		} else if (!err) {
+			err = delete_file(c, file);
+			kfree(file);
+			if (err)
+				return err;
+		}
+	}
+
+	/* Round 2: Traverse non-xattr files. */
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		int is_diconnected = 0;
+
+		file = rb_entry(node, struct scanned_file, rb);
+		err = file_is_valid(c, file, tree, &is_diconnected);
+		if (err < 0) {
+			return err;
+		} else if (!err) {
+			if (is_diconnected)
+				list_add(&file->list, &FSCK(c)->disconnected_files);
+			else
+				list_add(&file->list, &tmp_list);
+		}
+	}
+
+	/* Delete & remove invalid files. */
+	while (!list_empty(&tmp_list)) {
+		file = list_entry(tmp_list.next, struct scanned_file, list);
+
+		list_del(&file->list);
+		err = delete_file(c, file);
+		if (err)
+			return err;
+		rb_erase(&file->rb, tree);
+		kfree(file);
+	}
+
+	/* Remove disconnected file from the file tree. */
+	list_for_each_entry(file, &FSCK(c)->disconnected_files, list) {
+		rb_erase(&file->rb, tree);
+	}
+
+	return 0;
+}

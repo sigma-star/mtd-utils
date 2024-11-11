@@ -39,7 +39,11 @@ enum { NORMAL_MODE = 0, SAFE_MODE, DANGER_MODE0,
 /* Types of inconsistent problems */
 enum { SB_CORRUPTED = 0, MST_CORRUPTED, LOG_CORRUPTED, BUD_CORRUPTED,
        TNC_CORRUPTED, TNC_DATA_CORRUPTED, ORPHAN_CORRUPTED, INVALID_INO_NODE,
-       INVALID_DENT_NODE, INVALID_DATA_NODE, SCAN_CORRUPTED };
+       INVALID_DENT_NODE, INVALID_DATA_NODE, SCAN_CORRUPTED, FILE_HAS_NO_INODE,
+       FILE_HAS_0_NLINK_INODE, FILE_HAS_INCONSIST_TYPE, FILE_HAS_TOO_MANY_DENT,
+       FILE_SHOULDNT_HAVE_DATA, FILE_HAS_NO_DENT, XATTR_HAS_NO_HOST,
+       XATTR_HAS_WRONG_HOST, FILE_HAS_NO_ENCRYPT, FILE_IS_DISCONNECTED,
+       FILE_ROOT_HAS_DENT };
 
 enum { HAS_DATA_CORRUPTED = 1, HAS_TNC_CORRUPTED = 2 };
 
@@ -183,6 +187,16 @@ struct scanned_file {
 };
 
 /**
+ * invalid_file_problem - problem instance for invalid file.
+ * @file: invalid file instance
+ * @priv: invalid instance in @file, could be a dent_node or data_node
+ */
+struct invalid_file_problem {
+	struct scanned_file *file;
+	void *priv;
+};
+
+/**
  * ubifs_rebuild_info - UBIFS rebuilding information.
  * @lpts: lprops table
  * @write_buf: write buffer for LEB @head_lnum
@@ -206,6 +220,7 @@ struct ubifs_rebuild_info {
  *		%FR_LPT_INCORRECT
  * @scanned_files: tree of all scanned files
  * @used_lebs: a bitmap used for recording used lebs
+ * @disconnected_files: regular files without dentries
  * @try_rebuild: %true means that try to rebuild fs when fsck failed
  * @rebuild: rebuilding-related information
  */
@@ -215,6 +230,7 @@ struct ubifs_fsck_info {
 	unsigned int lpt_status;
 	struct rb_root scanned_files;
 	unsigned long *used_lebs;
+	struct list_head disconnected_files;
 	bool try_rebuild;
 	struct ubifs_rebuild_info *rebuild;
 };
@@ -285,9 +301,11 @@ int insert_or_update_file(struct ubifs_info *c, struct rb_root *file_tree,
 			  struct scanned_node *sn, int key_type, ino_t inum);
 void destroy_file_content(struct ubifs_info *c, struct scanned_file *file);
 void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree);
+void destroy_file_list(struct ubifs_info *c, struct list_head *file_list);
 struct scanned_file *lookup_file(struct rb_root *file_tree, ino_t inum);
-bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
-		   struct rb_root *file_tree);
+int delete_file(struct ubifs_info *c, struct scanned_file *file);
+int file_is_valid(struct ubifs_info *c, struct scanned_file *file,
+		  struct rb_root *file_tree, int *is_diconnected);
 bool file_is_reachable(struct ubifs_info *c, struct scanned_file *file,
 		       struct rb_root *file_tree);
 int check_and_correct_files(struct ubifs_info *c);
@@ -298,5 +316,6 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c);
 /* check_files.c */
 int traverse_tnc_and_construct_files(struct ubifs_info *c);
 void update_files_size(struct ubifs_info *c);
+int handle_invalid_files(struct ubifs_info *c);
 
 #endif

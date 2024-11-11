@@ -784,6 +784,26 @@ void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree)
 }
 
 /**
+ * destroy_file_list - destroy files from a given list head.
+ * @c: UBIFS file-system description object
+ * @file_list: list of the scanned files
+ *
+ * Destroy scanned files from a given list.
+ */
+void destroy_file_list(struct ubifs_info *c, struct list_head *file_list)
+{
+	struct scanned_file *file;
+
+	while (!list_empty(file_list)) {
+		file = list_entry(file_list->next, struct scanned_file, list);
+
+		destroy_file_content(c, file);
+		list_del(&file->list);
+		kfree(file);
+	}
+}
+
+/**
  * lookup_file - lookup file according to inode number.
  * @file_tree: tree of all scanned files
  * @inum: inode number
@@ -808,6 +828,109 @@ struct scanned_file *lookup_file(struct rb_root *file_tree, ino_t inum)
 	}
 
 	return NULL;
+}
+
+static void handle_invalid_file(struct ubifs_info *c, int problem_type,
+				struct scanned_file *file, void *priv)
+{
+	struct invalid_file_problem ifp = {
+		.file = file,
+		.priv = priv,
+	};
+
+	if (FSCK(c)->mode == REBUILD_MODE)
+		return;
+
+	fix_problem(c, problem_type, &ifp);
+}
+
+static int delete_node(struct ubifs_info *c, const union ubifs_key *key,
+		       int lnum, int offs)
+{
+	int err;
+
+	err = ubifs_tnc_remove_node(c, key, lnum, offs);
+	if (err) {
+		/* TNC traversing is finished, any TNC path is accessible */
+		ubifs_assert(c, !get_failure_reason_callback(c));
+	}
+
+	return err;
+}
+
+static int delete_dent_nodes(struct ubifs_info *c, struct scanned_file *file,
+			     int err)
+{
+	int ret = 0;
+	struct rb_node *this = rb_first(&file->dent_nodes);
+	struct scanned_dent_node *dent_node;
+
+	while (this) {
+		dent_node = rb_entry(this, struct scanned_dent_node, rb);
+		this = rb_next(this);
+
+		if (!err) {
+			err = delete_node(c, &dent_node->key,
+				dent_node->header.lnum, dent_node->header.offs);
+			if (err)
+				ret = ret ? ret : err;
+		}
+
+		rb_erase(&dent_node->rb, &file->dent_nodes);
+		kfree(dent_node);
+	}
+
+	return ret;
+}
+
+int delete_file(struct ubifs_info *c, struct scanned_file *file)
+{
+	int err = 0, ret = 0;
+	struct rb_node *this;
+	struct scanned_file *xattr_file;
+	struct scanned_data_node *data_node;
+
+	if (file->ino.header.exist) {
+		err = delete_node(c, &file->ino.key, file->ino.header.lnum,
+				  file->ino.header.offs);
+		if (err)
+			ret = ret ? ret : err;
+	}
+
+	this = rb_first(&file->data_nodes);
+	while (this) {
+		data_node = rb_entry(this, struct scanned_data_node, rb);
+		this = rb_next(this);
+
+		if (!err) {
+			err = delete_node(c, &data_node->key,
+				data_node->header.lnum, data_node->header.offs);
+			if (err)
+				ret = ret ? ret : err;
+		}
+
+		rb_erase(&data_node->rb, &file->data_nodes);
+		kfree(data_node);
+	}
+
+	err = delete_dent_nodes(c, file, err);
+	if (err)
+		ret = ret ? : err;
+
+	this = rb_first(&file->xattr_files);
+	while (this) {
+		xattr_file = rb_entry(this, struct scanned_file, rb);
+		this = rb_next(this);
+
+		ubifs_assert(c, !rb_first(&xattr_file->xattr_files));
+		err = delete_file(c, xattr_file);
+		if (err)
+			ret = ret ? ret : err;
+		rb_erase(&xattr_file->rb, &file->xattr_files);
+		kfree(xattr_file);
+	}
+
+	return ret;
 }
 
 /**
@@ -848,6 +971,7 @@ static void insert_xattr_file(struct ubifs_info *c,
  * @c: UBIFS file-system description object
  * @file: file object
  * @file_tree: tree of all scanned files
+ * @is_diconnected: reason of invalid file, whether the @file is disconnected
  *
  * This function checks whether given @file is valid, following checks will
  * be performed:
@@ -866,12 +990,13 @@ static void insert_xattr_file(struct ubifs_info *c,
  *    invalid.
  * Xattr file will be inserted into corresponding host file's subtree.
  *
- * Returns %true is @file is valid, otherwise %false is returned.
+ * Returns %1 is @file is valid, %0 if @file is invalid, otherwise a negative
+ * error code in case of failure.
  * Notice: All xattr files should be traversed before non-xattr files, because
  *         checking item 7 depends on it.
  */
-bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
-		   struct rb_root *file_tree)
+int file_is_valid(struct ubifs_info *c, struct scanned_file *file,
+		  struct rb_root *file_tree, int *is_diconnected)
 {
 	int type;
 	struct rb_node *node;
@@ -880,8 +1005,17 @@ bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
 	struct scanned_data_node *data_node;
 	LIST_HEAD(drop_list);
 
-	if (!file->ino.header.exist || !file->ino.nlink)
-		return false;
+	dbg_fsck("check validation of file %lu, in %s", file->inum, c->dev_name);
+
+	if (!file->ino.header.exist) {
+		handle_invalid_file(c, FILE_HAS_NO_INODE, file, NULL);
+		return 0;
+	}
+
+	if (!file->ino.nlink) {
+		handle_invalid_file(c, FILE_HAS_0_NLINK_INODE, file, NULL);
+		return 0;
+	}
 
 	type = ubifs_get_dent_type(file->ino.mode);
 
@@ -901,6 +1035,14 @@ bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
 		dent_node = list_entry(drop_list.next, struct scanned_dent_node,
 				       list);
 
+		handle_invalid_file(c, FILE_HAS_INCONSIST_TYPE, file, dent_node);
+		if (FSCK(c)->mode != REBUILD_MODE) {
+			int err = delete_node(c, &dent_node->key,
+				dent_node->header.lnum, dent_node->header.offs);
+			if (err)
+				return err;
+		}
+
 		list_del(&dent_node->list);
 		rb_erase(&dent_node->rb, &file->dent_nodes);
 		kfree(dent_node);
@@ -909,17 +1051,21 @@ bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
 	if (type != UBIFS_ITYPE_DIR && !file->ino.is_xattr)
 		goto check_data_nodes;
 
-	/*
-	 * Make sure that directory/xattr type files only have one dentry.
-	 * This work should be done in step 3, but file type could be unknown
-	 * for lacking inode information at that time, so do it here.
-	 */
+	/* Make sure that directory/xattr type files only have one dentry. */
 	node = rb_first(&file->dent_nodes);
 	while (node) {
 		dent_node = rb_entry(node, struct scanned_dent_node, rb);
 		node = rb_next(node);
 		if (!node)
 			break;
+
+		handle_invalid_file(c, FILE_HAS_TOO_MANY_DENT, file, dent_node);
+		if (FSCK(c)->mode != REBUILD_MODE) {
+			int err = delete_node(c, &dent_node->key,
+				dent_node->header.lnum, dent_node->header.offs);
+			if (err)
+				return err;
+		}
 
 		rb_erase(&dent_node->rb, &file->dent_nodes);
 		kfree(dent_node);
@@ -929,16 +1075,20 @@ check_data_nodes:
 	if (type == UBIFS_ITYPE_REG && !file->ino.is_xattr)
 		goto check_dent_node;
 
-	/*
-	 * Make sure that non regular type files not have data/trun nodes.
-	 * This work should be done in step 3, but file type could be unknown
-	 * for lacking inode information at that time, so do it here.
-	 */
+	/* Make sure that non regular type files not have data/trun nodes. */
 	file->trun.header.exist = 0;
 	node = rb_first(&file->data_nodes);
 	while (node) {
 		data_node = rb_entry(node, struct scanned_data_node, rb);
 		node = rb_next(node);
+
+		handle_invalid_file(c, FILE_SHOULDNT_HAVE_DATA, file, data_node);
+		if (FSCK(c)->mode != REBUILD_MODE) {
+			int err = delete_node(c, &data_node->key,
+				data_node->header.lnum, data_node->header.offs);
+			if (err)
+				return err;
+		}
 
 		rb_erase(&data_node->rb, &file->data_nodes);
 		kfree(data_node);
@@ -946,26 +1096,44 @@ check_data_nodes:
 
 check_dent_node:
 	if (rb_first(&file->dent_nodes)) {
-		if (file->inum == UBIFS_ROOT_INO)
+		if (file->inum == UBIFS_ROOT_INO) {
 			/* '/' has no dentries. */
-			return false;
+			handle_invalid_file(c, FILE_ROOT_HAS_DENT, file,
+					    rb_entry(rb_first(&file->dent_nodes),
+						struct scanned_dent_node, rb));
+			return 0;
+		}
 
 		node = rb_first(&file->dent_nodes);
 		dent_node = rb_entry(node, struct scanned_dent_node, rb);
 		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
 	} else {
 		/* Non-root files must have dentries. */
-		if (file->inum != UBIFS_ROOT_INO)
-			return false;
+		if (file->inum != UBIFS_ROOT_INO) {
+			if (type == UBIFS_ITYPE_REG && !file->ino.is_xattr) {
+				handle_invalid_file(c, FILE_IS_DISCONNECTED,
+						    file, NULL);
+				if (is_diconnected)
+					*is_diconnected = 1;
+			} else {
+				handle_invalid_file(c, FILE_HAS_NO_DENT,
+						    file, NULL);
+			}
+			return 0;
+		}
 	}
 
 	if (file->ino.is_xattr) {
-		if (!parent_file)
+		if (!parent_file) {
 			/* Host inode is not found. */
-			return false;
-		if (parent_file->ino.is_xattr)
+			handle_invalid_file(c, XATTR_HAS_NO_HOST, file, NULL);
+			return 0;
+		}
+		if (parent_file->ino.is_xattr) {
 			/* Host cannot be a xattr file. */
-			return false;
+			handle_invalid_file(c, XATTR_HAS_WRONG_HOST, file, parent_file);
+			return 0;
+		}
 
 		insert_xattr_file(c, file, parent_file);
 		if (parent_file->ino.is_encrypted) {
@@ -977,20 +1145,35 @@ check_dent_node:
 				parent_file->has_encrypted_info = true;
 		}
 	} else {
-		if (parent_file && !S_ISDIR(parent_file->ino.mode))
+		if (parent_file && !S_ISDIR(parent_file->ino.mode)) {
 			/* Parent file should be directory. */
-			return false;
+			if (type == UBIFS_ITYPE_REG) {
+				handle_invalid_file(c, FILE_IS_DISCONNECTED,
+						    file, NULL);
+				if (FSCK(c)->mode != REBUILD_MODE) {
+					/* Delete dentries for the disconnected file. */
+					int err = delete_dent_nodes(c, file, 0);
+					if (err)
+						return err;
+				}
+				if (is_diconnected)
+					*is_diconnected = 1;
+			}
+			return 0;
+		}
 
 		/*
 		 * Since xattr files are checked in first round, so all
 		 * non-xattr files's @has_encrypted_info fields have been
 		 * initialized.
 		 */
-		if (file->ino.is_encrypted && !file->has_encrypted_info)
-			return false;
+		if (file->ino.is_encrypted && !file->has_encrypted_info) {
+			handle_invalid_file(c, FILE_HAS_NO_ENCRYPT, file, NULL);
+			return 0;
+		}
 	}
 
-	return true;
+	return 1;
 }
 
 static bool dentry_is_reachable(struct ubifs_info *c,

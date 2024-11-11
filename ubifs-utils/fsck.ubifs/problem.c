@@ -12,6 +12,7 @@
 #include "ubifs.h"
 #include "defs.h"
 #include "debug.h"
+#include "key.h"
 #include "fsck.ubifs.h"
 
 /*
@@ -46,6 +47,17 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Invalid dentry node"},	// INVALID_DENT_NODE
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Invalid data node"},	// INVALID_DATA_NODE
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Corrupted data is scanned"},	// SCAN_CORRUPTED
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "File has no inode"},	// FILE_HAS_NO_INODE
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "File has zero-nlink inode"},	// FILE_HAS_0_NLINK_INODE
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "File has inconsistent type"},	// FILE_HAS_INCONSIST_TYPE
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "File has too many dentries"},	// FILE_HAS_TOO_MANY_DENT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "File should not have data"},	// FILE_SHOULDNT_HAVE_DATA
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "File has no dentries"},	// FILE_HAS_NO_DENT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Xattr file has no host"},	// XATTR_HAS_NO_HOST
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Xattr file has wrong host"},	// XATTR_HAS_WRONG_HOST
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Encrypted file has no encryption information"},	// FILE_HAS_NO_ENCRYPT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "File is disconnected(regular file without dentries)"},	// FILE_IS_DISCONNECTED
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Root dir should not have a dentry"},	// FILE_ROOT_HAS_DENT
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -65,6 +77,21 @@ static const char *get_question(const struct fsck_problem *problem,
 		return "Drop it?";
 	case ORPHAN_CORRUPTED:
 		return "Drop orphans on the LEB?";
+	case FILE_HAS_NO_INODE:
+	case FILE_HAS_0_NLINK_INODE:
+	case FILE_HAS_NO_DENT:
+	case XATTR_HAS_NO_HOST:
+	case XATTR_HAS_WRONG_HOST:
+	case FILE_HAS_NO_ENCRYPT:
+	case FILE_ROOT_HAS_DENT:
+		return "Delete it?";
+	case FILE_HAS_INCONSIST_TYPE:
+	case FILE_HAS_TOO_MANY_DENT:
+		return "Remove dentry?";
+	case FILE_SHOULDNT_HAVE_DATA:
+		return "Remove data block?";
+	case FILE_IS_DISCONNECTED:
+		return "Put it into disconnected list?";
 	}
 
 	return "Fix it?";
@@ -96,6 +123,79 @@ static void print_problem(const struct ubifs_info *c,
 
 		log_out(c, "problem: %s in LEB %d, node in %d:%d becomes invalid",
 			problem->desc, zbr->lnum, zbr->lnum, zbr->offs);
+		break;
+	}
+	case FILE_HAS_NO_INODE:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+
+		log_out(c, "problem: %s, ino %lu", problem->desc, ifp->file->inum);
+		break;
+	}
+	case FILE_HAS_INCONSIST_TYPE:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+		const struct scanned_dent_node *dent_node = (const struct scanned_dent_node *)ifp->priv;
+
+		log_out(c, "problem: %s, ino %lu, inode type %s%s, dentry %s has type %s%s",
+			problem->desc, ifp->file->inum,
+			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
+			ifp->file->ino.is_xattr ? "(xattr)" : "",
+			c->encrypted && !ifp->file->ino.is_xattr ? "<encrypted>" : dent_node->name,
+			ubifs_get_type_name(dent_node->type),
+			key_type(c, &dent_node->key) == UBIFS_XENT_KEY ? "(xattr)" : "");
+		break;
+	}
+	case FILE_HAS_TOO_MANY_DENT:
+	case FILE_ROOT_HAS_DENT:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+		const struct scanned_dent_node *dent_node = (const struct scanned_dent_node *)ifp->priv;
+
+		log_out(c, "problem: %s, ino %lu, type %s%s, dentry %s",
+			problem->desc, ifp->file->inum,
+			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
+			ifp->file->ino.is_xattr ? "(xattr)" : "",
+			c->encrypted && !ifp->file->ino.is_xattr ? "<encrypted>" : dent_node->name);
+		break;
+	}
+	case FILE_SHOULDNT_HAVE_DATA:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+		const struct scanned_data_node *data_node = (const struct scanned_data_node *)ifp->priv;
+
+		log_out(c, "problem: %s, ino %lu, type %s%s, data block %u",
+			problem->desc, ifp->file->inum,
+			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
+			ifp->file->ino.is_xattr ? "(xattr)" : "",
+			key_block(c, &data_node->key));
+		break;
+	}
+	case FILE_HAS_0_NLINK_INODE:
+	case FILE_HAS_NO_DENT:
+	case XATTR_HAS_NO_HOST:
+	case FILE_HAS_NO_ENCRYPT:
+	case FILE_IS_DISCONNECTED:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+
+		log_out(c, "problem: %s, ino %lu type %s%s", problem->desc,
+			ifp->file->inum,
+			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
+			ifp->file->ino.is_xattr ? "(xattr)" : "");
+		break;
+	}
+	case XATTR_HAS_WRONG_HOST:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+		const struct scanned_file *host = (const struct scanned_file *)ifp->priv;
+
+		log_out(c, "problem: %s, ino %lu type %s%s, host ino %lu type %s%s",
+			problem->desc, ifp->file->inum,
+			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
+			ifp->file->ino.is_xattr ? "(xattr)" : "", host->inum,
+			ubifs_get_type_name(ubifs_get_dent_type(host->ino.mode)),
+			host->ino.is_xattr ? "(xattr)" : "");
 		break;
 	}
 	default:

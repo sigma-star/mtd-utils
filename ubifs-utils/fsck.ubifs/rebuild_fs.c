@@ -641,7 +641,7 @@ static void filter_invalid_files(struct ubifs_info *c)
 
 		list_del(&file->list);
 		rb_erase(&file->rb, tree);
-		if (!file_is_valid(c, file, tree)) {
+		if (!file_is_valid(c, file, tree, NULL)) {
 			destroy_file_content(c, file);
 			kfree(file);
 		}
@@ -651,7 +651,7 @@ static void filter_invalid_files(struct ubifs_info *c)
 	for (node = rb_first(tree); node; node = rb_next(node)) {
 		file = rb_entry(node, struct scanned_file, rb);
 
-		if (!file_is_valid(c, file, tree))
+		if (!file_is_valid(c, file, tree, NULL))
 			list_add(&file->list, &tmp_list);
 	}
 
