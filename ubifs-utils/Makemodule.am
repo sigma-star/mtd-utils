@@ -15,6 +15,7 @@ common_SOURCES = \
 	ubifs-utils/common/key.h \
 	ubifs-utils/common/lpt.h \
 	ubifs-utils/common/lpt.c \
+	ubifs-utils/common/super.c \
 	ubifs-utils/common/sign.h \
 	include/mtd/ubifs-media.h
 
