@@ -1234,7 +1234,7 @@ int check_and_correct_files(struct ubifs_info *c)
 	int err;
 	struct rb_node *node;
 	struct scanned_file *file;
-	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
 
 	for (node = rb_first(tree); node; node = rb_next(node)) {
 		file = rb_entry(node, struct scanned_file, rb);

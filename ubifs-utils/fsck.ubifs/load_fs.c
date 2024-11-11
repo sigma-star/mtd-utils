@@ -17,33 +17,6 @@
 #include "misc.h"
 #include "fsck.ubifs.h"
 
-enum { HAS_DATA_CORRUPTED = 1, HAS_TNC_CORRUPTED = 2 };
-
-static void handle_error(const struct ubifs_info *c, int reason_set)
-{
-	bool handled = false;
-	unsigned int reason = get_failure_reason_callback(c);
-
-	clear_failure_reason_callback(c);
-	if ((reason_set & HAS_DATA_CORRUPTED) && (reason & FR_DATA_CORRUPTED)) {
-		handled = true;
-		reason &= ~FR_DATA_CORRUPTED;
-		if (fix_problem(c, LOG_CORRUPTED, NULL))
-			FSCK(c)->try_rebuild = true;
-	}
-	if ((reason_set & HAS_TNC_CORRUPTED) && (reason & FR_TNC_CORRUPTED)) {
-		ubifs_assert(c, !handled);
-		handled = true;
-		reason &= ~FR_TNC_CORRUPTED;
-		if (fix_problem(c, TNC_CORRUPTED, NULL))
-			FSCK(c)->try_rebuild = true;
-	}
-
-	ubifs_assert(c, reason == 0);
-	if (!handled)
-		exit_code |= FSCK_ERROR;
-}
-
 int ubifs_load_filesystem(struct ubifs_info *c)
 {
 	int err;

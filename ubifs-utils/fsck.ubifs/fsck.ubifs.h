@@ -40,6 +40,8 @@ enum { NORMAL_MODE = 0, SAFE_MODE, DANGER_MODE0,
 enum { SB_CORRUPTED = 0, MST_CORRUPTED, LOG_CORRUPTED, BUD_CORRUPTED,
        TNC_CORRUPTED, TNC_DATA_CORRUPTED, ORPHAN_CORRUPTED };
 
+enum { HAS_DATA_CORRUPTED = 1, HAS_TNC_CORRUPTED = 2 };
+
 struct scanned_file;
 
 /**
@@ -181,18 +183,14 @@ struct scanned_file {
 
 /**
  * ubifs_rebuild_info - UBIFS rebuilding information.
- * @used_lebs: a bitmap used for recording used lebs
  * @lpts: lprops table
- * @scanned_files: tree of all scanned files
  * @write_buf: write buffer for LEB @head_lnum
  * @head_lnum: current writing LEB number
  * @head_offs: current writing position in LEB @head_lnum
  * @need_update_lpt: whether to update lpt while writing index nodes
  */
 struct ubifs_rebuild_info {
-	unsigned long *used_lebs;
 	struct ubifs_lprops *lpts;
-	struct rb_root scanned_files;
 	void *write_buf;
 	int head_lnum;
 	int head_offs;
@@ -205,6 +203,8 @@ struct ubifs_rebuild_info {
  * @failure_reason: reasons for failed operations
  * @lpt_status: the status of lpt, could be: %0(OK), %FR_LPT_CORRUPTED or
  *		%FR_LPT_INCORRECT
+ * @scanned_files: tree of all scanned files
+ * @used_lebs: a bitmap used for recording used lebs
  * @try_rebuild: %true means that try to rebuild fs when fsck failed
  * @rebuild: rebuilding-related information
  */
@@ -212,6 +212,8 @@ struct ubifs_fsck_info {
 	int mode;
 	unsigned int failure_reason;
 	unsigned int lpt_status;
+	struct rb_root scanned_files;
+	unsigned long *used_lebs;
 	bool try_rebuild;
 	struct ubifs_rebuild_info *rebuild;
 };
@@ -258,6 +260,9 @@ static inline const char *mode_name(const struct ubifs_info *c)
 
 /* Exit code for fsck program. */
 extern int exit_code;
+
+/* fsck.ubifs.c */
+void handle_error(const struct ubifs_info *c, int reason_set);
 
 /* problem.c */
 bool fix_problem(const struct ubifs_info *c, int problem_type, const void *priv);

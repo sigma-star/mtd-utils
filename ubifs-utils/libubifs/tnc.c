@@ -2457,6 +2457,70 @@ int ubifs_tnc_remove_ino(struct ubifs_info *c, ino_t inum)
 }
 
 /**
+ * ubifs_tnc_remove_node - remove an index entry of a node by given position.
+ * @c: UBIFS file-system description object
+ * @key: key of node
+ * @lnum: LEB number of node
+ * @offs: node offset
+ *
+ * Returns %0 on success or negative error code on failure.
+ */
+int ubifs_tnc_remove_node(struct ubifs_info *c, const union ubifs_key *key,
+			  int lnum, int offs)
+{
+	int found, n, err = 0;
+	struct ubifs_znode *znode;
+
+	mutex_lock(&c->tnc_mutex);
+	dbg_tnck(key, "pos %d:%d, key ", lnum, offs);
+	found = lookup_level0_dirty(c, key, &znode, &n);
+	if (found < 0) {
+		err = found;
+		goto out_unlock;
+	}
+	if (found == 1) {
+		struct ubifs_zbranch *zbr = &znode->zbranch[n];
+
+		if (zbr->lnum == lnum && zbr->offs == offs) {
+			err = tnc_delete(c, znode, n);
+		} else if (is_hash_key(c, key)) {
+			found = resolve_collision_directly(c, key, &znode, &n,
+							   lnum, offs);
+			if (found < 0) {
+				err = found;
+				goto out_unlock;
+			}
+
+			if (found) {
+				/* Ensure the znode is dirtied */
+				if (znode->cnext || !ubifs_zn_dirty(znode)) {
+					znode = dirty_cow_bottom_up(c, znode);
+					if (IS_ERR(znode)) {
+						err = PTR_ERR(znode);
+						goto out_unlock;
+					}
+				}
+				err = tnc_delete(c, znode, n);
+			} else {
+				goto not_found;
+			}
+		} else {
+			goto not_found;
+		}
+	} else {
+not_found:
+		/* Impossible, the node has been found before being deleted. */
+		ubifs_assert(c, 0);
+	}
+	if (!err)
+		err = dbg_check_tnc(c, 0);
+
+out_unlock:
+	mutex_unlock(&c->tnc_mutex);
+	return err;
+}
+
+/**
  * ubifs_tnc_next_ent - walk directory or extended attribute entries.
  * @c: UBIFS file-system description object
  * @key: key of last entry

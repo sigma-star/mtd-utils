@@ -1661,6 +1661,8 @@ int ubifs_tnc_remove_nm(struct ubifs_info *c, const union ubifs_key *key,
 int ubifs_tnc_remove_range(struct ubifs_info *c, union ubifs_key *from_key,
 			   union ubifs_key *to_key);
 int ubifs_tnc_remove_ino(struct ubifs_info *c, ino_t inum);
+int ubifs_tnc_remove_node(struct ubifs_info *c, const union ubifs_key *key,
+			  int lnum, int offs);
 struct ubifs_dent_node *ubifs_tnc_next_ent(struct ubifs_info *c,
 					   union ubifs_key *key,
 					   const struct fscrypt_name *nm);

@@ -73,10 +73,10 @@ static int init_rebuild_info(struct ubifs_info *c)
 		log_err(c, errno, "can not allocate rebuild info");
 		goto free_sbuf;
 	}
-	FSCK(c)->rebuild->scanned_files = RB_ROOT;
-	FSCK(c)->rebuild->used_lebs = kcalloc(BITS_TO_LONGS(c->main_lebs),
-					      sizeof(unsigned long), GFP_KERNEL);
-	if (!FSCK(c)->rebuild->used_lebs) {
+	FSCK(c)->scanned_files = RB_ROOT;
+	FSCK(c)->used_lebs = kcalloc(BITS_TO_LONGS(c->main_lebs),
+				     sizeof(unsigned long), GFP_KERNEL);
+	if (!FSCK(c)->used_lebs) {
 		err = -ENOMEM;
 		log_err(c, errno, "can not allocate bitmap of used lebs");
 		goto free_rebuild;
@@ -100,7 +100,7 @@ static int init_rebuild_info(struct ubifs_info *c)
 free_lpts:
 	kfree(FSCK(c)->rebuild->lpts);
 free_used_lebs:
-	kfree(FSCK(c)->rebuild->used_lebs);
+	kfree(FSCK(c)->used_lebs);
 free_rebuild:
 	kfree(FSCK(c)->rebuild);
 free_sbuf:
@@ -112,7 +112,7 @@ static void destroy_rebuild_info(struct ubifs_info *c)
 {
 	vfree(FSCK(c)->rebuild->write_buf);
 	kfree(FSCK(c)->rebuild->lpts);
-	kfree(FSCK(c)->rebuild->used_lebs);
+	kfree(FSCK(c)->used_lebs);
 	kfree(FSCK(c)->rebuild);
 	vfree(c->sbuf);
 }
@@ -313,7 +313,7 @@ static int process_scanned_node(struct ubifs_info *c, int lnum,
 		return 1;
 	}
 
-	tree = &FSCK(c)->rebuild->scanned_files;
+	tree = &FSCK(c)->scanned_files;
 	return insert_or_update_file(c, tree, sn, key_type(c, key), inum);
 }
 
@@ -331,7 +331,7 @@ static void destroy_scanned_info(struct ubifs_info *c, struct scanned_info *si)
 	struct scanned_dent_node *dent_node;
 	struct rb_node *this;
 
-	destroy_file_tree(c, &FSCK(c)->rebuild->scanned_files);
+	destroy_file_tree(c, &FSCK(c)->scanned_files);
 
 	this = rb_first(&si->valid_inos);
 	while (this) {
@@ -377,7 +377,7 @@ static void destroy_scanned_info(struct ubifs_info *c, struct scanned_info *si)
  *
  * This function scans nodes from flash, all ino/dent nodes are split
  * into valid tree and deleted tree, all trun/data nodes are collected
- * into file, the file is inserted into @FSCK(c)->rebuild->scanned_files.
+ * into file, the file is inserted into @FSCK(c)->scanned_files.
  */
 static int scan_nodes(struct ubifs_info *c, struct scanned_info *si)
 {
@@ -495,7 +495,7 @@ static void update_lpt(struct ubifs_info *c, struct scanned_node *sn,
 	int index = sn->lnum - c->main_first;
 	int pos = sn->offs + ALIGN(sn->len, 8);
 
-	set_bit(index, FSCK(c)->rebuild->used_lebs);
+	set_bit(index, FSCK(c)->used_lebs);
 	FSCK(c)->rebuild->lpts[index].end = max_t(int,
 					FSCK(c)->rebuild->lpts[index].end, pos);
 
@@ -572,7 +572,7 @@ static int add_valid_nodes_into_file(struct ubifs_info *c,
 	struct scanned_ino_node *ino_node;
 	struct scanned_dent_node *dent_node;
 	struct rb_node *this;
-	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
 
 	this = rb_first(&si->valid_inos);
 	while (this) {
@@ -621,7 +621,7 @@ static void filter_invalid_files(struct ubifs_info *c)
 {
 	struct rb_node *node;
 	struct scanned_file *file;
-	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
 	LIST_HEAD(tmp_list);
 
 	/* Add all xattr files into a list. */
@@ -678,7 +678,7 @@ static void extract_dentry_tree(struct ubifs_info *c)
 {
 	struct rb_node *node;
 	struct scanned_file *file;
-	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
 	LIST_HEAD(unreachable);
 
 	for (node = rb_first(tree); node; node = rb_next(node)) {
@@ -731,7 +731,7 @@ static void init_root_ino(struct ubifs_info *c, struct ubifs_ino_node *ino)
 }
 
 /**
- * get_free_leb - get a free LEB according to @FSCK(c)->rebuild->used_lebs.
+ * get_free_leb - get a free LEB according to @FSCK(c)->used_lebs.
  * @c: UBIFS file-system description object
  *
  * This function tries to find a free LEB, lnum is returned if found, otherwise
@@ -741,12 +741,12 @@ static int get_free_leb(struct ubifs_info *c)
 {
 	int lnum;
 
-	lnum = find_next_zero_bit(FSCK(c)->rebuild->used_lebs, c->main_lebs, 0);
+	lnum = find_next_zero_bit(FSCK(c)->used_lebs, c->main_lebs, 0);
 	if (lnum >= c->main_lebs) {
 		ubifs_err(c, "No space left.");
 		return -ENOSPC;
 	}
-	set_bit(lnum, FSCK(c)->rebuild->used_lebs);
+	set_bit(lnum, FSCK(c)->used_lebs);
 	lnum += c->main_first;
 
 	return lnum;
@@ -897,8 +897,8 @@ static int create_root(struct ubifs_info *c)
 	file->calc_xnms = file->ino.xnms = le32_to_cpu(ino->xattr_names);
 	file->calc_size = file->ino.size = le64_to_cpu(ino->size);
 
-	rb_link_node(&file->rb, NULL, &FSCK(c)->rebuild->scanned_files.rb_node);
-	rb_insert_color(&file->rb, &FSCK(c)->rebuild->scanned_files);
+	rb_link_node(&file->rb, NULL, &FSCK(c)->scanned_files.rb_node);
+	rb_insert_color(&file->rb, &FSCK(c)->scanned_files);
 
 out:
 	kfree(ino);
@@ -1188,7 +1188,7 @@ static int traverse_files_and_nodes(struct ubifs_info *c)
 	int i, err = 0, idx_cnt = 0;
 	struct rb_node *node;
 	struct scanned_file *file;
-	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
 	struct idx_entry *ie, *tmp_ie;
 	LIST_HEAD(idx_list);
 
@@ -1214,7 +1214,7 @@ static int traverse_files_and_nodes(struct ubifs_info *c)
 	for (i = 0; i < c->main_lebs; ++i) {
 		int lnum, len, end;
 
-		if (!test_bit(i, FSCK(c)->rebuild->used_lebs))
+		if (!test_bit(i, FSCK(c)->used_lebs))
 			continue;
 
 		lnum = i + c->main_first;
@@ -1268,7 +1268,7 @@ static int build_lpt(struct ubifs_info *c)
 
 	/* Update LPT. */
 	for (i = 0; i < c->main_lebs; i++) {
-		if (!test_bit(i, FSCK(c)->rebuild->used_lebs) ||
+		if (!test_bit(i, FSCK(c)->used_lebs) ||
 		    c->gc_lnum == i + c->main_first) {
 			free = c->leb_size;
 			dirty = 0;
