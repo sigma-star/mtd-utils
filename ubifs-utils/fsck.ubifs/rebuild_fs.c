@@ -476,6 +476,61 @@ static void remove_del_nodes(struct ubifs_info *c, struct scanned_info *si)
 }
 
 /**
+ * add_valid_nodes_into_file - add valid nodes into file.
+ * @c: UBIFS file-system description object
+ * @si: records nodes and files information during scanning
+ *
+ * This function adds valid nodes into corresponding file, all valid ino/dent
+ * nodes will be removed from @si->valid_inos/@si->valid_dents if the function
+ * is executed successfully.
+ */
+static int add_valid_nodes_into_file(struct ubifs_info *c,
+				     struct scanned_info *si)
+{
+	int err, type;
+	ino_t inum;
+	struct scanned_node *sn;
+	struct scanned_ino_node *ino_node;
+	struct scanned_dent_node *dent_node;
+	struct rb_node *this;
+	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+
+	this = rb_first(&si->valid_inos);
+	while (this) {
+		ino_node = rb_entry(this, struct scanned_ino_node, rb);
+		this = rb_next(this);
+
+		sn = (struct scanned_node *)ino_node;
+		type = key_type(c, &ino_node->key);
+		inum = key_inum(c, &ino_node->key);
+		err = insert_or_update_file(c, tree, sn, type, inum);
+		if (err)
+			return err;
+
+		rb_erase(&ino_node->rb, &si->valid_inos);
+		kfree(ino_node);
+	}
+
+	this = rb_first(&si->valid_dents);
+	while (this) {
+		dent_node = rb_entry(this, struct scanned_dent_node, rb);
+		this = rb_next(this);
+
+		sn = (struct scanned_node *)dent_node;
+		inum = dent_node->inum;
+		type = key_type(c, &dent_node->key);
+		err = insert_or_update_file(c, tree, sn, type, inum);
+		if (err)
+			return err;
+
+		rb_erase(&dent_node->rb, &si->valid_dents);
+		kfree(dent_node);
+	}
+
+	return 0;
+}
+
+/**
  * ubifs_rebuild_filesystem - Rebuild filesystem.
  * @c: UBIFS file-system description object
  *
@@ -508,6 +563,12 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 	/* Step 2: Remove deleted nodes from valid node tree. */
 	log_out(c, "Remove deleted nodes");
 	remove_del_nodes(c, &si);
+
+	/* Step 3: Add valid nodes into file. */
+	log_out(c, "Add valid nodes into file");
+	err = add_valid_nodes_into_file(c, &si);
+	if (err)
+		exit_code |= FSCK_ERROR;
 
 out:
 	destroy_scanned_info(c, &si);
