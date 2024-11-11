@@ -22,10 +22,17 @@
 
 #define _XOPEN_SOURCE 500 /* For realpath() */
 
-#include "mkfs.ubifs.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <libgen.h>
+#include <getopt.h>
+#include <dirent.h>
 #include <crc32.h>
-#include "common.h"
+#include <uuid.h>
+#include <linux/fs.h>
 #include <sys/types.h>
+#include <sys/stat.h>
+#include <sys/ioctl.h>
 #ifdef WITH_XATTR
 #include <sys/xattr.h>
 #endif
@@ -39,8 +46,18 @@
 #include <zstd.h>
 #endif
 
+/* common.h requires the PROGRAM_NAME macro */
+#define PROGRAM_NAME "mkfs.ubifs"
+#include "common.h"
+#include "defs.h"
 #include "crypto.h"
 #include "fscrypt.h"
+#include "ubifs.h"
+#include "lpt.h"
+#include "compr.h"
+#include "key.h"
+#include "sign.h"
+#include "devtable.h"
 
 /* Size (prime number) of hash table for link counting */
 #define HASH_TABLE_SIZE 10099

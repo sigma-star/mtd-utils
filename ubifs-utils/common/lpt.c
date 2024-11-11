@@ -20,11 +20,17 @@
  *          Artem Bityutskiy
  */
 
-#include "mkfs.ubifs.h"
-
 #ifdef WITH_CRYPTO
 #include <openssl/evp.h>
 #endif
+
+#define PROGRAM_NAME "mkfs.ubifs"
+#include "common.h"
+#include "lpt.h"
+#include "defs.h"
+#include "ubifs.h"
+#include "crc16.h"
+#include "sign.h"
 
 /**
  * do_calc_lpt_geom - calculate sizes for the LPT area.

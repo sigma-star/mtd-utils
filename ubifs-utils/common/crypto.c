@@ -17,14 +17,16 @@
  * Authors: David Oberhollenzer <david.oberhollenzer@sigma-star.at>
  */
 
-#define PROGRAM_NAME "mkfs.ubifs"
 #include <openssl/evp.h>
 #include <openssl/err.h>
+#include <openssl/rand.h>
 #include <string.h>
 #include <assert.h>
 
-#include "fscrypt.h"
+#define PROGRAM_NAME "mkfs.ubifs"
 #include "common.h"
+#include "defs.h"
+#include "fscrypt.h"
 
 static int do_hash(const EVP_MD *md, const unsigned char *in, size_t len, unsigned char *out)
 {

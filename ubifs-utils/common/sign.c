@@ -17,9 +17,7 @@
  * Author: Sascha Hauer
  */
 
-#include "mkfs.ubifs.h"
-#include "common.h"
-
+#include <string.h>
 #include <openssl/evp.h>
 #include <openssl/opensslv.h>
 #include <openssl/bio.h>
@@ -30,6 +28,11 @@
 #include <openssl/conf.h>
 #include <err.h>
 
+#include "sign.h"
+#include "defs.h"
+#include "ubifs.h"
+
+extern struct ubifs_info info_;
 static struct ubifs_info *c = &info_;
 
 EVP_MD_CTX *hash_md;

@@ -25,6 +25,9 @@
 #ifndef __UBIFS_H__
 #define __UBIFS_H__
 
+#include <mtd/ubifs-media.h>
+#include "libubi.h"
+
 /* Maximum logical eraseblock size in bytes */
 #define UBIFS_MAX_LEB_SZ (2*1024*1024)
 
@@ -467,5 +470,7 @@ struct ubifs_branch *ubifs_idx_branch(const struct ubifs_info *c,
 	return (struct ubifs_branch *)((void *)idx->branches +
 				       (UBIFS_BRANCH_SZ + c->key_len + c->hash_len) * bnum);
 }
+
+int write_leb(int lnum, int len, void *buf);
 
 #endif /* __UBIFS_H__ */

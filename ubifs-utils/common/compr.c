@@ -39,11 +39,12 @@
 #endif
 
 #include "compr.h"
-#include "mkfs.ubifs.h"
+#include "ubifs.h"
 
 static void *lzo_mem;
 static unsigned long long errcnt = 0;
 #ifdef WITH_LZO
+extern struct ubifs_info info_;
 static struct ubifs_info *c = &info_;
 #endif
 
@@ -181,12 +182,12 @@ static int favor_lzo_compress(void *in_buf, size_t in_len, void *out_buf,
 
 select_lzo:
 	*out_len = lzo_len;
-	*type = MKFS_UBIFS_COMPR_LZO;
+	*type = UBIFS_COMPR_LZO;
 	return 0;
 
 select_zlib:
 	*out_len = zlib_len;
-	*type = MKFS_UBIFS_COMPR_ZLIB;
+	*type = UBIFS_COMPR_ZLIB;
 	memcpy(out_buf, zlib_buf, zlib_len);
 	return 0;
 }
@@ -199,7 +200,7 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 
 	if (in_len < UBIFS_MIN_COMPR_LEN) {
 		no_compress(in_buf, in_len, out_buf, out_len);
-		return MKFS_UBIFS_COMPR_NONE;
+		return UBIFS_COMPR_NONE;
 	}
 
 #if defined(WITH_LZO) && defined(WITH_ZLIB)
@@ -211,21 +212,21 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 #endif
 		switch (type) {
 #ifdef WITH_LZO
-		case MKFS_UBIFS_COMPR_LZO:
+		case UBIFS_COMPR_LZO:
 			ret = lzo_compress(in_buf, in_len, out_buf, out_len);
 			break;
 #endif
 #ifdef WITH_ZLIB
-		case MKFS_UBIFS_COMPR_ZLIB:
+		case UBIFS_COMPR_ZLIB:
 			ret = zlib_deflate(in_buf, in_len, out_buf, out_len);
 			break;
 #endif
 #ifdef WITH_ZSTD
-		case MKFS_UBIFS_COMPR_ZSTD:
+		case UBIFS_COMPR_ZSTD:
 			ret = zstd_compress(in_buf, in_len, out_buf, out_len);
 			break;
 #endif
-		case MKFS_UBIFS_COMPR_NONE:
+		case UBIFS_COMPR_NONE:
 			ret = 1;
 			break;
 		default:
@@ -236,7 +237,7 @@ int compress_data(void *in_buf, size_t in_len, void *out_buf, size_t *out_len,
 	}
 	if (ret || *out_len >= in_len) {
 		no_compress(in_buf, in_len, out_buf, out_len);
-		return MKFS_UBIFS_COMPR_NONE;
+		return UBIFS_COMPR_NONE;
 	}
 	return type;
 }

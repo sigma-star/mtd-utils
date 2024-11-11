@@ -20,86 +20,8 @@
  *          Zoltan Sogor
  */
 
-#ifndef __MKFS_UBIFS_H__
-#define __MKFS_UBIFS_H__
-
-#include <unistd.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <limits.h>
-#include <string.h>
-#include <stdint.h>
-#include <endian.h>
-#include <byteswap.h>
-#include <linux/types.h>
-#include <linux/fs.h>
-
-#include <getopt.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <sys/ioctl.h>
-#include <fcntl.h>
-#include <dirent.h>
-#include <errno.h>
-#include <libgen.h>
-#include <ctype.h>
-#include <uuid.h>
-#include <sys/file.h>
-
-#ifdef WITH_CRYPTO
-#include <openssl/rand.h>
-#endif
-
-#include <mtd/ubifs-media.h>
-
-/* common.h requires the PROGRAM_NAME macro */
-#define PROGRAM_NAME "mkfs.ubifs"
-#include "common.h"
-
-#include "libubi.h"
-#include "defs.h"
-#include "crc16.h"
-#include "ubifs.h"
-#include "key.h"
-#include "lpt.h"
-#include "compr.h"
-#include "sign.h"
-
-/*
- * Compression flags are duplicated so that compr.c can compile without ubifs.h.
- * Here we make sure they are the same.
- */
-#if MKFS_UBIFS_COMPR_NONE != UBIFS_COMPR_NONE
-#error MKFS_UBIFS_COMPR_NONE != UBIFS_COMPR_NONE
-#endif
-#if MKFS_UBIFS_COMPR_LZO != UBIFS_COMPR_LZO
-#error MKFS_UBIFS_COMPR_LZO != UBIFS_COMPR_LZO
-#endif
-#if MKFS_UBIFS_COMPR_ZLIB != UBIFS_COMPR_ZLIB
-#error MKFS_UBIFS_COMPR_ZLIB != UBIFS_COMPR_ZLIB
-#endif
-#if MKFS_UBIFS_COMPR_ZSTD != UBIFS_COMPR_ZSTD
-#error MKFS_UBIFS_COMPR_ZSTD != UBIFS_COMPR_ZSTD
-#endif
-
-extern int verbose;
-extern int debug_level;
-
-#define dbg_msg(lvl, fmt, ...) do {if (debug_level >= lvl)                \
-	printf("mkfs.ubifs: %s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__); \
-} while(0)
-
-#define err_msg(fmt, ...) ({                                \
-	fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__); \
-	-1;                                                 \
-})
-
-#define sys_err_msg(fmt, ...) ({                                         \
-	int err_ = errno;                                                \
-	fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__);              \
-	fprintf(stderr, "       %s (error %d)\n", strerror(err_), err_); \
-	-1;                                                              \
-})
+#ifndef __DEVTABLE_H__
+#define __DEVTABLE_H__
 
 /**
  * struct path_htbl_element - an element of the path hash table.
@@ -136,11 +58,8 @@ struct name_htbl_element {
 	dev_t dev;
 };
 
-extern struct ubifs_info info_;
-
 struct hashtable_itr;
 
-int write_leb(int lnum, int len, void *buf);
 int parse_devtable(const char *tbl_file);
 struct path_htbl_element *devtbl_find_path(const char *path);
 struct name_htbl_element *devtbl_find_name(struct path_htbl_element *ph_elt,

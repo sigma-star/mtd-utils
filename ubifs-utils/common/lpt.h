@@ -22,6 +22,8 @@
 #ifndef __UBIFS_LPT_H__
 #define __UBIFS_LPT_H__
 
+#include "ubifs.h"
+
 int calc_dflt_lpt_geom(struct ubifs_info *c, int *main_lebs, int *big_lpt);
 int create_lpt(struct ubifs_info *c);
 

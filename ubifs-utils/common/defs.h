@@ -6,6 +6,30 @@
 #ifndef __UBIFS_DEFS_H__
 #define __UBIFS_DEFS_H__
 
+#include <stdlib.h>
+#include <stdio.h>
+#include <limits.h>
+#include <byteswap.h>
+#include <errno.h>
+
+extern int debug_level;
+
+#define dbg_msg(lvl, fmt, ...) do {if (debug_level >= lvl)                \
+	printf("mkfs.ubifs: %s: " fmt "\n", __FUNCTION__, ##__VA_ARGS__); \
+} while(0)
+
+#define err_msg(fmt, ...) ({                                \
+	fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__); \
+	-1;                                                 \
+})
+
+#define sys_err_msg(fmt, ...) ({                                         \
+	int err_ = errno;                                                \
+	fprintf(stderr, "Error: " fmt "\n", ##__VA_ARGS__);              \
+	fprintf(stderr, "       %s (error %d)\n", strerror(err_), err_); \
+	-1;                                                              \
+})
+
 #define t16(x) ({ \
 	uint16_t __b = (x); \
 	(__LITTLE_ENDIAN==__BYTE_ORDER) ? __b : bswap_16(__b); \

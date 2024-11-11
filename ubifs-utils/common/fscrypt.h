@@ -21,9 +21,11 @@
 #ifndef FSCRYPT_H
 #define FSCRYPT_H
 
-
-#include "mkfs.ubifs.h"
-#include <sys/types.h>
+#ifdef WITH_CRYPTO
+#include <openssl/rand.h>
+#endif
+#include <assert.h>
+#include "ubifs.h"
 #include "crypto.h"
 
 #ifndef FS_KEY_DESCRIPTOR_SIZE

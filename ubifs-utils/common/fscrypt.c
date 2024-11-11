@@ -18,8 +18,12 @@
  *          David Oberhollenzer <david.oberhollenzer@sigma-star.at>
  */
 
+#include <endian.h>
+
 #define PROGRAM_NAME "mkfs.ubifs"
+#include "common.h"
 #include "fscrypt.h"
+#include "defs.h"
 
 
 static __u8 fscrypt_masterkey[FS_MAX_KEY_SIZE];
