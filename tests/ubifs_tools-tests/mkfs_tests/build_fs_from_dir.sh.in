@@ -1,0 +1,174 @@
+#!/bin/sh
+# Copyright (c), 2024, Huawei Technologies Co, Ltd.
+# Author: Zhihao Cheng <chengzhihao1@huawei.com>
+#
+# Test Description:
+# Initialize UBIFS image from a given directory, then check whether the
+# fs content in mounted UBIFS is consistent with the original directory.
+# Both UBI volume and file are chosen as storage mediums to test.
+# Running time: 10min
+
+TESTBINDIR=@TESTBINDIR@
+source $TESTBINDIR/common.sh
+
+function run_test()
+{
+	local simulator="$1";
+	local size="$2";
+	local peb_size="$3";
+	local page_size="$4";
+	local vid_offs=$page_size;
+	local encryption=$5;
+	local test_medium=$6;
+	local space_fix=$7;
+	local need_fsck=$8;
+	local double_mkfs=$9;
+	local leb_size=$(($(($peb_size*1024))-$page_size));
+	VIDHDR_SZ=64;
+
+	option=""
+	if [[ "$space_fix" == "fix_space" ]]; then
+		option="-F"
+	fi
+	echo "======================================================================"
+	printf "%s" "$simulator: ${size}MiB PEB size ${peb_size}KiB"
+	if [ "$simulator" = "mtdram" ]; then
+		page_size=8
+		leb_size=$(($leb_size-$VIDHDR_SZ))
+	else
+		leb_size=$(($leb_size-$page_size))
+	fi
+	printf " %s" "page size ${page_size}Bytes"
+	printf " $encryption $test_medium $space_fix $need_fsck $double_mkfs\n"
+
+	if [ "$simulator" = "nandsim" ]; then
+		$TESTBINDIR/load_nandsim.sh "$size" "$peb_size" "$page_size" || echo "cannot load nandsim";
+		mtdnum="$(find_mtd_device "$nandsim_patt")"
+	elif [ "$simulator" = "mtdram" ]; then
+		load_mtdram "$size" "$peb_size" || echo "cannot load mtdram"
+		mtdnum="$(find_mtd_device "$mtdram_patt")"
+	else
+		fatal "$simulator is not supported"
+	fi
+
+	dmesg -c > /dev/null
+	flash_eraseall /dev/mtd$mtdnum
+	modprobe ubi mtd="$mtdnum,$vid_offs" || fatal "modprobe ubi fail"
+	ubimkvol -N vol_test -m -n 0 /dev/ubi$UBI_NUM || fatal "mkvol fail"
+	modprobe ubifs || fatal "modprobe ubifs fail"
+	if [[ "$encryption" == "encrypted" ]]; then
+		encryption_gen_key
+		option="$option --cipher AES-256-XTS --key $KEY_FILE"
+	fi
+
+	if [[ "$test_medium" == "volume" ]]; then
+		mkfs.ubifs $option -m${page_size} -c 1024 -e $leb_size -f 4 -r $TMP_MNT $DEV
+		if [[ $? != 0 ]]; then
+			fatal "mkfs failed"
+		fi
+		if [[ "$double_mkfs" == "double_format" ]]; then
+			mkfs.ubifs -y $option -m${page_size} -c 1024 -e $leb_size -f 4 -r $TMP_MNT $DEV
+			if [[ $? != 0 ]]; then
+				fatal "mkfs failed"
+			fi
+		fi
+	else
+		mkfs.ubifs $option -m${page_size} -c 1024 -e $leb_size -f 4 -r $TMP_MNT -o $IMG_FILE
+		if [[ $? != 0 ]]; then
+			fatal "mkfs failed"
+		fi
+		ubiupdatevol $DEV $IMG_FILE
+		if [[ $? != 0 ]]; then
+			fatal "ubiupdatevol failed"
+		fi
+	fi
+
+	if [[ "$need_fsck" == "do_fsck" ]]; then
+		fsck.ubifs -a $DEV # 'fsck.ubifs $DEV' is fine too.
+		res=$?
+		if [[ $res != $FSCK_OK ]]
+		then
+			fatal "fsck expects result $FSCK_OK, but $res is returned"
+		fi
+	fi
+
+	enable_chkfs
+
+	mount_ubifs $DEV $MNT "noauthentication" "noatime"
+	res=$?
+	if [[ $res != 0 ]]
+	then
+		fatal "mount fail $res"
+	fi
+
+	if [[ "$encryption" != "encrypted" ]]; then
+		# Check filesystem information, skip encrypted image.
+		# fscryptctl is not compatible with fscryptctl in mtd-utils.
+		# See https://github.com/google/fscryptctl/issues/33
+		du -sh $MNT > /dev/null  # Make sure all files are accessible
+		ret=$?
+		if [[ $ret != 0 ]]; then
+			fatal "Cannot access all files"
+		fi
+
+		parse_dir "md5sum"
+	fi
+
+	check_err_msg
+
+	umount $MNT
+	res=$?
+	if [[ $res != 0 ]]
+	then
+		fatal "unmount fail $res"
+	fi
+
+	check_err_msg
+	disable_chkfs
+
+	if [[ "$test_medium" != "volume" ]]; then
+		rm -f $IMG_FILE
+	fi
+	modprobe -r ubifs
+	modprobe -r ubi
+	modprobe -r $simulator
+
+	echo "----------------------------------------------------------------------"
+}
+
+check_fsstress
+start_t=$(date +%s)
+echo "Do mkfs+fsck+mount test in kinds of flashes"
+mount -t tmpfs -osize=50m  none $TMP_MNT || fatal "cannot mount tmpfs"
+echo 123 > $TMP_MNT/file
+setfattr -n user.xyz -v 123abc $TMP_MNT/file
+fsstress -d $TMP_MNT -l30 -n10 -p4
+# Record filesystem information
+rm -f $TMP_FILE 2>/dev/null
+read_dir $TMP_MNT "md5sum"
+
+# No authentication tests, which needs a specific key from certs directory corresponding to linux source code..
+# See https://patchwork.ozlabs.org/project/linux-mtd/cover/20190806104928.1224-1-s.hauer@pengutronix.de/
+for simulator in "mtdram" "nandsim"; do
+	for encryption in "encrypted" "noencrypted"; do
+		for test_medium in "volume" "file"; do
+			for space_fix in "fix_space" "nofix_space"; do
+				for need_fsck in "do_fsck" "no_fsck"; do
+					for double_mkfs in "double_format" "format_once"; do
+						run_test "$simulator" "64" "64" "2048" $encryption $test_medium $space_fix $need_fsck $double_mkfs
+						run_test "$simulator" "128" "128" "2048" $encryption $test_medium $space_fix $need_fsck $double_mkfs
+						run_test "$simulator" "512" "512" "2048" $encryption $test_medium $space_fix $need_fsck $double_mkfs
+						run_test "$simulator" "1024" "512" "2048" $encryption $test_medium $space_fix $need_fsck $double_mkfs
+					done
+				done
+			done
+		done
+	done
+done
+
+umount $TMP_MNT
+rm -f $TMP_FILE 2>/dev/null
+end_t=$(date +%s)
+time_cost=$(( end_t - start_t ))
+echo "Success, cost $time_cost seconds"
+exit 0

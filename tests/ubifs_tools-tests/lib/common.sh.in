@@ -8,8 +8,10 @@ UBI_NUM=0
 DEV=/dev/ubi0_0
 MNT=/mnt/test_file_system
 TMP_FILE=/tmp/ubifs_test_file
+TMP_MNT=/tmp/ubifs_tmp_mnt
 LOG_FILE=/tmp/ubifs_log
 KEY_FILE=/tmp/key
+IMG_FILE=ubifs.img
 nandsim_patt="NAND simulator"
 mtdram_patt="mtdram test device"
 
@@ -35,6 +37,8 @@ function cleanup_handler()
 {
 	local ret="$1"
 
+	umount $TMP_MNT >/dev/null 2>&1 ||:
+	rm -rf $TMP_MNT >/dev/null 2>&1 ||:
 	if [ "$ret" == "0" ]; then
 		umount $MNT >/dev/null 2>&1 ||:
 		modprobe -r ubifs >/dev/null 2>&1 ||:
@@ -45,6 +49,7 @@ function cleanup_handler()
 		rm -f $TMP_FILE >/dev/null 2>&1 ||:
 		rm -f $KEY_FILE >/dev/null 2>&1 ||:
 		rm -f $LOG_FILE >/dev/null 2>&1 ||:
+		rm -f $IMG_FILE >/dev/null 2>&1 ||:
 		exit 0
 	else
 		exit 1
@@ -343,6 +348,9 @@ function cancel_io_err()
 
 if ! [ -d $MNT ]; then
 	mkdir -p $MNT
+fi
+if ! [ -d $TMP_MNT ]; then
+	mkdir -p $TMP_MNT
 fi
 
 modprobe ubi || fatal "common.sh: cannot load ubi"

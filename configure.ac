@@ -300,7 +300,8 @@ AC_CONFIG_FILES([tests/fs-tests/fs_help_all.sh
 	tests/ubifs_tools-tests/fsck_tests/cycle_corrupted_fsck_fault_inject.sh
 	tests/ubifs_tools-tests/fsck_tests/cycle_powercut_mount_fsck.sh
 	tests/ubifs_tools-tests/fsck_tests/random_corrupted_fsck.sh
-	tests/ubifs_tools-tests/fsck_tests/fsck_bad_image.sh])
+	tests/ubifs_tools-tests/fsck_tests/fsck_bad_image.sh
+	tests/ubifs_tools-tests/mkfs_tests/build_fs_from_dir.sh])
 
 AC_OUTPUT([Makefile])
 
