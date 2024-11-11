@@ -453,6 +453,14 @@ static int do_fsck(void)
 		goto free_used_lebs;
 	}
 
+	log_out(c, "Check and handle unreachable files");
+	err = handle_dentry_tree(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto free_disconnected_files;
+	}
+
+free_disconnected_files:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
 free_used_lebs:
 	kfree(FSCK(c)->used_lebs);
@@ -495,6 +503,7 @@ int main(int argc, char *argv[])
 	 * Step 6: Traverse tnc and construct files
 	 * Step 7: Update files' size
 	 * Step 8: Check and handle invalid files
+	 * Step 9: Check and handle unreachable files
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {

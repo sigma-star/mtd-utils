@@ -1247,6 +1247,15 @@ retry:
 			dent_node = list_entry(path_list.next,
 					       struct scanned_dent_node, list);
 
+			handle_invalid_file(c, DENTRY_IS_UNREACHABLE,
+					    dent_node->file, dent_node);
+			if (FSCK(c)->mode != REBUILD_MODE) {
+				int err = delete_node(c, &dent_node->key,
+						      dent_node->header.lnum,
+						      dent_node->header.offs);
+				if (err)
+					return err;
+			}
 			dbg_fsck("remove unreachable dentry %s, in %s",
 				 c->encrypted && !file->ino.is_xattr ?
 				 "<encrypted>" : dent_node->name, c->dev_name);
@@ -1260,6 +1269,10 @@ retry:
 	}
 
 	if (!rb_first(&file->dent_nodes)) {
+		if (S_ISREG(file->ino.mode))
+			handle_invalid_file(c, FILE_IS_DISCONNECTED, file, NULL);
+		else
+			handle_invalid_file(c, FILE_HAS_NO_DENT, file, NULL);
 		dbg_fsck("file %lu is unreachable, in %s", file->inum, c->dev_name);
 		return false;
 	}

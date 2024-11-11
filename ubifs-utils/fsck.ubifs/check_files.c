@@ -7,6 +7,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <sys/stat.h>
 
 #include "linux_err.h"
 #include "bitops.h"
@@ -438,6 +439,62 @@ int handle_invalid_files(struct ubifs_info *c)
 	/* Remove disconnected file from the file tree. */
 	list_for_each_entry(file, &FSCK(c)->disconnected_files, list) {
 		rb_erase(&file->rb, tree);
+	}
+
+	return 0;
+}
+
+/**
+ * handle_dentry_tree - Handle unreachable dentries and files.
+ * @c: UBIFS file-system description object
+ *
+ * This function iterates all directory entries and remove those unreachable
+ * ones. If file has no directory entries, it becomes unreachable:
+ * 1. If the unreachable file has non-regular type, delete it;
+ * 2. If the unreachable file has regular type, move it into the
+ *    @FSCK(c)->disconnected_files.
+ * 'Unreachable' means that a directory entry can not be searched from '/'.
+ *
+ * Returns zero in case of success, a negative error code in case of failure.
+ */
+int handle_dentry_tree(struct ubifs_info *c)
+{
+	struct rb_node *node;
+	struct scanned_file *file;
+	struct rb_root *tree = &FSCK(c)->scanned_files;
+	LIST_HEAD(unreachable);
+
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		/*
+		 * Since all xattr files are already attached to corresponding
+		 * host file, there are only non-xattr files in the file tree.
+		 */
+		ubifs_assert(c, !file->ino.is_xattr);
+		if (!file_is_reachable(c, file, tree))
+			list_add(&file->list, &unreachable);
+	}
+
+	while (!list_empty(&unreachable)) {
+		file = list_entry(unreachable.next, struct scanned_file, list);
+
+		list_del(&file->list);
+		if (S_ISREG(file->ino.mode)) {
+			/*
+			 * Move regular type unreachable file into the
+			 * @FSCK(c)->disconnected_files.
+			 */
+			list_add(&file->list, &FSCK(c)->disconnected_files);
+			rb_erase(&file->rb, tree);
+		} else {
+			/* Delete non-regular type unreachable file. */
+			int err = delete_file(c, file);
+			if (err)
+				return err;
+			rb_erase(&file->rb, tree);
+			kfree(file);
+		}
 	}
 
 	return 0;

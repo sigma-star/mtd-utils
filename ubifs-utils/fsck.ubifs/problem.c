@@ -58,6 +58,7 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Encrypted file has no encryption information"},	// FILE_HAS_NO_ENCRYPT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "File is disconnected(regular file without dentries)"},	// FILE_IS_DISCONNECTED
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Root dir should not have a dentry"},	// FILE_ROOT_HAS_DENT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Dentry is unreachable"},	// DENTRY_IS_UNREACHABLE
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -84,6 +85,7 @@ static const char *get_question(const struct fsck_problem *problem,
 	case XATTR_HAS_WRONG_HOST:
 	case FILE_HAS_NO_ENCRYPT:
 	case FILE_ROOT_HAS_DENT:
+	case DENTRY_IS_UNREACHABLE:
 		return "Delete it?";
 	case FILE_HAS_INCONSIST_TYPE:
 	case FILE_HAS_TOO_MANY_DENT:
@@ -196,6 +198,18 @@ static void print_problem(const struct ubifs_info *c,
 			ifp->file->ino.is_xattr ? "(xattr)" : "", host->inum,
 			ubifs_get_type_name(ubifs_get_dent_type(host->ino.mode)),
 			host->ino.is_xattr ? "(xattr)" : "");
+		break;
+	}
+	case DENTRY_IS_UNREACHABLE:
+	{
+		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
+		const struct scanned_dent_node *dent_node = (const struct scanned_dent_node *)ifp->priv;
+
+		log_out(c, "problem: %s, ino %lu, unreachable dentry %s, type %s%s",
+			problem->desc, ifp->file->inum,
+			c->encrypted && !ifp->file->ino.is_xattr ? "<encrypted>" : dent_node->name,
+			ubifs_get_type_name(dent_node->type),
+			key_type(c, &dent_node->key) == UBIFS_XENT_KEY ? "(xattr)" : "");
 		break;
 	}
 	default:
