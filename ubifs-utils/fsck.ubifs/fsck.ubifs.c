@@ -423,8 +423,15 @@ int main(int argc, char *argv[])
 		goto out_destroy_fsck;
 	}
 
+	/* Init: Read superblock */
+	err = ubifs_load_filesystem(c);
+	if (err)
+		goto out_close;
+
 	err = do_fsck();
 
+	ubifs_destroy_filesystem(c);
+out_close:
 	ubifs_close_volume(c);
 out_destroy_fsck:
 	destroy_fsck_info(c);

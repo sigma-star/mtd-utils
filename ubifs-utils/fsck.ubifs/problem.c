@@ -34,7 +34,9 @@ struct fsck_problem {
 	const char *desc;
 };
 
-static const struct fsck_problem problem_table[] = {};
+static const struct fsck_problem problem_table[] = {
+	{0, "Corrupted superblock"},	// SB_CORRUPTED
+};
 
 static void print_problem(const struct ubifs_info *c,
 			  const struct fsck_problem *problem)

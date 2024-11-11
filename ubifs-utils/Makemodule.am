@@ -81,7 +81,8 @@ fsck_ubifs_SOURCES = \
 	$(libubifs_SOURCES) \
 	ubifs-utils/fsck.ubifs/fsck.ubifs.h \
 	ubifs-utils/fsck.ubifs/fsck.ubifs.c \
-	ubifs-utils/fsck.ubifs/problem.c
+	ubifs-utils/fsck.ubifs/problem.c \
+	ubifs-utils/fsck.ubifs/load_fs.c
 
 fsck_ubifs_LDADD = libmtd.a libubi.a $(ZLIB_LIBS) $(LZO_LIBS) $(ZSTD_LIBS) $(UUID_LIBS) $(LIBSELINUX_LIBS) $(OPENSSL_LIBS) \
 		   $(DUMP_STACK_LD) -lm -lpthread

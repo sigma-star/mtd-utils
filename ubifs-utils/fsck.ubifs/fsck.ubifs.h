@@ -36,6 +36,9 @@
 enum { NORMAL_MODE = 0, SAFE_MODE, DANGER_MODE0,
        DANGER_MODE1, REBUILD_MODE, CHECK_MODE };
 
+/* Types of inconsistent problems */
+enum { SB_CORRUPTED = 0 };
+
 /**
  * struct ubifs_fsck_info - UBIFS fsck information.
  * @mode: working mode
@@ -94,5 +97,9 @@ extern int exit_code;
 
 /* problem.c */
 bool fix_problem(const struct ubifs_info *c, int problem_type);
+
+/* load_fs.c */
+int ubifs_load_filesystem(struct ubifs_info *c);
+void ubifs_destroy_filesystem(struct ubifs_info *c);
 
 #endif
