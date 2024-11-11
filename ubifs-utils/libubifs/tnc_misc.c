@@ -222,6 +222,8 @@ static int read_znode(struct ubifs_info *c, struct ubifs_zbranch *zzbr,
 
 	err = ubifs_read_node(c, idx, UBIFS_IDX_NODE, len, lnum, offs);
 	if (err < 0) {
+		if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED))
+			set_failure_reason_callback(c, FR_TNC_CORRUPTED);
 		kfree(idx);
 		return err;
 	}
@@ -335,6 +337,7 @@ static int read_znode(struct ubifs_info *c, struct ubifs_zbranch *zzbr,
 	return 0;
 
 out_dump:
+	set_failure_reason_callback(c, FR_TNC_CORRUPTED);
 	ubifs_err(c, "bad indexing node at LEB %d:%d, error %d", lnum, offs, err);
 	ubifs_dump_node(c, idx, c->max_idx_node_sz);
 	kfree(idx);
@@ -430,6 +433,7 @@ int ubifs_tnc_read_node(struct ubifs_info *c, struct ubifs_zbranch *zbr,
 	/* Make sure the key of the read node is correct */
 	key_read(c, node + UBIFS_KEY_OFFSET, &key1);
 	if (!keys_eq(c, key, &key1)) {
+		set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 		ubifs_err(c, "bad key in node at LEB %d:%d",
 			  zbr->lnum, zbr->offs);
 		dbg_tnck(key, "looked for key ");

@@ -39,9 +39,14 @@ enum { NORMAL_MODE = 0, SAFE_MODE, DANGER_MODE0,
 /**
  * struct ubifs_fsck_info - UBIFS fsck information.
  * @mode: working mode
+ * @failure_reason: reasons for failed operations
+ * @lpt_status: the status of lpt, could be: %0(OK), %FR_LPT_CORRUPTED or
+ *		%FR_LPT_INCORRECT
  */
 struct ubifs_fsck_info {
 	int mode;
+	unsigned int failure_reason;
+	unsigned int lpt_status;
 };
 
 #define FSCK(c) ((struct ubifs_fsck_info*)c->private)

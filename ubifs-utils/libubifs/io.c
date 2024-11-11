@@ -964,6 +964,7 @@ int ubifs_read_node_wbuf(struct ubifs_wbuf *wbuf, void *buf, int type, int len,
 
 	err = ubifs_check_node(c, buf, len, lnum, offs, 0, 0);
 	if (err) {
+		set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 		ubifs_err(c, "expected node type %d", type);
 		return err;
 	}
@@ -977,6 +978,7 @@ int ubifs_read_node_wbuf(struct ubifs_wbuf *wbuf, void *buf, int type, int len,
 	return 0;
 
 out:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	ubifs_err(c, "bad node at LEB %d:%d", lnum, offs);
 	ubifs_dump_node(c, buf, len);
 	dump_stack();
@@ -1020,6 +1022,7 @@ int ubifs_read_node(const struct ubifs_info *c, void *buf, int type, int len,
 
 	err = ubifs_check_node(c, buf, len, lnum, offs, 0, 0);
 	if (err) {
+		set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 		ubifs_err(c, "expected node type %d", type);
 		return err;
 	}
@@ -1033,6 +1036,7 @@ int ubifs_read_node(const struct ubifs_info *c, void *buf, int type, int len,
 	return 0;
 
 out:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	ubifs_err(c, "bad node at LEB %d:%d, LEB mapping status %d", lnum,
 		  offs, ubi_is_mapped(c->dev_fd, lnum));
 	ubifs_dump_node(c, buf, len);

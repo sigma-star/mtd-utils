@@ -1607,8 +1607,11 @@ static int dbg_check_ltab_lnum(struct ubifs_info *c, int lnum)
 	dbg_lp("LEB %d", lnum);
 
 	err = ubifs_leb_read(c, lnum, buf, 0, c->leb_size, 1);
-	if (err)
+	if (err) {
+		if (err == -EBADMSG)
+			set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 		goto out;
+	}
 
 	while (1) {
 		if (!is_a_node(c, p, len)) {

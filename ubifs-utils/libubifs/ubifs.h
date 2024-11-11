@@ -1029,6 +1029,20 @@ struct ubifs_budg_info {
  *
  * @private: private information related to specific situation, eg. fsck.
  * @assert_failed_cb: callback function to handle assertion failure
+ * @set_failure_reason_cb: record reasons while certain failure happens
+ * @get_failure_reason_cb: get failure reasons
+ * @clear_failure_reason_cb: callback function to clear the error which is
+ *			     caused by reading corrupted data or invalid lpt
+ * @test_and_clear_failure_reason_cb: callback function to check and clear the
+ *				      error which is caused by reading corrupted
+ *				      data or invalid lpt
+ * @set_lpt_invalid_cb: callback function to set the invalid lpt status
+ * @test_lpt_valid_cb: callback function to check whether lpt is corrupted or
+ *		       incorrect, should be called before updating lpt
+ * @can_ignore_failure_cb: callback function to decide whether the failure
+ *			   can be ignored
+ * @handle_failure_cb: callback function to decide whether the failure can be
+ *		       handled
  */
 struct ubifs_info {
 	struct ubifs_sb_node *sup_node;
@@ -1254,6 +1268,21 @@ struct ubifs_info {
 
 	void *private;
 	void (*assert_failed_cb)(const struct ubifs_info *c);
+	void (*set_failure_reason_cb)(const struct ubifs_info *c,
+				      unsigned int reason);
+	unsigned int (*get_failure_reason_cb)(const struct ubifs_info *c);
+	void (*clear_failure_reason_cb)(const struct ubifs_info *c);
+	bool (*test_and_clear_failure_reason_cb)(const struct ubifs_info *c,
+						 unsigned int reason);
+	void (*set_lpt_invalid_cb)(const struct ubifs_info *c,
+				   unsigned int reason);
+	bool (*test_lpt_valid_cb)(const struct ubifs_info *c, int lnum,
+				  int old_free, int old_dirty,
+				  int free, int dirty);
+	bool (*can_ignore_failure_cb)(const struct ubifs_info *c,
+				      unsigned int reason);
+	bool (*handle_failure_cb)(const struct ubifs_info *c,
+				  unsigned int reason);
 };
 
 extern atomic_long_t ubifs_clean_zn_cnt;
@@ -1501,6 +1530,75 @@ int ubifs_add_snod(const struct ubifs_info *c, struct ubifs_scan_leb *sleb,
 		   void *buf, int offs);
 void ubifs_scanned_corruption(const struct ubifs_info *c, int lnum, int offs,
 			      void *buf);
+
+/* Failure reasons which are checked by fsck. */
+enum {
+	FR_DATA_CORRUPTED = 1,	/* Data is corrupted(master/log/orphan/main) */
+	FR_TNC_CORRUPTED = 2,	/* TNC is corrupted */
+	FR_LPT_CORRUPTED = 4,	/* LPT is corrupted */
+	FR_LPT_INCORRECT = 8	/* Space statistics are wrong */
+};
+/* Callback functions for failure(which can be handled by fsck) happens. */
+static inline void set_failure_reason_callback(const struct ubifs_info *c,
+					       unsigned int reason)
+{
+	if (c->set_failure_reason_cb)
+		c->set_failure_reason_cb(c, reason);
+}
+static inline unsigned int get_failure_reason_callback(
+						const struct ubifs_info *c)
+{
+	if (c->get_failure_reason_cb)
+		return c->get_failure_reason_cb(c);
+
+	return 0;
+}
+static inline void clear_failure_reason_callback(const struct ubifs_info *c)
+{
+	if (c->clear_failure_reason_cb)
+		c->clear_failure_reason_cb(c);
+}
+static inline bool test_and_clear_failure_reason_callback(
+						const struct ubifs_info *c,
+						unsigned int reason)
+{
+	if (c->test_and_clear_failure_reason_cb)
+		return c->test_and_clear_failure_reason_cb(c, reason);
+
+	return false;
+}
+static inline void set_lpt_invalid_callback(const struct ubifs_info *c,
+					    unsigned int reason)
+{
+	if (c->set_lpt_invalid_cb)
+		c->set_lpt_invalid_cb(c, reason);
+}
+static inline bool test_lpt_valid_callback(const struct ubifs_info *c, int lnum,
+					   int old_free, int old_dirty,
+					   int free, int dirty)
+{
+	if (c->test_lpt_valid_cb)
+		return c->test_lpt_valid_cb(c, lnum,
+					    old_free, old_dirty, free, dirty);
+
+	return false;
+}
+static inline bool can_ignore_failure_callback(const struct ubifs_info *c,
+					       unsigned int reason)
+{
+	if (c->can_ignore_failure_cb)
+		return c->can_ignore_failure_cb(c, reason);
+
+	return false;
+}
+static inline bool handle_failure_callback(const struct ubifs_info *c,
+					   unsigned int reason)
+{
+	if (c->handle_failure_cb)
+		return c->handle_failure_cb(c, reason);
+
+	return false;
+}
 
 /* log.c */
 void ubifs_add_bud(struct ubifs_info *c, struct ubifs_bud *bud);

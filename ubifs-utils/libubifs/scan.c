@@ -344,6 +344,7 @@ corrupted:
 	}
 	err = -EUCLEAN;
 	ubifs_scan_destroy(sleb);
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	return ERR_PTR(err);
 
 error:

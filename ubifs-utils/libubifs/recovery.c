@@ -182,6 +182,7 @@ static int get_master_node(const struct ubifs_info *c, int lnum, void **pbuf,
 	return 0;
 
 out_err:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	err = -EINVAL;
 out_free:
 	vfree(sbuf);
@@ -355,6 +356,7 @@ int ubifs_recover_master_node(struct ubifs_info *c)
 	return 0;
 
 out_err:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	err = -EINVAL;
 out_free:
 	ubifs_err(c, "failed to recover master node");
@@ -762,6 +764,7 @@ corrupted_rescan:
 	ubifs_err(c, "corruption %d", ret);
 	ubifs_scan_a_node(c, buf, len, lnum, offs, 0);
 corrupted:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	ubifs_scanned_corruption(c, lnum, offs, buf);
 	err = -EUCLEAN;
 error:
@@ -817,6 +820,7 @@ static int get_cs_sqnum(struct ubifs_info *c, int lnum, int offs,
 
 out_err:
 	err = -EINVAL;
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 out_free:
 	ubifs_err(c, "failed to get CS sqnum");
 	kfree(cs_node);

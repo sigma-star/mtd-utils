@@ -928,6 +928,7 @@ static int replay_log_leb(struct ubifs_info *c, int lnum, int offs, void *sbuf)
 	if (IS_ERR(sleb)) {
 		if (PTR_ERR(sleb) != -EUCLEAN || !c->need_recovery)
 			return PTR_ERR(sleb);
+		clear_failure_reason_callback(c);
 		/*
 		 * Note, the below function will recover this log LEB only if
 		 * it is the last, because unclean reboots can possibly corrupt

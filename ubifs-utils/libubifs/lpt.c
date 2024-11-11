@@ -983,6 +983,7 @@ static int check_lpt_crc(const struct ubifs_info *c, void *buf, int len)
 	calc_crc = crc16(-1, buf + UBIFS_LPT_CRC_BYTES,
 			 len - UBIFS_LPT_CRC_BYTES);
 	if (crc != calc_crc) {
+		set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 		ubifs_err(c, "invalid crc in LPT node: crc %hx calc %hx",
 			  crc, calc_crc);
 		dump_stack();
@@ -1007,6 +1008,7 @@ static int check_lpt_type(const struct ubifs_info *c, uint8_t **addr,
 
 	node_type = ubifs_unpack_bits(c, addr, pos, UBIFS_LPT_TYPE_BITS);
 	if (node_type != type) {
+		set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 		ubifs_err(c, "invalid type (%d) in LPT node type %d",
 			  node_type, type);
 		dump_stack();
@@ -1106,8 +1108,10 @@ static int unpack_ltab(const struct ubifs_info *c, void *buf)
 		int dirty = ubifs_unpack_bits(c, &addr, &pos, c->lpt_spc_bits);
 
 		if (free < 0 || free > c->leb_size || dirty < 0 ||
-		    dirty > c->leb_size || free + dirty > c->leb_size)
+		    dirty > c->leb_size || free + dirty > c->leb_size) {
+			set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 			return -EINVAL;
+		}
 
 		c->ltab[i].free = free;
 		c->ltab[i].dirty = dirty;
@@ -1136,8 +1140,10 @@ static int unpack_lsave(const struct ubifs_info *c, void *buf)
 	for (i = 0; i < c->lsave_cnt; i++) {
 		int lnum = ubifs_unpack_bits(c, &addr, &pos, c->lnum_bits);
 
-		if (lnum < c->main_first || lnum >= c->leb_cnt)
+		if (lnum < c->main_first || lnum >= c->leb_cnt) {
+			set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 			return -EINVAL;
+		}
 		c->lsave[i] = lnum;
 	}
 	err = check_lpt_crc(c, buf, c->lsave_sz);
@@ -1162,11 +1168,11 @@ static int validate_nnode(const struct ubifs_info *c, struct ubifs_nnode *nnode,
 		int num = calc_nnode_num_from_parent(c, parent, iip);
 
 		if (nnode->num != num)
-			return -EINVAL;
+			goto out_invalid;
 	}
 	lvl = parent ? parent->level - 1 : c->lpt_hght;
 	if (lvl < 1)
-		return -EINVAL;
+		goto out_invalid;
 	if (lvl == 1)
 		max_offs = c->leb_size - c->pnode_sz;
 	else
@@ -1177,15 +1183,19 @@ static int validate_nnode(const struct ubifs_info *c, struct ubifs_nnode *nnode,
 
 		if (lnum == 0) {
 			if (offs != 0)
-				return -EINVAL;
+				goto out_invalid;
 			continue;
 		}
 		if (lnum < c->lpt_first || lnum > c->lpt_last)
-			return -EINVAL;
+			goto out_invalid;
 		if (offs < 0 || offs > max_offs)
-			return -EINVAL;
+			goto out_invalid;
 	}
 	return 0;
+
+out_invalid:
+	set_failure_reason_callback(c, FR_LPT_CORRUPTED);
+	return -EINVAL;
 }
 
 /**
@@ -1206,7 +1216,7 @@ static int validate_pnode(const struct ubifs_info *c, struct ubifs_pnode *pnode,
 		int num = calc_pnode_num_from_parent(c, parent, iip);
 
 		if (pnode->num != num)
-			return -EINVAL;
+			goto out_invalid;
 	}
 	for (i = 0; i < UBIFS_LPT_FANOUT; i++) {
 		int free = pnode->lprops[i].free;
@@ -1214,13 +1224,17 @@ static int validate_pnode(const struct ubifs_info *c, struct ubifs_pnode *pnode,
 
 		if (free < 0 || free > c->leb_size || free % c->min_io_size ||
 		    (free & 7))
-			return -EINVAL;
+			goto out_invalid;
 		if (dirty < 0 || dirty > c->leb_size || (dirty & 7))
-			return -EINVAL;
+			goto out_invalid;
 		if (dirty + free > c->leb_size)
-			return -EINVAL;
+			goto out_invalid;
 	}
 	return 0;
+
+out_invalid:
+	set_failure_reason_callback(c, FR_LPT_CORRUPTED);
+	return -EINVAL;
 }
 
 /**
@@ -1283,8 +1297,11 @@ int ubifs_read_nnode(struct ubifs_info *c, struct ubifs_nnode *parent, int iip)
 			nnode->num = calc_nnode_num_from_parent(c, parent, iip);
 	} else {
 		err = ubifs_leb_read(c, lnum, buf, offs, c->nnode_sz, 1);
-		if (err)
+		if (err) {
+			if (err == -EBADMSG)
+				set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 			goto out;
+		}
 		err = ubifs_unpack_nnode(c, buf, nnode);
 		if (err)
 			goto out;
@@ -1352,8 +1369,11 @@ static int read_pnode(struct ubifs_info *c, struct ubifs_nnode *parent, int iip)
 		}
 	} else {
 		err = ubifs_leb_read(c, lnum, buf, offs, c->pnode_sz, 1);
-		if (err)
+		if (err) {
+			if (err == -EBADMSG)
+				set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 			goto out;
+		}
 		err = unpack_pnode(c, buf, pnode);
 		if (err)
 			goto out;
@@ -1394,8 +1414,11 @@ static int read_ltab(struct ubifs_info *c)
 	if (!buf)
 		return -ENOMEM;
 	err = ubifs_leb_read(c, c->ltab_lnum, buf, c->ltab_offs, c->ltab_sz, 1);
-	if (err)
+	if (err) {
+		if (err == -EBADMSG)
+			set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 		goto out;
+	}
 	err = unpack_ltab(c, buf);
 out:
 	vfree(buf);
@@ -1418,8 +1441,11 @@ static int read_lsave(struct ubifs_info *c)
 		return -ENOMEM;
 	err = ubifs_leb_read(c, c->lsave_lnum, buf, c->lsave_offs,
 			     c->lsave_sz, 1);
-	if (err)
+	if (err) {
+		if (err == -EBADMSG)
+			set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 		goto out;
+	}
 	err = unpack_lsave(c, buf);
 	if (err)
 		goto out;
@@ -2031,8 +2057,11 @@ static struct ubifs_nnode *scan_get_nnode(struct ubifs_info *c,
 	} else {
 		err = ubifs_leb_read(c, branch->lnum, buf, branch->offs,
 				     c->nnode_sz, 1);
-		if (err)
+		if (err) {
+			if (err == -EBADMSG)
+				set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 			return ERR_PTR(err);
+		}
 		err = ubifs_unpack_nnode(c, buf, nnode);
 		if (err)
 			return ERR_PTR(err);
@@ -2100,8 +2129,11 @@ static struct ubifs_pnode *scan_get_pnode(struct ubifs_info *c,
 		ubifs_assert(c, branch->offs >= 0 && branch->offs < c->leb_size);
 		err = ubifs_leb_read(c, branch->lnum, buf, branch->offs,
 				     c->pnode_sz, 1);
-		if (err)
+		if (err) {
+			if (err == -EBADMSG)
+				set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 			return ERR_PTR(err);
+		}
 		err = unpack_pnode(c, buf, pnode);
 		if (err)
 			return ERR_PTR(err);

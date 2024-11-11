@@ -168,6 +168,172 @@ static void fsck_assert_failed(__unused const struct ubifs_info *c)
 	exit(exit_code);
 }
 
+static void fsck_set_failure_reason(const struct ubifs_info *c,
+				    unsigned int reason)
+{
+	if (FSCK(c)->mode == REBUILD_MODE)
+		return;
+
+	FSCK(c)->failure_reason = reason;
+	if (reason & FR_LPT_CORRUPTED) {
+		log_out(c, "Found corrupted pnode/nnode, set lpt corrupted");
+		FSCK(c)->lpt_status |= FR_LPT_CORRUPTED;
+	}
+	if (reason & FR_LPT_INCORRECT) {
+		log_out(c, "Bad space statistics, set lpt incorrect");
+		FSCK(c)->lpt_status |= FR_LPT_INCORRECT;
+	}
+}
+
+static unsigned int fsck_get_failure_reason(const struct ubifs_info *c)
+{
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+
+	return FSCK(c)->failure_reason;
+}
+
+static void fsck_clear_failure_reason(const struct ubifs_info *c)
+{
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+
+	FSCK(c)->failure_reason = 0;
+}
+
+static bool fsck_test_and_clear_failure_reason(const struct ubifs_info *c,
+					       unsigned int reason)
+{
+	bool res = (FSCK(c)->failure_reason & reason) != 0;
+
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+	ubifs_assert(c, !(FSCK(c)->failure_reason & (~reason)));
+
+	FSCK(c)->failure_reason = 0;
+
+	return res;
+}
+
+static void fsck_set_lpt_invalid(const struct ubifs_info *c,
+				 unsigned int reason)
+{
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+
+	if (reason & FR_LPT_CORRUPTED) {
+		log_out(c, "Found corrupted pnode/nnode, set lpt corrupted");
+		FSCK(c)->lpt_status |= FR_LPT_CORRUPTED;
+	}
+	if (reason & FR_LPT_INCORRECT) {
+		log_out(c, "Bad space statistics, set lpt incorrect");
+		FSCK(c)->lpt_status |= FR_LPT_INCORRECT;
+	}
+}
+
+static bool fsck_test_lpt_valid(const struct ubifs_info *c, int lnum,
+				int old_free, int old_dirty,
+				int free, int dirty)
+{
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+
+	if (c->cmt_state != COMMIT_RESTING)
+		/* Don't skip updating lpt when do commit. */
+		goto out;
+
+	if (FSCK(c)->lpt_status)
+		return false;
+
+	if (c->lst.empty_lebs < 0 || c->lst.empty_lebs > c->main_lebs) {
+		log_out(c, "Bad empty_lebs %d(main_lebs %d), set lpt incorrect",
+			c->lst.empty_lebs, c->main_lebs);
+		goto out_invalid;
+	}
+	if (c->freeable_cnt < 0 || c->freeable_cnt > c->main_lebs) {
+		log_out(c, "Bad freeable_cnt %d(main_lebs %d), set lpt incorrect",
+			c->freeable_cnt, c->main_lebs);
+		goto out_invalid;
+	}
+	if (c->lst.taken_empty_lebs < 0 ||
+	    c->lst.taken_empty_lebs > c->lst.empty_lebs) {
+		log_out(c, "Bad taken_empty_lebs %d(empty_lebs %d), set lpt incorrect",
+			c->lst.taken_empty_lebs, c->lst.empty_lebs);
+		goto out_invalid;
+	}
+	if (c->lst.total_free & 7) {
+		log_out(c, "total_free(%lld) is not 8 bytes aligned, set lpt incorrect",
+			c->lst.total_free);
+		goto out_invalid;
+	}
+	if (c->lst.total_dirty & 7) {
+		log_out(c, "total_dirty(%lld) is not 8 bytes aligned, set lpt incorrect",
+			c->lst.total_dirty);
+		goto out_invalid;
+	}
+	if (c->lst.total_dead & 7) {
+		log_out(c, "total_dead(%lld) is not 8 bytes aligned, set lpt incorrect",
+			c->lst.total_dead);
+		goto out_invalid;
+	}
+	if (c->lst.total_dark & 7) {
+		log_out(c, "total_dark(%lld) is not 8 bytes aligned, set lpt incorrect",
+			c->lst.total_dark);
+		goto out_invalid;
+	}
+	if (c->lst.total_used & 7) {
+		log_out(c, "total_used(%lld) is not 8 bytes aligned, set lpt incorrect",
+			c->lst.total_used);
+		goto out_invalid;
+	}
+	if (old_free != LPROPS_NC && (old_free & 7)) {
+		log_out(c, "LEB %d old_free(%d) is not 8 bytes aligned, set lpt incorrect",
+			lnum, old_free);
+		goto out_invalid;
+	}
+	if (old_dirty != LPROPS_NC && (old_dirty & 7)) {
+		log_out(c, "LEB %d old_dirty(%d) is not 8 bytes aligned, set lpt incorrect",
+			lnum, old_dirty);
+		goto out_invalid;
+	}
+	if (free != LPROPS_NC && (free < 0 || free > c->leb_size)) {
+		log_out(c, "LEB %d bad free %d(leb_size %d), set lpt incorrect",
+			lnum, free, c->leb_size);
+		goto out_invalid;
+	}
+	if (dirty != LPROPS_NC && dirty < 0) {
+		/* Dirty may be more than c->leb_size before set_bud_lprops. */
+		log_out(c, "LEB %d bad dirty %d(leb_size %d), set lpt incorrect",
+			lnum, dirty, c->leb_size);
+		goto out_invalid;
+	}
+
+out:
+	return true;
+
+out_invalid:
+	FSCK(c)->lpt_status |= FR_LPT_INCORRECT;
+	return false;
+}
+
+static bool fsck_can_ignore_failure(const struct ubifs_info *c,
+				    unsigned int reason)
+{
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+
+	if (c->cmt_state != COMMIT_RESTING)
+		/* Don't ignore failure when do commit. */
+		return false;
+	if (reason & (FR_LPT_CORRUPTED | FR_LPT_INCORRECT))
+		return true;
+
+	return false;
+}
+
+static const unsigned int reason_mapping_table[] = {};
+
+static bool fsck_handle_failure(const struct ubifs_info *c, unsigned int reason)
+{
+	ubifs_assert(c, FSCK(c)->mode != REBUILD_MODE);
+
+	return fix_problem(c, reason_mapping_table[reason]);
+}
+
 static void signal_cancel(int sig)
 {
 	ubifs_warn(c, "killed by signo %d", sig);
@@ -199,6 +365,14 @@ static int init_fsck_info(struct ubifs_info *c, int argc, char *argv[])
 	c->private = fsck;
 	FSCK(c)->mode = mode;
 	c->assert_failed_cb = fsck_assert_failed;
+	c->set_failure_reason_cb = fsck_set_failure_reason;
+	c->get_failure_reason_cb = fsck_get_failure_reason;
+	c->clear_failure_reason_cb = fsck_clear_failure_reason;
+	c->test_and_clear_failure_reason_cb = fsck_test_and_clear_failure_reason;
+	c->set_lpt_invalid_cb = fsck_set_lpt_invalid;
+	c->test_lpt_valid_cb = fsck_test_lpt_valid;
+	c->can_ignore_failure_cb = fsck_can_ignore_failure;
+	c->handle_failure_cb = fsck_handle_failure;
 
 	memset(&sa, 0, sizeof(struct sigaction));
 	sa.sa_handler = signal_cancel;

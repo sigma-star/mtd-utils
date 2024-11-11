@@ -146,10 +146,12 @@ static int scan_for_master(struct ubifs_info *c)
 	return 0;
 
 out:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	ubifs_scan_destroy(sleb);
 	return -EUCLEAN;
 
 out_dump:
+	set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	ubifs_err(c, "unexpected node type %d master LEB %d:%d",
 		  snod->type, lnum, snod->offs);
 	ubifs_scan_destroy(sleb);
@@ -165,6 +167,7 @@ out_dump:
  */
 static int validate_master(const struct ubifs_info *c)
 {
+	unsigned int reason = FR_DATA_CORRUPTED;
 	long long main_sz;
 	int err;
 
@@ -254,39 +257,46 @@ static int validate_master(const struct ubifs_info *c)
 	}
 
 	if (c->lst.empty_lebs < 0 || c->lst.empty_lebs > c->main_lebs - 2) {
+		reason = FR_LPT_INCORRECT;
 		err = 15;
 		goto out;
 	}
 
 	if (c->lst.idx_lebs < 0 || c->lst.idx_lebs > c->main_lebs - 1) {
+		reason = FR_LPT_INCORRECT;
 		err = 16;
 		goto out;
 	}
 
 	if (c->lst.total_free < 0 || c->lst.total_free > main_sz ||
 	    c->lst.total_free & 7) {
+		reason = FR_LPT_INCORRECT;
 		err = 17;
 		goto out;
 	}
 
 	if (c->lst.total_dirty < 0 || (c->lst.total_dirty & 7)) {
+		reason = FR_LPT_INCORRECT;
 		err = 18;
 		goto out;
 	}
 
 	if (c->lst.total_used < 0 || (c->lst.total_used & 7)) {
+		reason = FR_LPT_INCORRECT;
 		err = 19;
 		goto out;
 	}
 
 	if (c->lst.total_free + c->lst.total_dirty +
 	    c->lst.total_used > main_sz) {
+		reason = FR_LPT_INCORRECT;
 		err = 20;
 		goto out;
 	}
 
 	if (c->lst.total_dead + c->lst.total_dark +
 	    c->lst.total_used + c->bi.old_idx_sz > main_sz) {
+		reason = FR_LPT_INCORRECT;
 		err = 21;
 		goto out;
 	}
@@ -294,6 +304,7 @@ static int validate_master(const struct ubifs_info *c)
 	if (c->lst.total_dead < 0 ||
 	    c->lst.total_dead > c->lst.total_free + c->lst.total_dirty ||
 	    c->lst.total_dead & 7) {
+		reason = FR_LPT_INCORRECT;
 		err = 22;
 		goto out;
 	}
@@ -301,6 +312,7 @@ static int validate_master(const struct ubifs_info *c)
 	if (c->lst.total_dark < 0 ||
 	    c->lst.total_dark > c->lst.total_free + c->lst.total_dirty ||
 	    c->lst.total_dark & 7) {
+		reason = FR_LPT_INCORRECT;
 		err = 23;
 		goto out;
 	}
@@ -308,6 +320,7 @@ static int validate_master(const struct ubifs_info *c)
 	return 0;
 
 out:
+	set_failure_reason_callback(c, reason);
 	ubifs_err(c, "bad master node at offset %d error %d", c->mst_offs, err);
 	ubifs_dump_node(c, c->mst_node, c->mst_node_alsz);
 	return -EINVAL;
@@ -331,8 +344,10 @@ int ubifs_read_master(struct ubifs_info *c)
 
 	err = scan_for_master(c);
 	if (err) {
-		if (err == -EUCLEAN)
+		if (err == -EUCLEAN) {
+			clear_failure_reason_callback(c);
 			err = ubifs_recover_master_node(c);
+		}
 		if (err)
 			/*
 			 * Note, we do not free 'c->mst_node' here because the
@@ -386,6 +401,7 @@ int ubifs_read_master(struct ubifs_info *c)
 
 		if (c->leb_cnt < old_leb_cnt ||
 		    c->leb_cnt < UBIFS_MIN_LEB_CNT) {
+			set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 			ubifs_err(c, "bad leb_cnt on master node");
 			ubifs_dump_node(c, c->mst_node, c->mst_node_alsz);
 			return -EINVAL;

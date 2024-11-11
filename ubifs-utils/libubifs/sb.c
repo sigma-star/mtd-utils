@@ -360,6 +360,8 @@ int ubifs_read_superblock(struct ubifs_info *c)
 
 	err = validate_sb(c, sup);
 out:
+	if (err)
+		set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 	return err;
 }
 
