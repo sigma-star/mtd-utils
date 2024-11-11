@@ -298,7 +298,8 @@ AC_CONFIG_FILES([tests/fs-tests/fs_help_all.sh
 	tests/ubifs_tools-tests/fsck_tests/cycle_mount_fsck_check.sh
 	tests/ubifs_tools-tests/fsck_tests/powercut_fsck_mount.sh
 	tests/ubifs_tools-tests/fsck_tests/cycle_corrupted_fsck_fault_inject.sh
-	tests/ubifs_tools-tests/fsck_tests/cycle_powercut_mount_fsck.sh])
+	tests/ubifs_tools-tests/fsck_tests/cycle_powercut_mount_fsck.sh
+	tests/ubifs_tools-tests/fsck_tests/random_corrupted_fsck.sh])
 
 AC_OUTPUT([Makefile])
 
