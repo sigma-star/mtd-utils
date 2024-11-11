@@ -1099,7 +1099,7 @@ out_dump:
  * This function returns the amount of free space in the index head LEB or a
  * negative error code.
  */
-static int take_ihead(struct ubifs_info *c)
+int take_ihead(struct ubifs_info *c)
 {
 	const struct ubifs_lprops *lp;
 	int err, free;

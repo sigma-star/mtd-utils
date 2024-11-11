@@ -1563,6 +1563,7 @@ enum {
 	FR_H_BUD_CORRUPTED = 0,		/* Bud LEB is corrupted */
 	FR_H_TNC_DATA_CORRUPTED,	/* Data searched from TNC is corrupted */
 	FR_H_ORPHAN_CORRUPTED,		/* Orphan LEB is corrupted */
+	FR_H_LTAB_INCORRECT,		/* Lprops table is incorrect */
 };
 /* Callback functions for failure(which can be handled by fsck) happens. */
 static inline void set_failure_reason_callback(const struct ubifs_info *c,
@@ -1734,6 +1735,7 @@ int ubifs_fixup_free_space(struct ubifs_info *c);
 /* replay.c */
 int ubifs_validate_entry(struct ubifs_info *c,
 			 const struct ubifs_dent_node *dent);
+int take_ihead(struct ubifs_info *c);
 int ubifs_replay_journal(struct ubifs_info *c);
 
 /* gc.c */
@@ -1754,7 +1756,7 @@ int ubifs_clear_orphans(struct ubifs_info *c);
 int ubifs_calc_dflt_lpt_geom(struct ubifs_info *c, int *main_lebs, int *big_lpt);
 int ubifs_calc_lpt_geom(struct ubifs_info *c);
 int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
-		     u8 *hash);
+		     u8 *hash, bool free_ltab);
 int ubifs_lpt_init(struct ubifs_info *c, int rd, int wr);
 struct ubifs_lprops *ubifs_lpt_lookup(struct ubifs_info *c, int lnum);
 struct ubifs_lprops *ubifs_lpt_lookup_dirty(struct ubifs_info *c, int lnum);
@@ -1795,6 +1797,7 @@ int ubifs_lpt_end_commit(struct ubifs_info *c);
 int ubifs_lpt_post_commit(struct ubifs_info *c);
 void ubifs_free_lpt_nodes(struct ubifs_info *c);
 void ubifs_lpt_free(struct ubifs_info *c, int wr_only);
+int dbg_check_ltab_lnum(struct ubifs_info *c, int lnum);
 
 /* lprops.c */
 const struct ubifs_lprops *ubifs_change_lp(struct ubifs_info *c,

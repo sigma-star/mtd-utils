@@ -58,6 +58,7 @@ static const char *helptext =
 "-b, --rebuild            Forcedly repair the filesystem even by rebuilding filesystem.\n"
 "                         Depends on -y option\n"
 "-n, --nochange           Make no changes to the filesystem, only check filesystem.\n"
+"                         This mode don't check space, because unclean LEBs are not rewritten in readonly mode.\n"
 "                         Can not be specified at the same time as the -a or -y options\n"
 "Examples:\n"
 "\t1. Check and repair filesystem from UBI volume /dev/ubi0_0\n"
@@ -329,6 +330,7 @@ static const unsigned int reason_mapping_table[] = {
 	BUD_CORRUPTED,		/* FR_H_BUD_CORRUPTED */
 	TNC_DATA_CORRUPTED,	/* FR_H_TNC_DATA_CORRUPTED */
 	ORPHAN_CORRUPTED,	/* FR_H_ORPHAN_CORRUPTED */
+	LTAB_INCORRECT,		/* FR_H_LTAB_INCORRECT */
 };
 
 static bool fsck_handle_failure(const struct ubifs_info *c, unsigned int reason,
@@ -471,7 +473,17 @@ static int do_fsck(void)
 	if (tnc_is_empty(c) && fix_problem(c, EMPTY_TNC, NULL)) {
 		err = -EINVAL;
 		FSCK(c)->try_rebuild = true;
+		goto free_disconnected_files;
 	}
+
+	err = check_and_correct_space(c);
+	kfree(FSCK(c)->used_lebs);
+	destroy_file_tree(c, &FSCK(c)->scanned_files);
+	if (err)
+		exit_code |= FSCK_ERROR;
+
+	destroy_file_list(c, &FSCK(c)->disconnected_files);
+	return err;
 
 free_disconnected_files:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
@@ -519,6 +531,7 @@ int main(int argc, char *argv[])
 	 * Step 9: Check and handle unreachable files
 	 * Step 10: Check and correct files
 	 * Step 11: Check whether the TNC is empty
+	 * Step 12: Check and correct the space statistics
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {

@@ -61,6 +61,12 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Dentry is unreachable"},	// DENTRY_IS_UNREACHABLE
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "File is inconsistent"},	// FILE_IS_INCONSISTENT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA | PROBLEM_NEED_REBUILD, "TNC is empty"},	// EMPTY_TNC
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Corrupted pnode/nnode"},	// LPT_CORRUPTED
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for nnode"},	// NNODE_INCORRECT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for pnode"},	// PNODE_INCORRECT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for LEB"},	// LP_INCORRECT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Incorrect space statistics"},	// SPACE_STAT_INCORRECT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for lprops table"},	// LTAB_INCORRECT
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -96,6 +102,8 @@ static const char *get_question(const struct fsck_problem *problem,
 		return "Remove data block?";
 	case FILE_IS_DISCONNECTED:
 		return "Put it into disconnected list?";
+	case LPT_CORRUPTED:
+		return "Rebuild LPT?";
 	}
 
 	return "Fix it?";
@@ -227,6 +235,49 @@ static void print_problem(const struct ubifs_info *c,
 			file->ino.xnms, file->ino.size,
 			file->calc_nlink, file->calc_xcnt, file->calc_xsz,
 			file->calc_xnms, file->calc_size);
+		break;
+	}
+	case NNODE_INCORRECT:
+	{
+		const struct nnode_problem *nnp = (const struct nnode_problem *)priv;
+
+		log_out(c, "problem: %s, nnode num %d expected %d parent num %d iip %d",
+			problem->desc, nnp->nnode->num, nnp->num,
+			nnp->parent_nnode ? nnp->parent_nnode->num : 0,
+			nnp->nnode->iip);
+		break;
+	}
+	case PNODE_INCORRECT:
+	{
+		const struct pnode_problem *pnp = (const struct pnode_problem *)priv;
+
+		log_out(c, "problem: %s, pnode num %d expected %d parent num %d iip %d",
+			problem->desc, pnp->pnode->num, pnp->num,
+			pnp->pnode->parent->num, pnp->pnode->iip);
+		break;
+	}
+	case LP_INCORRECT:
+	{
+		const struct lp_problem *lpp = (const struct lp_problem *)priv;
+
+		log_out(c, "problem: %s %d, free %d dirty %d is_idx %d, should be lnum %d free %d dirty %d is_idx %d",
+			problem->desc, lpp->lp->lnum, lpp->lp->free,
+			lpp->lp->dirty, lpp->lp->flags & LPROPS_INDEX ? 1 : 0,
+			lpp->lnum, lpp->free, lpp->dirty, lpp->is_idx);
+		break;
+	}
+	case SPACE_STAT_INCORRECT:
+	{
+		const struct space_stat_problem *ssp = (const struct space_stat_problem *)priv;
+
+		log_out(c, "problem: %s, empty_lebs %d idx_lebs %d total_free %lld total_dirty %lld total_used %lld total_dead %lld total_dark %lld, should be empty_lebs %d idx_lebs %d total_free %lld total_dirty %lld total_used %lld total_dead %lld total_dark %lld",
+			problem->desc, ssp->lst->empty_lebs, ssp->lst->idx_lebs,
+			ssp->lst->total_free, ssp->lst->total_dirty,
+			ssp->lst->total_used, ssp->lst->total_dead,
+			ssp->lst->total_dark, ssp->calc_lst->empty_lebs,
+			ssp->calc_lst->idx_lebs, ssp->calc_lst->total_free,
+			ssp->calc_lst->total_dirty, ssp->calc_lst->total_used,
+			ssp->calc_lst->total_dead, ssp->calc_lst->total_dark);
 		break;
 	}
 	default:

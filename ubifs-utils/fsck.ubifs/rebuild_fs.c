@@ -1224,7 +1224,8 @@ out_idx_list:
 	return err;
 }
 
-static int calculate_lp(struct ubifs_info *c, int index, int *free, int *dirty)
+static int calculate_lp(struct ubifs_info *c, int index, int *free, int *dirty,
+			__unused int *is_idx)
 {
 	if (!test_bit(index, FSCK(c)->used_lebs) ||
 	    c->gc_lnum == index + c->main_first) {
@@ -1421,7 +1422,7 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 
 	/* Step 10. Build LPT. */
 	log_out(c, "Build LPT");
-	err = build_lpt(c, calculate_lp);
+	err = build_lpt(c, calculate_lp, true);
 	if (err) {
 		exit_code |= FSCK_ERROR;
 		goto out;

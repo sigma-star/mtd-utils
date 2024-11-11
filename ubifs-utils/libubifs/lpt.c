@@ -605,6 +605,7 @@ static int calc_pnode_num_from_parent(const struct ubifs_info *c,
  * @lps: array of logical eraseblock properties
  * @lp_cnt: the length of @lps
  * @hash: hash of the LPT is returned here
+ * @free_ltab: %true means to release c->ltab after creating lpt
  *
  * This function creates lpt, the pnode will be initialized based on
  * corresponding elements in @lps. If there are no corresponding lprops
@@ -612,7 +613,7 @@ static int calc_pnode_num_from_parent(const struct ubifs_info *c,
  * as free state.
  */
 int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
-		     u8 *hash)
+		     u8 *hash, bool free_ltab)
 {
 	int lnum, err = 0, i, j, cnt, len, alen, row;
 	int blnum, boffs, bsz, bcnt;
@@ -910,10 +911,12 @@ int ubifs_create_lpt(struct ubifs_info *c, struct ubifs_lprops *lps, int lp_cnt,
 	if (c->big_lpt)
 		dbg_lp("LPT lsave is at %d:%d", c->lsave_lnum, c->lsave_offs);
 out:
-	c->ltab = NULL;
+	if (free_ltab || err) {
+		c->ltab = NULL;
+		vfree(ltab);
+	}
 	kfree(desc);
 	kfree(lsave);
-	vfree(ltab);
 	vfree(buf);
 	kfree(nnode);
 	kfree(pnode);

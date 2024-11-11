@@ -44,12 +44,14 @@ enum { SB_CORRUPTED = 0, MST_CORRUPTED, LOG_CORRUPTED, BUD_CORRUPTED,
        FILE_SHOULDNT_HAVE_DATA, FILE_HAS_NO_DENT, XATTR_HAS_NO_HOST,
        XATTR_HAS_WRONG_HOST, FILE_HAS_NO_ENCRYPT, FILE_IS_DISCONNECTED,
        FILE_ROOT_HAS_DENT, DENTRY_IS_UNREACHABLE, FILE_IS_INCONSISTENT,
-       EMPTY_TNC };
+       EMPTY_TNC, LPT_CORRUPTED, NNODE_INCORRECT, PNODE_INCORRECT,
+       LP_INCORRECT, SPACE_STAT_INCORRECT, LTAB_INCORRECT };
 
 enum { HAS_DATA_CORRUPTED = 1, HAS_TNC_CORRUPTED = 2 };
 
 typedef int (*calculate_lp_callback)(struct ubifs_info *c,
-				     int index, int *free, int *dirty);
+				     int index, int *free, int *dirty,
+				     int *is_idx);
 
 struct scanned_file;
 
@@ -201,6 +203,54 @@ struct invalid_file_problem {
 };
 
 /**
+ * nnode_problem - problem instance for incorrect nnode
+ * @nnode: incorrect nnode
+ * @parent_nnode: the parent nnode of @nnode, could be NULL if @nnode is root
+ * @num: calculated num
+ */
+struct nnode_problem {
+	struct ubifs_nnode *nnode;
+	struct ubifs_nnode *parent_nnode;
+	int num;
+};
+
+/**
+ * pnode_problem - problem instance for incorrect pnode
+ * @pnode: incorrect pnode
+ * @num: calculated num
+ */
+struct pnode_problem {
+	struct ubifs_pnode *pnode;
+	int num;
+};
+
+/**
+ * lp_problem - problem instance for incorrect LEB proerties
+ * @lp: incorrect LEB properties
+ * @lnum: LEB number
+ * @free: calculated free space in LEB
+ * @dirty: calculated dirty bytes in LEB
+ * @is_idx: %true means that the LEB is an index LEB
+ */
+struct lp_problem {
+	struct ubifs_lprops *lp;
+	int lnum;
+	int free;
+	int dirty;
+	int is_idx;
+};
+
+/**
+ * space_stat_problem - problem instance for incorrect space statistics
+ * @lst: current space statistics
+ * @calc_lst: calculated space statistics
+ */
+struct space_stat_problem {
+	struct ubifs_lp_stats *lst;
+	struct ubifs_lp_stats *calc_lst;
+};
+
+/**
  * ubifs_rebuild_info - UBIFS rebuilding information.
  * @write_buf: write buffer for LEB @head_lnum
  * @head_lnum: current writing LEB number
@@ -326,6 +376,8 @@ bool tnc_is_empty(struct ubifs_info *c);
 
 /* check_space.c */
 int get_free_leb(struct ubifs_info *c);
-int build_lpt(struct ubifs_info *c, calculate_lp_callback calculate_lp_cb);
+int build_lpt(struct ubifs_info *c, calculate_lp_callback calculate_lp_cb,
+	      bool free_ltab);
+int check_and_correct_space(struct ubifs_info *c);
 
 #endif

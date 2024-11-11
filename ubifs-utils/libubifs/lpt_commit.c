@@ -1599,7 +1599,7 @@ static int dbg_is_node_dirty(struct ubifs_info *c, int node_type, int lnum,
  *
  * This function returns %0 on success and a negative error code on failure.
  */
-static int dbg_check_ltab_lnum(struct ubifs_info *c, int lnum)
+int dbg_check_ltab_lnum(struct ubifs_info *c, int lnum)
 {
 	int err, len = c->leb_size, dirty = 0, node_type, node_num, node_len;
 	int ret;
@@ -1608,7 +1608,7 @@ static int dbg_check_ltab_lnum(struct ubifs_info *c, int lnum)
 	buf = p = __vmalloc(c->leb_size, GFP_NOFS);
 	if (!buf) {
 		ubifs_err(c, "cannot allocate memory for ltab checking");
-		return 0;
+		return -ENOMEM;
 	}
 
 	dbg_lp("LEB %d", lnum);
@@ -1632,20 +1632,30 @@ static int dbg_check_ltab_lnum(struct ubifs_info *c, int lnum)
 				continue;
 			}
 			if (!dbg_is_all_ff(p, len)) {
+				set_failure_reason_callback(c, FR_LPT_CORRUPTED);
 				ubifs_err(c, "invalid empty space in LEB %d at %d",
 					  lnum, c->leb_size - len);
 				err = -EINVAL;
+				goto out;
 			}
 			i = lnum - c->lpt_first;
 			if (len != c->ltab[i].free) {
 				ubifs_err(c, "invalid free space in LEB %d (free %d, expected %d)",
-					  lnum, len, c->ltab[i].free);
+					  lnum, c->ltab[i].free, len);
 				err = -EINVAL;
+				if (handle_failure_callback(c, FR_H_LTAB_INCORRECT, NULL)) {
+					c->ltab[i].free = len;
+					err = 0;
+				}
 			}
 			if (dirty != c->ltab[i].dirty) {
 				ubifs_err(c, "invalid dirty space in LEB %d (dirty %d, expected %d)",
-					  lnum, dirty, c->ltab[i].dirty);
+					  lnum, c->ltab[i].dirty, dirty);
 				err = -EINVAL;
+				if (handle_failure_callback(c, FR_H_LTAB_INCORRECT, NULL)) {
+					c->ltab[i].dirty = dirty;
+					err = 0;
+				}
 			}
 			goto out;
 		}

@@ -2675,7 +2675,7 @@ static int write_lpt(void)
 	int err, lnum;
 
 	c->lscan_lnum = c->main_first;
-	err = ubifs_create_lpt(c, c->lpt, c->main_lebs, c->lpt_hash);
+	err = ubifs_create_lpt(c, c->lpt, c->main_lebs, c->lpt_hash, true);
 	if (err)
 		return err;
 
