@@ -443,6 +443,8 @@ static int do_fsck(void)
 		return err;
 	}
 
+	update_files_size(c);
+
 	kfree(FSCK(c)->used_lebs);
 	destroy_file_tree(c, &FSCK(c)->scanned_files);
 	return err;
@@ -481,6 +483,7 @@ int main(int argc, char *argv[])
 
 	/*
 	 * Step 6: Traverse tnc and construct files
+	 * Step 7: Update files' size
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {

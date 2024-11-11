@@ -297,5 +297,6 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c);
 
 /* check_files.c */
 int traverse_tnc_and_construct_files(struct ubifs_info *c);
+void update_files_size(struct ubifs_info *c);
 
 #endif

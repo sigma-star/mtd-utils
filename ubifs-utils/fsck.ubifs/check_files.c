@@ -309,3 +309,48 @@ out:
 	}
 	return err;
 }
+
+/**
+ * update_files_size - Update files' size.
+ * @c: UBIFS file-system description object
+ *
+ * This function updates files' size according to @c->size_tree for check mode.
+ */
+void update_files_size(struct ubifs_info *c)
+{
+	struct rb_node *this;
+
+	if (FSCK(c)->mode != CHECK_MODE) {
+		/* Other modes(rw) have updated inode size in place. */
+		dbg_fsck("skip updating files' size%s, in %s",
+			 mode_name(c), c->dev_name);
+		return;
+	}
+
+	log_out(c, "Update files' size");
+
+	this = rb_first(&c->size_tree);
+	while (this) {
+		struct size_entry *e;
+
+		e = rb_entry(this, struct size_entry, rb);
+		this = rb_next(this);
+
+		if (e->exists && e->i_size < e->d_size) {
+			struct scanned_file *file;
+
+			file = lookup_file(&FSCK(c)->scanned_files, e->inum);
+			if (file && file->ino.header.exist &&
+			    file->ino.size < e->d_size) {
+				dbg_fsck("update file(%lu) size %llu->%llu, in %s",
+					 e->inum, file->ino.size,
+					 (unsigned long long)e->d_size,
+					 c->dev_name);
+				file->ino.size = e->d_size;
+			}
+		}
+
+		rb_erase(&e->rb, &c->size_tree);
+		kfree(e);
+	}
+}

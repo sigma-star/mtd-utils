@@ -1297,6 +1297,22 @@ static inline int ubifs_authenticated(const struct ubifs_info *c)
 	return c->authenticated;
 }
 
+/**
+ * struct size_entry - inode size information for recovery.
+ * @rb: link in the RB-tree of sizes
+ * @inum: inode number
+ * @i_size: size on inode
+ * @d_size: maximum size based on data nodes
+ * @exists: indicates whether the inode exists
+ */
+struct size_entry {
+	struct rb_node rb;
+	ino_t inum;
+	loff_t i_size;
+	loff_t d_size;
+	int exists;
+};
+
 #ifdef WITH_CRYPTO
 int ubifs_init_authentication(struct ubifs_info *c);
 int ubifs_shash_init(const struct ubifs_info *c, struct shash_desc *desc);

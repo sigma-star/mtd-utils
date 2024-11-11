@@ -1082,22 +1082,6 @@ int ubifs_rcvry_gc_commit(struct ubifs_info *c)
 }
 
 /**
- * struct size_entry - inode size information for recovery.
- * @rb: link in the RB-tree of sizes
- * @inum: inode number
- * @i_size: size on inode
- * @d_size: maximum size based on data nodes
- * @exists: indicates whether the inode exists
- */
-struct size_entry {
-	struct rb_node rb;
-	ino_t inum;
-	loff_t i_size;
-	loff_t d_size;
-	int exists;
-};
-
-/**
  * add_ino - add an entry to the size tree.
  * @c: UBIFS file-system description object
  * @inum: inode number
