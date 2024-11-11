@@ -63,6 +63,7 @@ include tests/jittertest/Makemodule.am
 include tests/checkfs/Makemodule.am
 include tests/fs-tests/Makemodule.am
 include tests/mtd-tests/Makemodule.am
+include tests/ubifs_tools-tests/Makemodule.am
 endif
 
 if UNIT_TESTS

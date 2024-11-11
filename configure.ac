@@ -292,7 +292,8 @@ AC_CONFIG_FILES([tests/fs-tests/fs_help_all.sh
 	tests/fs-tests/stress/fs_stress00.sh
 	tests/fs-tests/stress/fs_stress01.sh
 	tests/ubi-tests/runubitests.sh
-	tests/ubi-tests/ubi-stress-test.sh])
+	tests/ubi-tests/ubi-stress-test.sh
+	tests/ubifs_tools-tests/lib/common.sh])
 
 AC_OUTPUT([Makefile])
 
