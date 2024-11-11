@@ -186,6 +186,7 @@ struct scanned_file {
  * @write_buf: write buffer for LEB @head_lnum
  * @head_lnum: current writing LEB number
  * @head_offs: current writing position in LEB @head_lnum
+ * @need_update_lpt: whether to update lpt while writing index nodes
  */
 struct ubifs_rebuild_info {
 	unsigned long *used_lebs;
@@ -194,6 +195,7 @@ struct ubifs_rebuild_info {
 	void *write_buf;
 	int head_lnum;
 	int head_offs;
+	bool need_update_lpt;
 };
 
 /**

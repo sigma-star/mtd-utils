@@ -489,6 +489,22 @@ lookup_valid_dent_node(struct ubifs_info *c, struct scanned_info *si,
 	return NULL;
 }
 
+static void update_lpt(struct ubifs_info *c, struct scanned_node *sn,
+		       bool deleted)
+{
+	int index = sn->lnum - c->main_first;
+	int pos = sn->offs + ALIGN(sn->len, 8);
+
+	set_bit(index, FSCK(c)->rebuild->used_lebs);
+	FSCK(c)->rebuild->lpts[index].end = max_t(int,
+					FSCK(c)->rebuild->lpts[index].end, pos);
+
+	if (deleted)
+		return;
+
+	FSCK(c)->rebuild->lpts[index].used += ALIGN(sn->len, 8);
+}
+
 /**
  * remove_del_nodes - remove deleted nodes from valid node tree.
  * @c: UBIFS file-system description object
@@ -512,13 +528,7 @@ static void remove_del_nodes(struct ubifs_info *c, struct scanned_info *si)
 
 		valid_ino_node = lookup_valid_ino_node(c, si, del_ino_node);
 		if (valid_ino_node) {
-			int lnum = del_ino_node->header.lnum - c->main_first;
-			int pos = del_ino_node->header.offs +
-				  ALIGN(del_ino_node->header.len, 8);
-
-			set_bit(lnum, FSCK(c)->rebuild->used_lebs);
-			FSCK(c)->rebuild->lpts[lnum].end =
-				max_t(int, FSCK(c)->rebuild->lpts[lnum].end, pos);
+			update_lpt(c, &del_ino_node->header, true);
 			rb_erase(&valid_ino_node->rb, &si->valid_inos);
 			kfree(valid_ino_node);
 		}
@@ -534,13 +544,7 @@ static void remove_del_nodes(struct ubifs_info *c, struct scanned_info *si)
 
 		valid_dent_node = lookup_valid_dent_node(c, si, del_dent_node);
 		if (valid_dent_node) {
-			int lnum = del_dent_node->header.lnum - c->main_first;
-			int pos = del_dent_node->header.offs +
-				  ALIGN(del_dent_node->header.len, 8);
-
-			set_bit(lnum, FSCK(c)->rebuild->used_lebs);
-			FSCK(c)->rebuild->lpts[lnum].end =
-				max_t(int, FSCK(c)->rebuild->lpts[lnum].end, pos);
+			update_lpt(c, &del_dent_node->header, true);
 			rb_erase(&valid_dent_node->rb, &si->valid_dents);
 			kfree(valid_dent_node);
 		}
@@ -730,12 +734,12 @@ static void init_root_ino(struct ubifs_info *c, struct ubifs_ino_node *ino)
  * get_free_leb - get a free LEB according to @FSCK(c)->rebuild->used_lebs.
  * @c: UBIFS file-system description object
  *
- * This function tries to find a free LEB, %0 is returned if found, otherwise
- * %ENOSPC is returned.
+ * This function tries to find a free LEB, lnum is returned if found, otherwise
+ * %-ENOSPC is returned.
  */
 static int get_free_leb(struct ubifs_info *c)
 {
-	int lnum, err;
+	int lnum;
 
 	lnum = find_next_zero_bit(FSCK(c)->rebuild->used_lebs, c->main_lebs, 0);
 	if (lnum >= c->main_lebs) {
@@ -745,14 +749,7 @@ static int get_free_leb(struct ubifs_info *c)
 	set_bit(lnum, FSCK(c)->rebuild->used_lebs);
 	lnum += c->main_first;
 
-	err = ubifs_leb_unmap(c, lnum);
-	if (err)
-		return err;
-
-	FSCK(c)->rebuild->head_lnum = lnum;
-	FSCK(c)->rebuild->head_offs = 0;
-
-	return 0;
+	return lnum;
 }
 
 /**
@@ -780,6 +777,14 @@ static int flush_write_buf(struct ubifs_info *c)
 	if (err)
 		return err;
 
+	if (FSCK(c)->rebuild->need_update_lpt) {
+		int index = FSCK(c)->rebuild->head_lnum - c->main_first;
+
+		FSCK(c)->rebuild->lpts[index].free = c->leb_size - len;
+		FSCK(c)->rebuild->lpts[index].dirty = pad;
+		FSCK(c)->rebuild->lpts[index].flags = LPROPS_INDEX;
+	}
+
 	FSCK(c)->rebuild->head_lnum = -1;
 
 	return 0;
@@ -797,13 +802,20 @@ static int flush_write_buf(struct ubifs_info *c)
  */
 static int reserve_space(struct ubifs_info *c, int len, int *lnum, int *offs)
 {
-	int err;
+	int err, new_lnum;
 
 	if (FSCK(c)->rebuild->head_lnum == -1) {
 get_new:
-		err = get_free_leb(c);
+		new_lnum = get_free_leb(c);
+		if (new_lnum < 0)
+			return new_lnum;
+
+		err = ubifs_leb_unmap(c, new_lnum);
 		if (err)
 			return err;
+
+		FSCK(c)->rebuild->head_lnum = new_lnum;
+		FSCK(c)->rebuild->head_offs = 0;
 	}
 
 	if (len > c->leb_size - FSCK(c)->rebuild->head_offs) {
@@ -921,15 +933,9 @@ static int parse_node_info(struct ubifs_info *c, struct scanned_node *sn,
 			   union ubifs_key *key, char *name, int name_len,
 			   struct list_head *idx_list, int *idx_cnt)
 {
-	int lnum, pos;
 	struct idx_entry *e;
 
-	lnum = sn->lnum - c->main_first;
-	pos = sn->offs + ALIGN(sn->len, 8);
-
-	set_bit(lnum, FSCK(c)->rebuild->used_lebs);
-	FSCK(c)->rebuild->lpts[lnum].end = max_t(int,
-					FSCK(c)->rebuild->lpts[lnum].end, pos);
+	update_lpt(c, sn, idx_cnt == NULL);
 
 	if (idx_cnt == NULL)
 		/* Skip truncation node. */
@@ -1026,6 +1032,7 @@ static int build_tnc(struct ubifs_info *c, struct list_head *lower_idxs,
 		return -ENOMEM;
 
 	list_sort(c, lower_idxs, cmp_idx);
+	FSCK(c)->rebuild->need_update_lpt = true;
 
 	ubifs_assert(c, lower_cnt != 0);
 
@@ -1089,6 +1096,7 @@ static int build_tnc(struct ubifs_info *c, struct list_head *lower_idxs,
 
 	/* Flush the last index LEB */
 	err = flush_write_buf(c);
+	FSCK(c)->rebuild->need_update_lpt = false;
 
 out:
 	list_for_each_entry_safe(e, tmp_e, lower_idxs, list) {
@@ -1239,6 +1247,71 @@ out_idx_list:
 }
 
 /**
+ * build_lpt - construct LPT and write it into flash.
+ * @c: UBIFS file-system description object
+ *
+ * This function builds LPT according to @FSCK(c)->rebuild->lpts and writes
+ * LPT into flash.
+ */
+static int build_lpt(struct ubifs_info *c)
+{
+	int i, len, free, dirty, lnum;
+	u8 hash_lpt[UBIFS_HASH_ARR_SZ];
+
+	memset(&c->lst, 0, sizeof(struct ubifs_lp_stats));
+	/* Set gc lnum. */
+	lnum = get_free_leb(c);
+	if (lnum < 0)
+		return lnum;
+	c->gc_lnum = lnum;
+
+	/* Update LPT. */
+	for (i = 0; i < c->main_lebs; i++) {
+		if (!test_bit(i, FSCK(c)->rebuild->used_lebs) ||
+		    c->gc_lnum == i + c->main_first) {
+			free = c->leb_size;
+			dirty = 0;
+		} else if (FSCK(c)->rebuild->lpts[i].flags & LPROPS_INDEX) {
+			free = FSCK(c)->rebuild->lpts[i].free;
+			dirty = FSCK(c)->rebuild->lpts[i].dirty;
+		} else {
+			len = ALIGN(FSCK(c)->rebuild->lpts[i].end, c->min_io_size);
+			free = c->leb_size - len;
+			dirty = len - FSCK(c)->rebuild->lpts[i].used;
+
+			if (dirty == c->leb_size) {
+				free = c->leb_size;
+				dirty = 0;
+			}
+		}
+
+		FSCK(c)->rebuild->lpts[i].free = free;
+		FSCK(c)->rebuild->lpts[i].dirty = dirty;
+		c->lst.total_free += free;
+		c->lst.total_dirty += dirty;
+
+		if (free == c->leb_size)
+			c->lst.empty_lebs++;
+
+		if (!(FSCK(c)->rebuild->lpts[i].flags & LPROPS_INDEX)) {
+			int spc;
+
+			spc = free + dirty;
+			if (spc < c->dead_wm)
+				c->lst.total_dead += spc;
+			else
+				c->lst.total_dark += ubifs_calc_dark(c, spc);
+			c->lst.total_used += c->leb_size - spc;
+		} else {
+			c->lst.idx_lebs += 1;
+		}
+	}
+
+	/* Write LPT. */
+	return ubifs_create_lpt(c, FSCK(c)->rebuild->lpts, c->main_lebs, hash_lpt);
+}
+
+/**
  * ubifs_rebuild_filesystem - Rebuild filesystem.
  * @c: UBIFS file-system description object
  *
@@ -1302,6 +1375,14 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 	 * Step 9: Build TNC.
 	 */
 	err = traverse_files_and_nodes(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto out;
+	}
+
+	/* Step 10. Build LPT. */
+	log_out(c, "Build LPT");
+	err = build_lpt(c);
 	if (err)
 		exit_code |= FSCK_ERROR;
 

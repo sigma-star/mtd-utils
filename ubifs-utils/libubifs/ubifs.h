@@ -338,6 +338,7 @@ enum {
  * @flags: LEB properties flags (see above)
  * @lnum: LEB number
  * @end: the end postition of LEB calculated by the last node
+ * @used: amount of used space in bytes
  * @list: list of same-category lprops (for LPROPS_EMPTY and LPROPS_FREEABLE)
  * @hpos: heap position in heap of same-category lprops (other categories)
  */
@@ -347,6 +348,7 @@ struct ubifs_lprops {
 	int flags;
 	int lnum;
 	int end;
+	int used;
 	union {
 		struct list_head list;
 		int hpos;
