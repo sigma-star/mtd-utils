@@ -660,3 +660,31 @@ rebuild:
 
 	return err;
 }
+
+/**
+ * check_and_correct_index_size - check & correct the index size.
+ * @c: UBIFS file-system description object
+ *
+ * This function checks and corrects the index size by traversing TNC: Returns
+ * zero in case of success, a negative error code in case of failure.
+ */
+int check_and_correct_index_size(struct ubifs_info *c)
+{
+	int err;
+	unsigned long long index_size = 0;
+
+	ubifs_assert(c, c->bi.old_idx_sz == c->calc_idx_sz);
+	err = dbg_walk_index(c, NULL, add_size, &index_size);
+	if (err) {
+		/* All TNC nodes must be accessible. */
+		ubifs_assert(c, !get_failure_reason_callback(c));
+		return err;
+	}
+
+	dbg_fsck("total index size %llu, in %s", index_size, c->dev_name);
+	if (index_size != c->calc_idx_sz &&
+	    fix_problem(c, INCORRECT_IDX_SZ, &index_size))
+		c->bi.old_idx_sz = c->calc_idx_sz = index_size;
+
+	return 0;
+}

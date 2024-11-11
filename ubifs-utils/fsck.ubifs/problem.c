@@ -67,6 +67,7 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for LEB"},	// LP_INCORRECT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Incorrect space statistics"},	// SPACE_STAT_INCORRECT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for lprops table"},	// LTAB_INCORRECT
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Incorrect index size"},	// INCORRECT_IDX_SZ
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -278,6 +279,14 @@ static void print_problem(const struct ubifs_info *c,
 			ssp->calc_lst->idx_lebs, ssp->calc_lst->total_free,
 			ssp->calc_lst->total_dirty, ssp->calc_lst->total_used,
 			ssp->calc_lst->total_dead, ssp->calc_lst->total_dark);
+		break;
+	}
+	case INCORRECT_IDX_SZ:
+	{
+		const unsigned long long *calc_sz = (const unsigned long long *)priv;
+
+		log_out(c, "problem: %s, index size is %llu, should be %llu",
+			problem->desc, c->calc_idx_sz, *calc_sz);
 		break;
 	}
 	default:
