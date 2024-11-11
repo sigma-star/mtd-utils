@@ -45,6 +45,7 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Invalid inode node"},	// INVALID_INO_NODE
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Invalid dentry node"},	// INVALID_DENT_NODE
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Invalid data node"},	// INVALID_DATA_NODE
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Corrupted data is scanned"},	// SCAN_CORRUPTED
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -60,6 +61,7 @@ static const char *get_question(const struct fsck_problem *problem,
 	case INVALID_INO_NODE:
 	case INVALID_DENT_NODE:
 	case INVALID_DATA_NODE:
+	case SCAN_CORRUPTED:
 		return "Drop it?";
 	case ORPHAN_CORRUPTED:
 		return "Drop orphans on the LEB?";
@@ -86,6 +88,14 @@ static void print_problem(const struct ubifs_info *c,
 		const int *lnum = (const int *)priv;
 
 		log_out(c, "problem: %s %d", problem->desc, *lnum);
+		break;
+	}
+	case SCAN_CORRUPTED:
+	{
+		const struct ubifs_zbranch *zbr = (const struct ubifs_zbranch *)priv;
+
+		log_out(c, "problem: %s in LEB %d, node in %d:%d becomes invalid",
+			problem->desc, zbr->lnum, zbr->lnum, zbr->offs);
 		break;
 	}
 	default:

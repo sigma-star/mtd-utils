@@ -8,6 +8,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#include "linux_err.h"
 #include "bitops.h"
 #include "kmem.h"
 #include "ubifs.h"
@@ -25,6 +26,7 @@ struct invalid_node {
 
 struct iteration_info {
 	struct list_head invalid_nodes;
+	unsigned long *corrupted_lebs;
 };
 
 static int add_invalid_node(struct ubifs_info *c, union ubifs_key *key,
@@ -103,6 +105,49 @@ static int construct_file(struct ubifs_info *c, union ubifs_key *key,
 	return insert_or_update_file(c, tree, sn, key_type(c, key), inum);
 }
 
+static int scan_check_leb(struct ubifs_info *c, int lnum, bool is_idx)
+{
+	int err = 0;
+	struct ubifs_scan_leb *sleb;
+	struct ubifs_scan_node *snod;
+
+	if (FSCK(c)->mode == CHECK_MODE)
+		/* Skip check mode. */
+		return 0;
+
+	ubifs_assert(c, lnum >= c->main_first);
+	if (test_bit(lnum - c->main_first, FSCK(c)->used_lebs))
+		return 0;
+
+	sleb = ubifs_scan(c, lnum, 0, c->sbuf, 0);
+	if (IS_ERR(sleb)) {
+		err = PTR_ERR(sleb);
+		if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED))
+			err = 1;
+		return err;
+	}
+
+	list_for_each_entry(snod, &sleb->nodes, list) {
+		if (is_idx) {
+			if (snod->type != UBIFS_IDX_NODE) {
+				err = 1;
+				goto out;
+			}
+		} else {
+			if (snod->type == UBIFS_IDX_NODE) {
+				err = 1;
+				goto out;
+			}
+		}
+	}
+
+	set_bit(lnum - c->main_first, FSCK(c)->used_lebs);
+
+out:
+	ubifs_scan_destroy(sleb);
+	return err;
+}
+
 static int check_leaf(struct ubifs_info *c, struct ubifs_zbranch *zbr,
 		      void *priv)
 {
@@ -127,6 +172,23 @@ static int check_leaf(struct ubifs_info *c, struct ubifs_zbranch *zbr,
 		return -EINVAL;
 	}
 
+	if (test_bit(lnum - c->main_first, iter->corrupted_lebs)) {
+		if (fix_problem(c, SCAN_CORRUPTED, zbr))
+			/* All nodes in corrupted LEB should be removed. */
+			return add_invalid_node(c, key, lnum, offs, iter);
+		return 0;
+	}
+
+	err = scan_check_leb(c, lnum, false);
+	if (err < 0) {
+		return err;
+	} else if (err) {
+		set_bit(lnum - c->main_first, iter->corrupted_lebs);
+		if (fix_problem(c, SCAN_CORRUPTED, zbr))
+			return add_invalid_node(c, key, lnum, offs, iter);
+		return 0;
+	}
+
 	node = kmalloc(len, GFP_NOFS);
 	if (!node)
 		return -ENOMEM;
@@ -145,6 +207,34 @@ static int check_leaf(struct ubifs_info *c, struct ubifs_zbranch *zbr,
 out:
 	kfree(node);
 	return err;
+}
+
+static int check_znode(struct ubifs_info *c, struct ubifs_znode *znode,
+		       __unused void *priv)
+{
+	int err;
+	const struct ubifs_zbranch *zbr;
+
+	if (znode->parent)
+		zbr = &znode->parent->zbranch[znode->iip];
+	else
+		zbr = &c->zroot;
+
+	if (zbr->lnum == 0) {
+		/* The znode has been split up. */
+		ubifs_assert(c, zbr->offs == 0 && zbr->len == 0);
+		return 0;
+	}
+
+	err = scan_check_leb(c, zbr->lnum, true);
+	if (err < 0) {
+		return err;
+	} else if (err) {
+		set_failure_reason_callback(c, FR_TNC_CORRUPTED);
+		return -EINVAL;
+	}
+
+	return 0;
 }
 
 static int remove_invalid_nodes(struct ubifs_info *c,
@@ -176,10 +266,12 @@ static int remove_invalid_nodes(struct ubifs_info *c,
  * traverse_tnc_and_construct_files - traverse TNC and construct all files.
  * @c: UBIFS file-system description object
  *
- * This function checks all index nodes and non-index nodes by traversing TNC,
- * then construct file according to scanned non-index nodes and insert file
- * into file tree. Returns zero in case of success, a negative error code in
- * case of failure.
+ * This function does two things by traversing TNC:
+ * 1. Check all index nodes and non-index nodes, then construct file according
+ *    to scanned non-index nodes and insert file into file tree.
+ * 2. Make sure that LEB(contains any nodes from TNC) can be scanned by
+ *    ubifs_scan, and the LEB only contains index nodes or non-index nodes.
+ * Returns zero in case of success, a negative error code in case of failure.
  */
 int traverse_tnc_and_construct_files(struct ubifs_info *c)
 {
@@ -187,15 +279,33 @@ int traverse_tnc_and_construct_files(struct ubifs_info *c)
 	struct iteration_info iter;
 
 	FSCK(c)->scanned_files = RB_ROOT;
+	FSCK(c)->used_lebs = kcalloc(BITS_TO_LONGS(c->main_lebs),
+				     sizeof(unsigned long), GFP_KERNEL);
+	if (!FSCK(c)->used_lebs) {
+		err = -ENOMEM;
+		log_err(c, errno, "can not allocate bitmap of used lebs");
+		return err;
+	}
 	INIT_LIST_HEAD(&iter.invalid_nodes);
+	iter.corrupted_lebs = kcalloc(BITS_TO_LONGS(c->main_lebs),
+				      sizeof(unsigned long), GFP_KERNEL);
+	if (!iter.corrupted_lebs) {
+		err = -ENOMEM;
+		log_err(c, errno, "can not allocate bitmap of corrupted lebs");
+		goto out;
+	}
 
-	err = dbg_walk_index(c, check_leaf, NULL, &iter);
+	err = dbg_walk_index(c, check_leaf, check_znode, &iter);
 
 	ret = remove_invalid_nodes(c, &iter.invalid_nodes, err);
 	if (!err)
 		err = ret;
 
-	if (err)
+	kfree(iter.corrupted_lebs);
+out:
+	if (err) {
+		kfree(FSCK(c)->used_lebs);
 		destroy_file_tree(c, &FSCK(c)->scanned_files);
+	}
 	return err;
 }

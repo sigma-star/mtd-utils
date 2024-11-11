@@ -443,6 +443,7 @@ static int do_fsck(void)
 		return err;
 	}
 
+	kfree(FSCK(c)->used_lebs);
 	destroy_file_tree(c, &FSCK(c)->scanned_files);
 	return err;
 }
