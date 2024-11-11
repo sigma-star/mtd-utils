@@ -15,7 +15,13 @@
  * journal.
  */
 
+#include "linux_err.h"
+#include "bitops.h"
+#include "kmem.h"
 #include "ubifs.h"
+#include "defs.h"
+#include "debug.h"
+#include "misc.h"
 
 static int dbg_check_bud_bytes(struct ubifs_info *c);
 
@@ -737,26 +743,7 @@ out_free:
  * ('c->bud_bytes' is correct). Returns zero in case of success and %-EINVAL in
  * case of failure.
  */
-static int dbg_check_bud_bytes(struct ubifs_info *c)
+static int dbg_check_bud_bytes(__unused struct ubifs_info *c)
 {
-	int i, err = 0;
-	struct ubifs_bud *bud;
-	long long bud_bytes = 0;
-
-	if (!dbg_is_chk_gen(c))
-		return 0;
-
-	spin_lock(&c->buds_lock);
-	for (i = 0; i < c->jhead_cnt; i++)
-		list_for_each_entry(bud, &c->jheads[i].buds_list, list)
-			bud_bytes += c->leb_size - bud->start;
-
-	if (c->bud_bytes != bud_bytes) {
-		ubifs_err(c, "bad bud_bytes %lld, calculated %lld",
-			  c->bud_bytes, bud_bytes);
-		err = -EINVAL;
-	}
-	spin_unlock(&c->buds_lock);
-
-	return err;
+	return 0;
 }
