@@ -105,6 +105,10 @@ AC_ARG_WITH([crypto],
 	[AS_HELP_STRING([--with-crypto], [Support for UBIFS crypto features])],
 	[], [with_crypto="check"])
 
+AC_ARG_ENABLE([asan],
+	[AS_HELP_STRING([--enable-asan], [Support AddressSanitizer debug])],
+	[], [enable_asan="no"])
+
 ##### search for dependencies #####
 
 need_clock_gettime="no"
@@ -145,6 +149,14 @@ AS_IF([test "x$with_zlib" != "xno"], [
 				       [AC_MSG_ERROR([cannot find zlib])],
 				       [with_zlib="no"])])
 ], [])
+
+AC_ARG_VAR([ASAN_LIBS], [linker flags for lasan])
+AS_IF([test "x$enable_asan" = "xyes"], [
+	AC_CHECK_LIB([asan], [_init], [
+		ASAN_LIBS="-lasan -fsanitize=address -fsanitize-recover=address -g"], [
+		AC_MSG_ERROR([cannot find libasan])
+	])
+])
 
 if test "x$need_uuid" = "xyes"; then
 	PKG_CHECK_MODULES(UUID, [uuid], [],
@@ -275,6 +287,7 @@ AM_CONDITIONAL([WITH_XATTR], [test "x$with_xattr" = "xyes"])
 AM_CONDITIONAL([WITH_SELINUX], [test "x$with_selinux" = "xyes"])
 AM_CONDITIONAL([WITH_CRYPTO], [test "x$with_crypto" = "xyes"])
 AM_CONDITIONAL([WITH_UBIHEALTHD], [test "x$enable_ubihealthd" = "xyes"])
+AM_CONDITIONAL([WITH_ASAN], [test "x$enable_asan" = "xyes"])
 
 AM_CONDITIONAL([BUILD_UBIFS], [test "x$with_ubifs" = "xyes"])
 AM_CONDITIONAL([BUILD_JFFSX], [test "x$with_jffs" = "xyes"])
@@ -321,6 +334,7 @@ AC_MSG_RESULT([
 	compiler:          ${CC}
 	cflags:            ${CFLAGS}
 	ldflags:           ${LDFLAGS}
+	asan debug:        ${enable_asan}
 
 	lzo support:       ${with_lzo}
 	zlib support:      ${with_zlib}
