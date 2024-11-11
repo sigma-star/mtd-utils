@@ -199,6 +199,32 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 		goto out_orphans;
 	}
 
+	if (!c->ro_mount) {
+		int lnum;
+
+		/* Check for enough log space */
+		lnum = c->lhead_lnum + 1;
+		if (lnum >= UBIFS_LOG_LNUM + c->log_lebs)
+			lnum = UBIFS_LOG_LNUM;
+		if (lnum == c->ltail_lnum) {
+			log_out(c, "Consolidate log");
+			err = ubifs_consolidate_log(c);
+			if (err) {
+				unsigned int reason = get_failure_reason_callback(c);
+
+				clear_failure_reason_callback(c);
+				if (reason & FR_DATA_CORRUPTED) {
+					if (fix_problem(c, LOG_CORRUPTED, NULL))
+						FSCK(c)->try_rebuild = true;
+				} else {
+					ubifs_assert(c, reason == 0);
+					exit_code |= FSCK_ERROR;
+				}
+				goto out_orphans;
+			}
+		}
+	}
+
 	c->mounting = 0;
 
 	return 0;

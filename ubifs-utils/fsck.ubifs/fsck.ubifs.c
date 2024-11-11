@@ -433,6 +433,7 @@ int main(int argc, char *argv[])
 	 * Step 1: Read master & init lpt
 	 * Step 2: Replay journal
 	 * Step 3: Handle orphan nodes
+	 * Step 4: Consolidate log
 	 */
 	err = ubifs_load_filesystem(c);
 	if (err) {
