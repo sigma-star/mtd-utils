@@ -519,6 +519,13 @@ static int do_fsck(void)
 
 	log_out(c, "Check and correct the index size");
 	err = check_and_correct_index_size(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto free_disconnected_files_2;
+	}
+
+	log_out(c, "Check and create root dir");
+	err = check_and_create_root(c);
 	if (err)
 		exit_code |= FSCK_ERROR;
 
@@ -575,6 +582,7 @@ int main(int argc, char *argv[])
 	 * Step 12: Check and correct the space statistics
 	 * Step 13: Commit problem fixing modifications
 	 * Step 14: Check and correct the index size
+	 * Step 15: Check and create root dir
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {

@@ -68,6 +68,7 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Incorrect space statistics"},	// SPACE_STAT_INCORRECT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for lprops table"},	// LTAB_INCORRECT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Incorrect index size"},	// INCORRECT_IDX_SZ
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Root dir is lost"},	// ROOT_DIR_NOT_FOUND
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -105,6 +106,8 @@ static const char *get_question(const struct fsck_problem *problem,
 		return "Put it into disconnected list?";
 	case LPT_CORRUPTED:
 		return "Rebuild LPT?";
+	case ROOT_DIR_NOT_FOUND:
+		return "Create a new one?";
 	}
 
 	return "Fix it?";

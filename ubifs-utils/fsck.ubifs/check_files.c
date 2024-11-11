@@ -524,3 +524,32 @@ bool tnc_is_empty(struct ubifs_info *c)
 	 */
 	return c->zroot.znode->child_cnt == 0;
 }
+
+/**
+ * check_and_create_root - Check and create root dir.
+ * @c: UBIFS file-system description object
+ *
+ * This function checks whether the root dir is existed, create a new root
+ * dir if it doesn't exist. Returns zero in case of success, a negative error
+ * code in case of failure.
+ */
+int check_and_create_root(struct ubifs_info *c)
+{
+	int err;
+	struct ubifs_inode *ui = ubifs_lookup_by_inum(c, UBIFS_ROOT_INO);
+
+	if (!IS_ERR(ui)) {
+		/* The root dir is found. */
+		dbg_fsck("root dir is found, in %s", c->dev_name);
+		kfree(ui);
+		return 0;
+	}
+
+	err = PTR_ERR(ui);
+	if (err != -ENOENT)
+		return err;
+
+	fix_problem(c, ROOT_DIR_NOT_FOUND, NULL);
+	dbg_fsck("root dir is lost, create a new one, in %s", c->dev_name);
+	return ubifs_create_root(c);
+}
