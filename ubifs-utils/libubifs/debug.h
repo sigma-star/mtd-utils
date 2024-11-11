@@ -84,6 +84,7 @@ static inline int dbg_is_chk_index(__unused const struct ubifs_info *c)
 { return 0; }
 
 /* Dump functions */
+const char *ubifs_get_type_name(int type);
 const char *dbg_ntype(int type);
 const char *dbg_cstate(int cmt_state);
 const char *dbg_jhead(int jhead);

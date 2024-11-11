@@ -69,7 +69,7 @@ static const char *get_key_type(int type)
 	}
 }
 
-static const char *get_dent_type(int type)
+const char *ubifs_get_type_name(int type)
 {
 	switch (type) {
 	case UBIFS_ITYPE_REG:

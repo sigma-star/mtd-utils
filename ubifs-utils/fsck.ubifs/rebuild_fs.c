@@ -677,6 +677,12 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 	log_out(c, "Extract reachable files");
 	extract_dentry_tree(c);
 
+	/* Step 6: Check & correct files' information. */
+	log_out(c, "Check & correct file information");
+	err = check_and_correct_files(c);
+	if (err)
+		exit_code |= FSCK_ERROR;
+
 out:
 	destroy_scanned_info(c, &si);
 	destroy_rebuild_info(c);

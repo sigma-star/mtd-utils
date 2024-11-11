@@ -271,6 +271,7 @@ bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
 		   struct rb_root *file_tree);
 bool file_is_reachable(struct ubifs_info *c, struct scanned_file *file,
 		       struct rb_root *file_tree);
+int check_and_correct_files(struct ubifs_info *c);
 
 /* rebuild_fs.c */
 int ubifs_rebuild_filesystem(struct ubifs_info *c);

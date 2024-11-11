@@ -13,6 +13,7 @@
 #include "linux_err.h"
 #include "bitops.h"
 #include "kmem.h"
+#include "crc32.h"
 #include "ubifs.h"
 #include "defs.h"
 #include "debug.h"
@@ -981,4 +982,273 @@ retry:
 reachable:
 	dbg_fsck("file %lu is reachable, in %s", file->inum, c->dev_name);
 	return true;
+}
+
+/**
+ * calculate_file_info - calculate the information of file
+ * @c: UBIFS file-system description object
+ * @file: file object
+ * @file_tree: tree of all scanned files
+ *
+ * This function calculates file information according to dentry nodes,
+ * data nodes and truncation node. The calculated informaion will be used
+ * to correct inode node.
+ */
+static void calculate_file_info(struct ubifs_info *c, struct scanned_file *file,
+				struct rb_root *file_tree)
+{
+	int nlink = 0;
+	bool corrupted_truncation = false;
+	unsigned long long ino_sqnum, trun_size = 0, new_size = 0, trun_sqnum = 0;
+	struct rb_node *node;
+	struct scanned_file *parent_file, *xattr_file;
+	struct scanned_dent_node *dent_node;
+	struct scanned_data_node *data_node;
+	LIST_HEAD(drop_list);
+
+	for (node = rb_first(&file->xattr_files); node; node = rb_next(node)) {
+		xattr_file = rb_entry(node, struct scanned_file, rb);
+
+		ubifs_assert(c, !rb_first(&xattr_file->xattr_files));
+		calculate_file_info(c, xattr_file, file_tree);
+	}
+
+	if (file->inum == UBIFS_ROOT_INO) {
+		file->calc_nlink += 2;
+		file->calc_size += UBIFS_INO_NODE_SZ;
+		return;
+	}
+
+	if (S_ISDIR(file->ino.mode)) {
+		file->calc_nlink += 2;
+		file->calc_size += UBIFS_INO_NODE_SZ;
+
+		dent_node = rb_entry(rb_first(&file->dent_nodes),
+				     struct scanned_dent_node, rb);
+		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
+		if (!parent_file) {
+			ubifs_assert(c, 0);
+			return;
+		}
+		parent_file->calc_nlink += 1;
+		parent_file->calc_size += CALC_DENT_SIZE(dent_node->nlen);
+		return;
+	}
+
+	if (file->ino.is_xattr) {
+		file->calc_nlink = 1;
+		file->calc_size = file->ino.size;
+
+		dent_node = rb_entry(rb_first(&file->dent_nodes),
+				     struct scanned_dent_node, rb);
+		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
+		if (!parent_file) {
+			ubifs_assert(c, 0);
+			return;
+		}
+		parent_file->calc_xcnt += 1;
+		parent_file->calc_xsz += CALC_DENT_SIZE(dent_node->nlen);
+		parent_file->calc_xsz += CALC_XATTR_BYTES(file->ino.size);
+		parent_file->calc_xnms += dent_node->nlen;
+		return;
+	}
+
+	for (node = rb_first(&file->dent_nodes); node; node = rb_next(node)) {
+		nlink++;
+
+		dent_node = rb_entry(node, struct scanned_dent_node, rb);
+
+		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
+		if (!parent_file) {
+			ubifs_assert(c, 0);
+			return;
+		}
+		parent_file->calc_size += CALC_DENT_SIZE(dent_node->nlen);
+	}
+	file->calc_nlink = nlink;
+
+	if (!S_ISREG(file->ino.mode)) {
+		/* No need to verify i_size for symlink/sock/block/char/fifo. */
+		file->calc_size = file->ino.size;
+		return;
+	}
+
+	/*
+	 * Process i_size and data content, following situations should
+	 * be considered:
+	 * 1. Sequential writing or overwriting, i_size should be
+	 *    max(i_size, data node size), pick larger sqnum one from
+	 *    data nodes with same block index.
+	 * 2. Mixed truncation and writing, i_size depends on the latest
+	 *    truncation node or inode node or last data node, pick data
+	 *    nodes which are not truncated.
+	 * 3. Setting bigger i_size attr, pick inode size or biggest
+	 *    i_size calculated by data nodes.
+	 */
+	if (file->trun.header.exist) {
+		trun_size = file->trun.new_size;
+		trun_sqnum = file->trun.header.sqnum;
+	}
+	ino_sqnum = file->ino.header.sqnum;
+	for (node = rb_first(&file->data_nodes); node; node = rb_next(node)) {
+		unsigned long long d_sz, d_sqnum;
+		unsigned int block_no;
+
+		data_node = rb_entry(node, struct scanned_data_node, rb);
+
+		d_sqnum = data_node->header.sqnum;
+		block_no = key_block(c, &data_node->key);
+		d_sz = data_node->size + block_no * UBIFS_BLOCK_SIZE;
+		if ((trun_sqnum > d_sqnum && trun_size < d_sz) ||
+		    (ino_sqnum > d_sqnum && file->ino.size < d_sz)) {
+			/*
+			 * The truncated data nodes are not gced after
+			 * truncating, just remove them.
+			 */
+			list_add(&data_node->list, &drop_list);
+		} else {
+			new_size = max_t(unsigned long long, new_size, d_sz);
+		}
+	}
+	/*
+	 * Truncation node is written successful, but inode node is not. It
+	 * won't happen because inode node is written before truncation node
+	 * according to ubifs_jnl_truncate(), unless only inode is corrupted.
+	 * In this case, data nodes could have been removed in history mounting
+	 * recovery, so i_size needs to be updated.
+	 */
+	if (trun_sqnum > ino_sqnum && trun_size < file->ino.size) {
+		if (trun_size < new_size) {
+			corrupted_truncation = true;
+			/*
+			 * Appendant writing after truncation and newest inode
+			 * is not fell on disk.
+			 */
+			goto update_isize;
+		}
+
+		/*
+		 * Overwriting happens after truncation and newest inode is
+		 * not fell on disk.
+		 */
+		file->calc_size = trun_size;
+		goto drop_data;
+	}
+update_isize:
+	/*
+	 * The file cannot use 'new_size' directly when the file may have ever
+	 * been set i_size. For example:
+	 *  1. echo 123 > file		# i_size = 4
+	 *  2. truncate -s 100 file	# i_size = 100
+	 * After scanning, new_size is 4. Apperantly the size of 'file' should
+	 * be 100. So, the calculated new_size according to data nodes should
+	 * only be used for extending i_size, like ubifs_recover_size() does.
+	 */
+	if (new_size > file->ino.size || corrupted_truncation)
+		file->calc_size = new_size;
+	else
+		file->calc_size = file->ino.size;
+
+drop_data:
+	while (!list_empty(&drop_list)) {
+		data_node = list_entry(drop_list.next, struct scanned_data_node,
+				       list);
+
+		list_del(&data_node->list);
+		rb_erase(&data_node->rb, &file->data_nodes);
+		kfree(data_node);
+	}
+}
+
+/**
+ * correct_file_info - correct the information of file
+ * @c: UBIFS file-system description object
+ * @file: file object
+ *
+ * This function corrects file information according to calculated fields,
+ * eg. 'calc_nlink', 'calc_xcnt', 'calc_xsz', 'calc_xnms' and 'calc_size'.
+ * Corrected inode node will be re-written.
+ */
+static int correct_file_info(struct ubifs_info *c, struct scanned_file *file)
+{
+	uint32_t crc;
+	int err, lnum, len;
+	struct rb_node *node;
+	struct ubifs_ino_node *ino;
+	struct scanned_file *xattr_file;
+
+	for (node = rb_first(&file->xattr_files); node; node = rb_next(node)) {
+		xattr_file = rb_entry(node, struct scanned_file, rb);
+
+		err = correct_file_info(c, xattr_file);
+		if (err)
+			return err;
+	}
+
+	if (file->calc_nlink == file->ino.nlink &&
+	    file->calc_xcnt == file->ino.xcnt &&
+	    file->calc_xsz == file->ino.xsz &&
+	    file->calc_xnms == file->ino.xnms &&
+	    file->calc_size == file->ino.size)
+		return 0;
+
+	lnum = file->ino.header.lnum;
+	dbg_fsck("correct file(inum:%lu type:%s), nlink %u->%u, xattr cnt %u->%u, xattr size %u->%u, xattr names %u->%u, size %llu->%llu, at %d:%d, in %s",
+		 file->inum, file->ino.is_xattr ? "xattr" :
+		 ubifs_get_type_name(ubifs_get_dent_type(file->ino.mode)),
+		 file->ino.nlink, file->calc_nlink,
+		 file->ino.xcnt, file->calc_xcnt,
+		 file->ino.xsz, file->calc_xsz,
+		 file->ino.xnms, file->calc_xnms,
+		 file->ino.size, file->calc_size,
+		 lnum, file->ino.header.offs, c->dev_name);
+
+	err = ubifs_leb_read(c, lnum, c->sbuf, 0, c->leb_size, 0);
+	if (err && err != -EBADMSG)
+		return err;
+
+	ino = c->sbuf + file->ino.header.offs;
+	ino->nlink = cpu_to_le32(file->calc_nlink);
+	ino->xattr_cnt = cpu_to_le32(file->calc_xcnt);
+	ino->xattr_size = cpu_to_le32(file->calc_xsz);
+	ino->xattr_names = cpu_to_le32(file->calc_xnms);
+	ino->size = cpu_to_le64(file->calc_size);
+	len = le32_to_cpu(ino->ch.len);
+	crc = crc32(UBIFS_CRC32_INIT, (void *)ino + 8, len - 8);
+	ino->ch.crc = cpu_to_le32(crc);
+
+	/* Atomically write the fixed LEB back again */
+	return ubifs_leb_change(c, lnum, c->sbuf, c->leb_size);
+}
+
+/**
+ * check_and_correct_files - check and correct information of files.
+ * @c: UBIFS file-system description object
+ *
+ * This function does similar things with dbg_check_filesystem(), besides,
+ * it also corrects file information if the calculated information is not
+ * consistent with information from flash.
+ */
+int check_and_correct_files(struct ubifs_info *c)
+{
+	int err;
+	struct rb_node *node;
+	struct scanned_file *file;
+	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		calculate_file_info(c, file, tree);
+	}
+
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		err = correct_file_info(c, file);
+		if (err)
+			return err;
+	}
+
+	return 0;
 }
