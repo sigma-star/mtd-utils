@@ -6,6 +6,7 @@ common_SOURCES = \
 	ubifs-utils/common/bitops.h \
 	ubifs-utils/common/bitops.c \
 	ubifs-utils/common/spinlock.h \
+	ubifs-utils/common/mutex.h \
 	ubifs-utils/common/kmem.h \
 	ubifs-utils/common/kmem.c \
 	ubifs-utils/common/defs.h \
