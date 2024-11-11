@@ -262,6 +262,9 @@ int insert_or_update_file(struct ubifs_info *c, struct rb_root *file_tree,
 			  struct scanned_node *sn, int key_type, ino_t inum);
 void destroy_file_content(struct ubifs_info *c, struct scanned_file *file);
 void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree);
+struct scanned_file *lookup_file(struct rb_root *file_tree, ino_t inum);
+bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
+		   struct rb_root *file_tree);
 
 /* rebuild_fs.c */
 int ubifs_rebuild_filesystem(struct ubifs_info *c);

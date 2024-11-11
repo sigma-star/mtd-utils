@@ -1611,6 +1611,9 @@ int ubifs_log_end_commit(struct ubifs_info *c, int new_ltail_lnum);
 int ubifs_log_post_commit(struct ubifs_info *c, int old_ltail_lnum);
 int ubifs_consolidate_log(struct ubifs_info *c);
 
+/* journal.c */
+int ubifs_get_dent_type(int mode);
+
 /* budget.c */
 int ubifs_budget_space(struct ubifs_info *c, struct ubifs_budget_req *req);
 void ubifs_release_budget(struct ubifs_info *c, struct ubifs_budget_req *req);

@@ -531,6 +531,63 @@ static int add_valid_nodes_into_file(struct ubifs_info *c,
 }
 
 /**
+ * filter_invalid_files - filter out invalid files.
+ * @c: UBIFS file-system description object
+ *
+ * This function filters out invalid files(eg. inconsistent types between
+ * inode and dentry node, or missing inode/dentry node, or encrypted inode
+ * has no encryption related xattrs, etc.).
+ */
+static void filter_invalid_files(struct ubifs_info *c)
+{
+	struct rb_node *node;
+	struct scanned_file *file;
+	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+	LIST_HEAD(tmp_list);
+
+	/* Add all xattr files into a list. */
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		if (file->ino.is_xattr)
+			list_add(&file->list, &tmp_list);
+	}
+
+	/*
+	 * Round 1: Traverse xattr files, check whether the xattr file is
+	 * valid, move valid xattr file into corresponding host file's subtree.
+	 */
+	while (!list_empty(&tmp_list)) {
+		file = list_entry(tmp_list.next, struct scanned_file, list);
+
+		list_del(&file->list);
+		rb_erase(&file->rb, tree);
+		if (!file_is_valid(c, file, tree)) {
+			destroy_file_content(c, file);
+			kfree(file);
+		}
+	}
+
+	/* Round 2: Traverse non-xattr files. */
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		if (!file_is_valid(c, file, tree))
+			list_add(&file->list, &tmp_list);
+	}
+
+	/* Remove invalid files. */
+	while (!list_empty(&tmp_list)) {
+		file = list_entry(tmp_list.next, struct scanned_file, list);
+
+		list_del(&file->list);
+		destroy_file_content(c, file);
+		rb_erase(&file->rb, tree);
+		kfree(file);
+	}
+}
+
+/**
  * ubifs_rebuild_filesystem - Rebuild filesystem.
  * @c: UBIFS file-system description object
  *
@@ -567,8 +624,14 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 	/* Step 3: Add valid nodes into file. */
 	log_out(c, "Add valid nodes into file");
 	err = add_valid_nodes_into_file(c, &si);
-	if (err)
+	if (err) {
 		exit_code |= FSCK_ERROR;
+		goto out;
+	}
+
+	/* Step 4: Drop invalid files. */
+	log_out(c, "Filter invalid files");
+	filter_invalid_files(c);
 
 out:
 	destroy_scanned_info(c, &si);

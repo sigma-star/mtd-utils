@@ -678,3 +678,213 @@ void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree)
 		kfree(file);
 	}
 }
+
+/**
+ * lookup_file - lookup file according to inode number.
+ * @file_tree: tree of all scanned files
+ * @inum: inode number
+ *
+ * This function lookups target file from @file_tree according to @inum.
+ */
+struct scanned_file *lookup_file(struct rb_root *file_tree, ino_t inum)
+{
+	struct scanned_file *file;
+	struct rb_node *p;
+
+	p = file_tree->rb_node;
+	while (p) {
+		file = rb_entry(p, struct scanned_file, rb);
+
+		if (inum < file->inum)
+			p = p->rb_left;
+		else if (inum > file->inum)
+			p = p->rb_right;
+		else
+			return file;
+	}
+
+	return NULL;
+}
+
+/**
+ * insert_xattr_file - insert xattr file into file's subtree.
+ * @c: UBIFS file-system description object
+ * @xattr_file: xattr file
+ * @host_file: host file
+ *
+ * This inserts xattr file into its' host file's subtree.
+ */
+static void insert_xattr_file(struct ubifs_info *c,
+			      struct scanned_file *xattr_file,
+			      struct scanned_file *host_file)
+{
+	struct scanned_file *tmp_xattr_file;
+	struct rb_node **p, *parent = NULL;
+
+	p = &host_file->xattr_files.rb_node;
+	while (*p) {
+		parent = *p;
+		tmp_xattr_file = rb_entry(parent, struct scanned_file, rb);
+		if (xattr_file->inum < tmp_xattr_file->inum) {
+			p = &(*p)->rb_left;
+		} else if (xattr_file->inum > tmp_xattr_file->inum) {
+			p = &(*p)->rb_right;
+		} else {
+			/* Impossible: Same xattr file is inserted twice. */
+			ubifs_assert(c, 0);
+		}
+	}
+
+	rb_link_node(&xattr_file->rb, parent, p);
+	rb_insert_color(&xattr_file->rb, &host_file->xattr_files);
+}
+
+/**
+ * file_is_valid - check whether the file is valid.
+ * @c: UBIFS file-system description object
+ * @file: file object
+ * @file_tree: tree of all scanned files
+ *
+ * This function checks whether given @file is valid, following checks will
+ * be performed:
+ * 1. All files have none-zero nlink inode, otherwise they are invalid.
+ * 2. The file type comes from inode and dentries should be consistent,
+ *    inconsistent dentries will be deleted.
+ * 3. Directory type or xattr type files only have one dentry. Superfluous
+ *    dentries with lower sequence number will be deleted.
+ * 4. Non-regular file doesn't have data nodes. Data nodes are deleted for
+ *    non-regular file.
+ * 5. All files must have at least one dentries, except '/', '/' doesn't
+ *    have dentries. Non '/' file is invalid if it doesn't have dentries.
+ * 6. Xattr files should have host inode, and host inode cannot be a xattr,
+ *    otherwise they are invalid.
+ * 7. Encrypted files should have corresponding xattrs, otherwise they are
+ *    invalid.
+ * Xattr file will be inserted into corresponding host file's subtree.
+ *
+ * Returns %true is @file is valid, otherwise %false is returned.
+ * Notice: All xattr files should be traversed before non-xattr files, because
+ *         checking item 7 depends on it.
+ */
+bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
+		   struct rb_root *file_tree)
+{
+	int type;
+	struct rb_node *node;
+	struct scanned_file *parent_file = NULL;
+	struct scanned_dent_node *dent_node;
+	struct scanned_data_node *data_node;
+	LIST_HEAD(drop_list);
+
+	if (!file->ino.header.exist || !file->ino.nlink)
+		return false;
+
+	type = ubifs_get_dent_type(file->ino.mode);
+
+	/* Drop dentry nodes with inconsistent type. */
+	for (node = rb_first(&file->dent_nodes); node; node = rb_next(node)) {
+		int is_xattr = 0;
+
+		dent_node = rb_entry(node, struct scanned_dent_node, rb);
+
+		if (key_type(c, &dent_node->key) == UBIFS_XENT_KEY)
+			is_xattr = 1;
+		if (is_xattr != file->ino.is_xattr || type != dent_node->type)
+			list_add(&dent_node->list, &drop_list);
+	}
+
+	while (!list_empty(&drop_list)) {
+		dent_node = list_entry(drop_list.next, struct scanned_dent_node,
+				       list);
+
+		list_del(&dent_node->list);
+		rb_erase(&dent_node->rb, &file->dent_nodes);
+		kfree(dent_node);
+	}
+
+	if (type != UBIFS_ITYPE_DIR && !file->ino.is_xattr)
+		goto check_data_nodes;
+
+	/*
+	 * Make sure that directory/xattr type files only have one dentry.
+	 * This work should be done in step 3, but file type could be unknown
+	 * for lacking inode information at that time, so do it here.
+	 */
+	node = rb_first(&file->dent_nodes);
+	while (node) {
+		dent_node = rb_entry(node, struct scanned_dent_node, rb);
+		node = rb_next(node);
+		if (!node)
+			break;
+
+		rb_erase(&dent_node->rb, &file->dent_nodes);
+		kfree(dent_node);
+	}
+
+check_data_nodes:
+	if (type == UBIFS_ITYPE_REG && !file->ino.is_xattr)
+		goto check_dent_node;
+
+	/*
+	 * Make sure that non regular type files not have data/trun nodes.
+	 * This work should be done in step 3, but file type could be unknown
+	 * for lacking inode information at that time, so do it here.
+	 */
+	file->trun.header.exist = 0;
+	node = rb_first(&file->data_nodes);
+	while (node) {
+		data_node = rb_entry(node, struct scanned_data_node, rb);
+		node = rb_next(node);
+
+		rb_erase(&data_node->rb, &file->data_nodes);
+		kfree(data_node);
+	}
+
+check_dent_node:
+	if (rb_first(&file->dent_nodes)) {
+		if (file->inum == UBIFS_ROOT_INO)
+			/* '/' has no dentries. */
+			return false;
+
+		node = rb_first(&file->dent_nodes);
+		dent_node = rb_entry(node, struct scanned_dent_node, rb);
+		parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
+	} else {
+		/* Non-root files must have dentries. */
+		if (file->inum != UBIFS_ROOT_INO)
+			return false;
+	}
+
+	if (file->ino.is_xattr) {
+		if (!parent_file)
+			/* Host inode is not found. */
+			return false;
+		if (parent_file->ino.is_xattr)
+			/* Host cannot be a xattr file. */
+			return false;
+
+		insert_xattr_file(c, file, parent_file);
+		if (parent_file->ino.is_encrypted) {
+			int nlen = min(dent_node->nlen,
+				   strlen(UBIFS_XATTR_NAME_ENCRYPTION_CONTEXT));
+
+			if (!strncmp(dent_node->name,
+				     UBIFS_XATTR_NAME_ENCRYPTION_CONTEXT, nlen))
+				parent_file->has_encrypted_info = true;
+		}
+	} else {
+		if (parent_file && !S_ISDIR(parent_file->ino.mode))
+			/* Parent file should be directory. */
+			return false;
+
+		/*
+		 * Since xattr files are checked in first round, so all
+		 * non-xattr files's @has_encrypted_info fields have been
+		 * initialized.
+		 */
+		if (file->ino.is_encrypted && !file->has_encrypted_info)
+			return false;
+	}
+
+	return true;
+}

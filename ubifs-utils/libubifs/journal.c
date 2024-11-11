@@ -404,10 +404,10 @@ static void finish_reservation(struct ubifs_info *c)
 }
 
 /**
- * get_dent_type - translate VFS inode mode to UBIFS directory entry type.
+ * ubifs_get_dent_type - translate VFS inode mode to UBIFS directory entry type.
  * @mode: inode mode
  */
-static int get_dent_type(int mode)
+int ubifs_get_dent_type(int mode)
 {
 	switch (mode & S_IFMT) {
 	case S_IFREG:
