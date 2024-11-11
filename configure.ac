@@ -295,7 +295,8 @@ AC_CONFIG_FILES([tests/fs-tests/fs_help_all.sh
 	tests/ubi-tests/ubi-stress-test.sh
 	tests/ubifs_tools-tests/lib/common.sh
 	tests/ubifs_tools-tests/fsck_tests/authentication_refuse.sh
-	tests/ubifs_tools-tests/fsck_tests/cycle_mount_fsck_check.sh])
+	tests/ubifs_tools-tests/fsck_tests/cycle_mount_fsck_check.sh
+	tests/ubifs_tools-tests/fsck_tests/powercut_fsck_mount.sh])
 
 AC_OUTPUT([Makefile])
 
