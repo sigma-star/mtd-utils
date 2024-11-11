@@ -46,6 +46,7 @@
 #include <zstd.h>
 #endif
 
+#include "linux_types.h"
 #include "defs.h"
 #include "crypto.h"
 #include "fscrypt.h"
@@ -1207,12 +1208,14 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st,
 	struct ubifs_ino_node *ino;
 	struct ubifs_dent_node *xent;
 	struct qstr nm;
+	char *tmp_name;
 	union ubifs_key xkey, nkey;
 	int len, ret;
 
 	nm.len = strlen(name);
-	nm.name = xmalloc(nm.len + 1);
-	memcpy(nm.name, name, nm.len + 1);
+	tmp_name = xmalloc(nm.len + 1);
+	memcpy(tmp_name, name, nm.len + 1);
+	nm.name = tmp_name;
 
 	host_ino->xattr_cnt++;
 	host_ino->xattr_size += CALC_DENT_SIZE(nm.len);
@@ -1240,7 +1243,7 @@ static int add_xattr(struct ubifs_ino_node *host_ino, struct stat *st,
 
 	xent->inum = cpu_to_le64(inum);
 
-	ret = add_node(&xkey, nm.name, nm.len, xent, len);
+	ret = add_node(&xkey, tmp_name, nm.len, xent, len);
 	if (ret)
 		goto out;
 

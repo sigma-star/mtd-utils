@@ -107,7 +107,7 @@ struct fscrypt_context *inherit_fscrypt_context(struct fscrypt_context *fctx);
 void free_fscrypt_context(struct fscrypt_context *fctx);
 unsigned int fscrypt_fname_encrypted_size(struct fscrypt_context *fctx,
 					  unsigned int ilen);
-int encrypt_path(void **outbuf, void *data, unsigned int data_len,
+int encrypt_path(void **outbuf, const void *data, unsigned int data_len,
 		 unsigned int max_namelen, struct fscrypt_context *fctx);
 int encrypt_data_node(struct fscrypt_context *fctx, unsigned int block_no,
 		      struct ubifs_data_node *dn, size_t length);
@@ -138,8 +138,9 @@ static inline void free_fscrypt_context(struct fscrypt_context *fctx)
 	assert(!fctx);
 }
 
-static inline int encrypt_path(void **outbuf, void *data, unsigned int data_len,
-		 unsigned int max_namelen, struct fscrypt_context *fctx)
+static inline int encrypt_path(void **outbuf, const void *data,
+			unsigned int data_len, unsigned int max_namelen,
+			struct fscrypt_context *fctx)
 {
 	(void)outbuf;
 	(void)data;

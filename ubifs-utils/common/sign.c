@@ -28,7 +28,7 @@
 #include <openssl/conf.h>
 #include <err.h>
 
-#include "compiler_attributes.h"
+#include "linux_types.h"
 #include "sign.h"
 #include "defs.h"
 #include "ubifs.h"

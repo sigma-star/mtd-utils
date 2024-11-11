@@ -23,6 +23,7 @@
 #include <string.h>
 #include <assert.h>
 
+#include "linux_types.h"
 #include "fscrypt.h"
 #include "defs.h"
 #include "ubifs.h"

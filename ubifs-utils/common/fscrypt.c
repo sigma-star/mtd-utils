@@ -20,6 +20,7 @@
 
 #include <endian.h>
 
+#include "linux_types.h"
 #include "fscrypt.h"
 #include "defs.h"
 #include "ubifs.h"
@@ -88,7 +89,7 @@ unsigned int fscrypt_fname_encrypted_size(struct fscrypt_context *fctx,
 	return round_up(ilen, padding);
 }
 
-int encrypt_path(void **outbuf, void *data, unsigned int data_len,
+int encrypt_path(void **outbuf, const void *data, unsigned int data_len,
 		unsigned int max_namelen, struct fscrypt_context *fctx)
 {
 	void *inbuf, *crypt_key;
