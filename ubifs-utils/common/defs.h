@@ -12,6 +12,10 @@
 #include <byteswap.h>
 #include <errno.h>
 
+#define MKFS_PROGRAM_NAME "mkfs.ubifs"
+
+enum { MKFS_PROGRAM_TYPE = 0 };
+
 extern int debug_level;
 
 #define dbg_msg(lvl, fmt, ...) do {if (debug_level >= lvl)                \

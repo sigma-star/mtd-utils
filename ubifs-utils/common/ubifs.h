@@ -273,6 +273,9 @@ struct ubifs_znode
  * @highest_inum: highest used inode number
  * @max_sqnum: current global sequence number
  *
+ * @program_type: used to identify the type of current program
+ * @program_name: program name
+ *
  * @jhead_cnt: count of journal heads
  * @max_bud_bytes: maximum number of bytes allowed in buds
  *
@@ -359,6 +362,9 @@ struct ubifs_info
 {
 	ino_t highest_inum;
 	unsigned long long max_sqnum;
+
+	int program_type;
+	const char *program_name;
 
 	int jhead_cnt;
 	long long max_bud_bytes;

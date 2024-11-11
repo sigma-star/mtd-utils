@@ -1,14 +1,18 @@
 /* Copyright (C) 2004 Christopher Clark <firstname.lastname@cl.cam.ac.uk> */
 
-#define PROGRAM_NAME "hashtable"
-
-#include "common.h"
-#include "hashtable.h"
-#include "hashtable_private.h"
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
 #include <math.h>
+
+#include "ubifs.h"
+#include "hashtable.h"
+#include "hashtable_private.h"
+
+/* common.h requires the PROGRAM_NAME macro */
+extern struct ubifs_info info_;
+#define PROGRAM_NAME (info_.program_name)
+#include "common.h"
 
 /*
 Credit for primes table: Aaron Krowne

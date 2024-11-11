@@ -23,10 +23,14 @@
 #include <string.h>
 #include <assert.h>
 
-#define PROGRAM_NAME "mkfs.ubifs"
-#include "common.h"
-#include "defs.h"
 #include "fscrypt.h"
+#include "defs.h"
+#include "ubifs.h"
+
+/* common.h requires the PROGRAM_NAME macro */
+extern struct ubifs_info info_;
+#define PROGRAM_NAME (info_.program_name)
+#include "common.h"
 
 static int do_hash(const EVP_MD *md, const unsigned char *in, size_t len, unsigned char *out)
 {

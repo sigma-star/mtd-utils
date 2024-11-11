@@ -3073,6 +3073,9 @@ int main(int argc, char *argv[])
 {
 	int err;
 
+	info_.program_name = MKFS_PROGRAM_NAME;
+	info_.program_type = MKFS_PROGRAM_TYPE;
+
 	if (crypto_init())
 		return -1;
 

@@ -24,13 +24,16 @@
 #include <openssl/evp.h>
 #endif
 
-#define PROGRAM_NAME "mkfs.ubifs"
-#include "common.h"
 #include "lpt.h"
 #include "defs.h"
 #include "ubifs.h"
 #include "crc16.h"
 #include "sign.h"
+
+/* common.h requires the PROGRAM_NAME macro */
+extern struct ubifs_info info_;
+#define PROGRAM_NAME (info_.program_name)
+#include "common.h"
 
 /**
  * do_calc_lpt_geom - calculate sizes for the LPT area.

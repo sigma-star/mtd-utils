@@ -20,11 +20,14 @@
 
 #include <endian.h>
 
-#define PROGRAM_NAME "mkfs.ubifs"
-#include "common.h"
 #include "fscrypt.h"
 #include "defs.h"
+#include "ubifs.h"
 
+/* common.h requires the PROGRAM_NAME macro */
+extern struct ubifs_info info_;
+#define PROGRAM_NAME (info_.program_name)
+#include "common.h"
 
 static __u8 fscrypt_masterkey[FS_MAX_KEY_SIZE];
 static struct cipher *fscrypt_cipher;
