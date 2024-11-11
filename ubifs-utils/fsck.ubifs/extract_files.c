@@ -525,6 +525,7 @@ static int update_file(struct ubifs_info *c, struct scanned_file *file,
 	{
 		struct scanned_dent_node *dent = (struct scanned_dent_node *)sn;
 
+		dent->file = file;
 		err = insert_file_dentry(file, dent);
 		break;
 	}
@@ -886,5 +887,98 @@ check_dent_node:
 			return false;
 	}
 
+	return true;
+}
+
+static bool dentry_is_reachable(struct ubifs_info *c,
+				struct scanned_dent_node *dent_node,
+				struct list_head *path_list,
+				struct rb_root *file_tree)
+{
+	struct scanned_file *parent_file = NULL;
+	struct scanned_dent_node *dn, *parent_dent;
+	struct rb_node *p;
+
+	/* Check whether the path is cyclical. */
+	list_for_each_entry(dn, path_list, list) {
+		if (dn == dent_node)
+			return false;
+	}
+
+	/* Quick path, dentry has already been checked as reachable. */
+	if (dent_node->can_be_found)
+		return true;
+
+	dent_node->can_be_found = true;
+	list_add(&dent_node->list, path_list);
+
+	parent_file = lookup_file(file_tree, key_inum(c, &dent_node->key));
+	/* Parent dentry is not found, unreachable. */
+	if (!parent_file)
+		return false;
+
+	/* Parent dentry is '/', reachable. */
+	if (parent_file->inum == UBIFS_ROOT_INO)
+		return true;
+
+	p = rb_first(&parent_file->dent_nodes);
+	if (!p)
+		return false;
+	parent_dent = rb_entry(p, struct scanned_dent_node, rb);
+
+	return dentry_is_reachable(c, parent_dent, path_list, file_tree);
+}
+
+/**
+ * file_is_reachable - whether the file can be found from '/'.
+ * @c: UBIFS file-system description object
+ * @file: file object
+ * @file_tree: tree of all scanned files
+ *
+ * This function iterates all directory entries in given @file and checks
+ * whether each dentry is reachable. All unreachable directory entries will
+ * be removed.
+ */
+bool file_is_reachable(struct ubifs_info *c, struct scanned_file *file,
+		       struct rb_root *file_tree)
+{
+	struct rb_node *node;
+	struct scanned_dent_node *dent_node;
+
+	if (file->inum == UBIFS_ROOT_INO)
+		goto reachable;
+
+retry:
+	for (node = rb_first(&file->dent_nodes); node; node = rb_next(node)) {
+		LIST_HEAD(path_list);
+
+		dent_node = rb_entry(node, struct scanned_dent_node, rb);
+
+		if (dentry_is_reachable(c, dent_node, &path_list, file_tree))
+			continue;
+
+		while (!list_empty(&path_list)) {
+			dent_node = list_entry(path_list.next,
+					       struct scanned_dent_node, list);
+
+			dbg_fsck("remove unreachable dentry %s, in %s",
+				 c->encrypted && !file->ino.is_xattr ?
+				 "<encrypted>" : dent_node->name, c->dev_name);
+			list_del(&dent_node->list);
+			rb_erase(&dent_node->rb, &dent_node->file->dent_nodes);
+			kfree(dent_node);
+		}
+
+		/* Since dentry node is removed from rb-tree, rescan rb-tree. */
+		goto retry;
+	}
+
+	if (!rb_first(&file->dent_nodes)) {
+		dbg_fsck("file %lu is unreachable, in %s", file->inum, c->dev_name);
+		return false;
+	}
+
+reachable:
+	dbg_fsck("file %lu is reachable, in %s", file->inum, c->dev_name);
 	return true;
 }

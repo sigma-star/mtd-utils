@@ -588,6 +588,46 @@ static void filter_invalid_files(struct ubifs_info *c)
 }
 
 /**
+ * extract_dentry_tree - extract reachable directory entries.
+ * @c: UBIFS file-system description object
+ *
+ * This function iterates all directory entries and remove those
+ * unreachable ones. 'Unreachable' means that a directory entry can
+ * not be searched from '/'.
+ */
+static void extract_dentry_tree(struct ubifs_info *c)
+{
+	struct rb_node *node;
+	struct scanned_file *file;
+	struct rb_root *tree = &FSCK(c)->rebuild->scanned_files;
+	LIST_HEAD(unreachable);
+
+	for (node = rb_first(tree); node; node = rb_next(node)) {
+		file = rb_entry(node, struct scanned_file, rb);
+
+		/*
+		 * Since all xattr files are already attached to corresponding
+		 * host file, there are only non-xattr files in the file tree.
+		 */
+		ubifs_assert(c, !file->ino.is_xattr);
+		if (!file_is_reachable(c, file, tree))
+			list_add(&file->list, &unreachable);
+	}
+
+	/* Remove unreachable files. */
+	while (!list_empty(&unreachable)) {
+		file = list_entry(unreachable.next, struct scanned_file, list);
+
+		dbg_fsck("remove unreachable file %lu, in %s",
+			 file->inum, c->dev_name);
+		list_del(&file->list);
+		destroy_file_content(c, file);
+		rb_erase(&file->rb, tree);
+		kfree(file);
+	}
+}
+
+/**
  * ubifs_rebuild_filesystem - Rebuild filesystem.
  * @c: UBIFS file-system description object
  *
@@ -632,6 +672,10 @@ int ubifs_rebuild_filesystem(struct ubifs_info *c)
 	/* Step 4: Drop invalid files. */
 	log_out(c, "Filter invalid files");
 	filter_invalid_files(c);
+
+	/* Step 5: Extract reachable directory entries. */
+	log_out(c, "Extract reachable files");
+	extract_dentry_tree(c);
 
 out:
 	destroy_scanned_info(c, &si);

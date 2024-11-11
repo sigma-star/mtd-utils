@@ -39,6 +39,8 @@ enum { NORMAL_MODE = 0, SAFE_MODE, DANGER_MODE0,
 /* Types of inconsistent problems */
 enum { SB_CORRUPTED = 0 };
 
+struct scanned_file;
+
 /**
  * scanned_node - common header node.
  * @exist: whether the node is found by scanning
@@ -92,6 +94,7 @@ struct scanned_ino_node {
  * @nlen: name length
  * @name: dentry name
  * @inum: target inode number
+ * @file: corresponding file
  * @rb: link in the trees of:
  *  1) valid dentry nodes or deleted dentry node
  *  2) all scanned dentry nodes from same file
@@ -105,6 +108,7 @@ struct scanned_dent_node {
 	unsigned int nlen;
 	char name[UBIFS_MAX_NLEN + 1];
 	ino_t inum;
+	struct scanned_file *file;
 	struct rb_node rb;
 	struct list_head list;
 };
@@ -265,6 +269,8 @@ void destroy_file_tree(struct ubifs_info *c, struct rb_root *file_tree);
 struct scanned_file *lookup_file(struct rb_root *file_tree, ino_t inum);
 bool file_is_valid(struct ubifs_info *c, struct scanned_file *file,
 		   struct rb_root *file_tree);
+bool file_is_reachable(struct ubifs_info *c, struct scanned_file *file,
+		       struct rb_root *file_tree);
 
 /* rebuild_fs.c */
 int ubifs_rebuild_filesystem(struct ubifs_info *c);
