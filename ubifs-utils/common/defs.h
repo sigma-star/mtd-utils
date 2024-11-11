@@ -11,8 +11,11 @@
 #include <unistd.h>
 #include <limits.h>
 #include <errno.h>
+#include <time.h>
+#include <assert.h>
 #include <execinfo.h>
 
+#include "linux_types.h"
 #include "ubifs.h"
 
 /* common.h requires the PROGRAM_NAME macro */
@@ -76,7 +79,40 @@ static inline void dump_stack(void)
 	free(strings);
 }
 
+static inline u32 get_random_u32(void)
+{
+	srand(time(NULL));
+	return rand();
+}
+
+static inline time_t ktime_get_seconds(void)
+{
+	return time(NULL);
+}
+
+#define likely(x) (x)
 #define unlikely(x) (x)
+
+#define cond_resched() do {} while(0)
+
+#define BUG() do {				\
+	assert(0);				\
+} while(0)
+#define BUG_ON(cond) do {			\
+	assert(!cond);				\
+} while(0)
+
+#define smp_wmb()		do {} while(0)
+#define smp_rmb()		do {} while(0)
+#define smp_mb__before_atomic()	do {} while(0)
+#define smp_mb__after_atomic()	do {} while(0)
+
+#define min3(x, y, z) min((typeof(x))min(x, y), z)
+
+static inline u64 div_u64(u64 dividend, u32 divisor)
+{
+	return dividend / divisor;
+}
 
 #define do_div(n,base) ({ \
 int __res; \
