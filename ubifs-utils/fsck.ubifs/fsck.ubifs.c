@@ -328,6 +328,7 @@ static bool fsck_can_ignore_failure(const struct ubifs_info *c,
 static const unsigned int reason_mapping_table[] = {
 	BUD_CORRUPTED,		/* FR_H_BUD_CORRUPTED */
 	TNC_DATA_CORRUPTED,	/* FR_H_TNC_DATA_CORRUPTED */
+	ORPHAN_CORRUPTED,	/* FR_H_ORPHAN_CORRUPTED */
 };
 
 static bool fsck_handle_failure(const struct ubifs_info *c, unsigned int reason,
@@ -431,6 +432,7 @@ int main(int argc, char *argv[])
 	 * Init: Read superblock
 	 * Step 1: Read master & init lpt
 	 * Step 2: Replay journal
+	 * Step 3: Handle orphan nodes
 	 */
 	err = ubifs_load_filesystem(c);
 	if (err) {

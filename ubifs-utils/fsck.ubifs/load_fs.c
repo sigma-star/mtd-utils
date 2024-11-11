@@ -183,10 +183,28 @@ int ubifs_load_filesystem(struct ubifs_info *c)
 	/* Calculate 'min_idx_lebs' after journal replay */
 	c->bi.min_idx_lebs = ubifs_calc_min_idx_lebs(c);
 
+	log_out(c, "Handle orphan nodes");
+	err = ubifs_mount_orphans(c, c->need_recovery, c->ro_mount);
+	if (err) {
+		unsigned int reason = get_failure_reason_callback(c);
+
+		clear_failure_reason_callback(c);
+		if (reason & FR_TNC_CORRUPTED) {
+			if (fix_problem(c, TNC_CORRUPTED, NULL))
+				FSCK(c)->try_rebuild = true;
+		} else {
+			ubifs_assert(c, reason == 0);
+			exit_code |= FSCK_ERROR;
+		}
+		goto out_orphans;
+	}
+
 	c->mounting = 0;
 
 	return 0;
 
+out_orphans:
+	free_orphans(c);
 out_journal:
 	destroy_journal(c);
 out_lpt:
@@ -214,6 +232,7 @@ void ubifs_destroy_filesystem(struct ubifs_info *c)
 {
 	destroy_journal(c);
 	free_wbufs(c);
+	free_orphans(c);
 	ubifs_lpt_free(c, 0);
 
 	c->max_sqnum = 0;

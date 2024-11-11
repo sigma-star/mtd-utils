@@ -423,6 +423,7 @@ static int do_kill_orphans(struct ubifs_info *c, struct ubifs_scan_leb *sleb,
 			ubifs_dump_node(c, snod->node,
 					c->leb_size - snod->offs);
 			err = -EINVAL;
+			set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 			goto out_free;
 		}
 
@@ -452,6 +453,7 @@ static int do_kill_orphans(struct ubifs_info *c, struct ubifs_scan_leb *sleb,
 				ubifs_dump_node(c, snod->node,
 						c->leb_size - snod->offs);
 				err = -EINVAL;
+				set_failure_reason_callback(c, FR_DATA_CORRUPTED);
 				goto out_free;
 			}
 			dbg_rcvry("out of date LEB %d", sleb->lnum);
@@ -471,8 +473,19 @@ static int do_kill_orphans(struct ubifs_info *c, struct ubifs_scan_leb *sleb,
 
 			ino_key_init(c, &key, inum);
 			err = ubifs_tnc_lookup(c, &key, ino);
-			if (err && err != -ENOENT)
+			if (err && err != -ENOENT) {
+				unsigned int reason;
+
+				reason = get_failure_reason_callback(c);
+				if (reason & FR_DATA_CORRUPTED) {
+					test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED);
+					if (handle_failure_callback(c, FR_H_TNC_DATA_CORRUPTED, NULL)) {
+						/* Leave the inode to be deleted by subsequent steps */
+						continue;
+					}
+				}
 				goto out_free;
+			}
 
 			/*
 			 * Check whether an inode can really get deleted.
@@ -483,8 +496,11 @@ static int do_kill_orphans(struct ubifs_info *c, struct ubifs_scan_leb *sleb,
 					  (unsigned long)inum);
 
 				err = ubifs_tnc_remove_ino(c, inum);
-				if (err)
+				if (err) {
+					if (c->program_type == FSCK_PROGRAM_TYPE)
+						goto out_free;
 					goto out_ro;
+				}
 			}
 		}
 
@@ -553,13 +569,33 @@ static int kill_orphans(struct ubifs_info *c)
 							 c->sbuf, -1);
 			}
 			if (IS_ERR(sleb)) {
+				if (test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED) &&
+				    handle_failure_callback(c, FR_H_ORPHAN_CORRUPTED, &lnum)) {
+					/* Skip the orphan LEB. */
+					continue;
+				}
 				err = PTR_ERR(sleb);
 				break;
 			}
 		}
 		err = do_kill_orphans(c, sleb, &last_cmt_no, &outofdate,
 				      &last_flagged);
-		if (err || outofdate) {
+		if (err) {
+			unsigned int reason = get_failure_reason_callback(c);
+
+			if (reason & FR_DATA_CORRUPTED) {
+				test_and_clear_failure_reason_callback(c, FR_DATA_CORRUPTED);
+				if (handle_failure_callback(c, FR_H_ORPHAN_CORRUPTED, &lnum)) {
+					err = 0;
+					/* Skip the orphan LEB. */
+					ubifs_scan_destroy(sleb);
+					continue;
+				}
+			}
+			ubifs_scan_destroy(sleb);
+			break;
+		}
+		if (outofdate) {
 			ubifs_scan_destroy(sleb);
 			break;
 		}

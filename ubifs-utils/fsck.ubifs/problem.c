@@ -41,6 +41,7 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Corrupted bud LEB"},	// BUD_CORRUPTED
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA | PROBLEM_NEED_REBUILD, "Corrupted index node"},	// TNC_CORRUPTED
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Corrupted data searched from TNC"},	// TNC_DATA_CORRUPTED
+	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX | PROBLEM_DROP_DATA, "Corrupted orphan LEB"},	// ORPHAN_CORRUPTED
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -54,6 +55,8 @@ static const char *get_question(const struct fsck_problem *problem,
 		return "Drop bud?";
 	case TNC_DATA_CORRUPTED:
 		return "Drop it?";
+	case ORPHAN_CORRUPTED:
+		return "Drop orphans on the LEB?";
 	}
 
 	return "Fix it?";
@@ -63,13 +66,26 @@ static void print_problem(const struct ubifs_info *c,
 			  const struct fsck_problem *problem, int problem_type,
 			  const void *priv)
 {
-	if (problem_type == BUD_CORRUPTED) {
+	switch (problem_type) {
+	case BUD_CORRUPTED:
+	{
 		const struct ubifs_bud *bud = (const struct ubifs_bud *)priv;
 
 		log_out(c, "problem: %s %d:%d %s", problem->desc, bud->lnum,
 			bud->start, dbg_jhead(bud->jhead));
-	} else
+		break;
+	}
+	case ORPHAN_CORRUPTED:
+	{
+		const int *lnum = (const int *)priv;
+
+		log_out(c, "problem: %s %d", problem->desc, *lnum);
+		break;
+	}
+	default:
 		log_out(c, "problem: %s", problem->desc);
+		break;
+	}
 }
 
 static void fatal_error(const struct ubifs_info *c,
