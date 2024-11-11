@@ -25,6 +25,7 @@
 #endif
 
 #include "lpt.h"
+#include "bitops.h"
 #include "defs.h"
 #include "ubifs.h"
 #include "crc16.h"
