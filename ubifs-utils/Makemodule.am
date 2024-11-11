@@ -10,6 +10,8 @@ common_SOURCES = \
 	ubifs-utils/common/rwsem.h \
 	ubifs-utils/common/kmem.h \
 	ubifs-utils/common/kmem.c \
+	ubifs-utils/common/sort.h \
+	ubifs-utils/common/sort.c \
 	ubifs-utils/common/defs.h \
 	ubifs-utils/common/crc16.h \
 	ubifs-utils/common/crc16.c \
