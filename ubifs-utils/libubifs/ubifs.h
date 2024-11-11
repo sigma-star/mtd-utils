@@ -786,8 +786,6 @@ struct ubifs_budg_info {
 	int dent_budget;
 };
 
-struct ubifs_debug_info;
-
 /**
  * struct ubifs_info - UBIFS file-system description data structure
  * (per-superblock).
