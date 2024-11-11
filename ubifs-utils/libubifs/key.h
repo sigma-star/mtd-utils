@@ -87,7 +87,7 @@ static inline uint32_t key_test_hash(const char *str, int len)
  * @key: key to initialize
  * @inum: inode number
  */
-static inline void ino_key_init(const struct ubifs_info *c,
+static inline void ino_key_init(__unused const struct ubifs_info *c,
 				union ubifs_key *key, ino_t inum)
 {
 	key->u32[0] = inum;
@@ -100,8 +100,8 @@ static inline void ino_key_init(const struct ubifs_info *c,
  * @k: key to initialize
  * @inum: inode number
  */
-static inline void ino_key_init_flash(const struct ubifs_info *c, void *k,
-				      ino_t inum)
+static inline void ino_key_init_flash(__unused const struct ubifs_info *c,
+				      void *k, ino_t inum)
 {
 	union ubifs_key *key = k;
 
@@ -116,8 +116,8 @@ static inline void ino_key_init_flash(const struct ubifs_info *c, void *k,
  * @key: key to initialize
  * @inum: inode number
  */
-static inline void lowest_ino_key(const struct ubifs_info *c,
-				union ubifs_key *key, ino_t inum)
+static inline void lowest_ino_key(__unused const struct ubifs_info *c,
+				  union ubifs_key *key, ino_t inum)
 {
 	key->u32[0] = inum;
 	key->u32[1] = 0;
@@ -129,8 +129,8 @@ static inline void lowest_ino_key(const struct ubifs_info *c,
  * @key: key to initialize
  * @inum: inode number
  */
-static inline void highest_ino_key(const struct ubifs_info *c,
-				union ubifs_key *key, ino_t inum)
+static inline void highest_ino_key(__unused const struct ubifs_info *c,
+				   union ubifs_key *key, ino_t inum)
 {
 	key->u32[0] = inum;
 	key->u32[1] = 0xffffffff;
@@ -172,40 +172,6 @@ static inline void dent_key_init_hash(const struct ubifs_info *c,
 }
 
 /**
- * dent_key_init_flash - initialize on-flash directory entry key.
- * @c: UBIFS file-system description object
- * @k: key to initialize
- * @inum: parent inode number
- * @nm: direntry name and length
- */
-static inline void dent_key_init_flash(const struct ubifs_info *c, void *k,
-				       ino_t inum,
-				       const struct fscrypt_name *nm)
-{
-	union ubifs_key *key = k;
-	uint32_t hash = c->key_hash(fname_name(nm), fname_len(nm));
-
-	ubifs_assert(c, !(hash & ~UBIFS_S_KEY_HASH_MASK));
-	key->j32[0] = cpu_to_le32(inum);
-	key->j32[1] = cpu_to_le32(hash |
-				  (UBIFS_DENT_KEY << UBIFS_S_KEY_HASH_BITS));
-	memset(k + 8, 0, UBIFS_MAX_KEY_LEN - 8);
-}
-
-/**
- * lowest_dent_key - get the lowest possible directory entry key.
- * @c: UBIFS file-system description object
- * @key: where to store the lowest key
- * @inum: parent inode number
- */
-static inline void lowest_dent_key(const struct ubifs_info *c,
-				   union ubifs_key *key, ino_t inum)
-{
-	key->u32[0] = inum;
-	key->u32[1] = UBIFS_DENT_KEY << UBIFS_S_KEY_HASH_BITS;
-}
-
-/**
  * xent_key_init - initialize extended attribute entry key.
  * @c: UBIFS file-system description object
  * @key: key to initialize
@@ -224,32 +190,12 @@ static inline void xent_key_init(const struct ubifs_info *c,
 }
 
 /**
- * xent_key_init_flash - initialize on-flash extended attribute entry key.
- * @c: UBIFS file-system description object
- * @k: key to initialize
- * @inum: host inode number
- * @nm: extended attribute entry name and length
- */
-static inline void xent_key_init_flash(const struct ubifs_info *c, void *k,
-				       ino_t inum, const struct fscrypt_name *nm)
-{
-	union ubifs_key *key = k;
-	uint32_t hash = c->key_hash(fname_name(nm), fname_len(nm));
-
-	ubifs_assert(c, !(hash & ~UBIFS_S_KEY_HASH_MASK));
-	key->j32[0] = cpu_to_le32(inum);
-	key->j32[1] = cpu_to_le32(hash |
-				  (UBIFS_XENT_KEY << UBIFS_S_KEY_HASH_BITS));
-	memset(k + 8, 0, UBIFS_MAX_KEY_LEN - 8);
-}
-
-/**
  * lowest_xent_key - get the lowest possible extended attribute entry key.
  * @c: UBIFS file-system description object
  * @key: where to store the lowest key
  * @inum: host inode number
  */
-static inline void lowest_xent_key(const struct ubifs_info *c,
+static inline void lowest_xent_key(__unused const struct ubifs_info *c,
 				   union ubifs_key *key, ino_t inum)
 {
 	key->u32[0] = inum;
@@ -279,7 +225,7 @@ static inline void data_key_init(const struct ubifs_info *c,
  * @inum: inode number
  */
 static inline void highest_data_key(const struct ubifs_info *c,
-				   union ubifs_key *key, ino_t inum)
+				    union ubifs_key *key, ino_t inum)
 {
 	data_key_init(c, key, inum, UBIFS_S_KEY_BLOCK_MASK);
 }
@@ -293,7 +239,7 @@ static inline void highest_data_key(const struct ubifs_info *c,
  * Note, UBIFS does not have truncation keys on the media and this function is
  * only used for purposes of replay.
  */
-static inline void trun_key_init(const struct ubifs_info *c,
+static inline void trun_key_init(__unused const struct ubifs_info *c,
 				 union ubifs_key *key, ino_t inum)
 {
 	key->u32[0] = inum;
@@ -307,7 +253,7 @@ static inline void trun_key_init(const struct ubifs_info *c,
  *
  * This is a helper function which marks a @key object as invalid.
  */
-static inline void invalid_key_init(const struct ubifs_info *c,
+static inline void invalid_key_init(__unused const struct ubifs_info *c,
 				    union ubifs_key *key)
 {
 	key->u32[0] = 0xDEADBEAF;
@@ -319,7 +265,7 @@ static inline void invalid_key_init(const struct ubifs_info *c,
  * @c: UBIFS file-system description object
  * @key: key to get type of
  */
-static inline int key_type(const struct ubifs_info *c,
+static inline int key_type(__unused const struct ubifs_info *c,
 			   const union ubifs_key *key)
 {
 	return key->u32[1] >> UBIFS_S_KEY_BLOCK_BITS;
@@ -330,7 +276,8 @@ static inline int key_type(const struct ubifs_info *c,
  * @c: UBIFS file-system description object
  * @k: key to get type of
  */
-static inline int key_type_flash(const struct ubifs_info *c, const void *k)
+static inline int key_type_flash(__unused const struct ubifs_info *c,
+				 const void *k)
 {
 	const union ubifs_key *key = k;
 
@@ -342,7 +289,7 @@ static inline int key_type_flash(const struct ubifs_info *c, const void *k)
  * @c: UBIFS file-system description object
  * @k: key to fetch inode number from
  */
-static inline ino_t key_inum(const struct ubifs_info *c, const void *k)
+static inline ino_t key_inum(__unused const struct ubifs_info *c, const void *k)
 {
 	const union ubifs_key *key = k;
 
@@ -354,7 +301,8 @@ static inline ino_t key_inum(const struct ubifs_info *c, const void *k)
  * @c: UBIFS file-system description object
  * @k: key to fetch inode number from
  */
-static inline ino_t key_inum_flash(const struct ubifs_info *c, const void *k)
+static inline ino_t key_inum_flash(__unused const struct ubifs_info *c,
+				   const void *k)
 {
 	const union ubifs_key *key = k;
 
@@ -366,7 +314,7 @@ static inline ino_t key_inum_flash(const struct ubifs_info *c, const void *k)
  * @c: UBIFS file-system description object
  * @key: the key to get hash from
  */
-static inline uint32_t key_hash(const struct ubifs_info *c,
+static inline uint32_t key_hash(__unused const struct ubifs_info *c,
 				const union ubifs_key *key)
 {
 	return key->u32[1] & UBIFS_S_KEY_HASH_MASK;
@@ -377,7 +325,8 @@ static inline uint32_t key_hash(const struct ubifs_info *c,
  * @c: UBIFS file-system description object
  * @k: the key to get hash from
  */
-static inline uint32_t key_hash_flash(const struct ubifs_info *c, const void *k)
+static inline uint32_t key_hash_flash(__unused const struct ubifs_info *c,
+				      const void *k)
 {
 	const union ubifs_key *key = k;
 
@@ -389,7 +338,7 @@ static inline uint32_t key_hash_flash(const struct ubifs_info *c, const void *k)
  * @c: UBIFS file-system description object
  * @key: the key to get the block number from
  */
-static inline unsigned int key_block(const struct ubifs_info *c,
+static inline unsigned int key_block(__unused const struct ubifs_info *c,
 				     const union ubifs_key *key)
 {
 	return key->u32[1] & UBIFS_S_KEY_BLOCK_MASK;
@@ -400,7 +349,7 @@ static inline unsigned int key_block(const struct ubifs_info *c,
  * @c: UBIFS file-system description object
  * @k: the key to get the block number from
  */
-static inline unsigned int key_block_flash(const struct ubifs_info *c,
+static inline unsigned int key_block_flash(__unused const struct ubifs_info *c,
 					   const void *k)
 {
 	const union ubifs_key *key = k;
@@ -414,8 +363,8 @@ static inline unsigned int key_block_flash(const struct ubifs_info *c,
  * @from: the key to transform
  * @to: the key to store the result
  */
-static inline void key_read(const struct ubifs_info *c, const void *from,
-			    union ubifs_key *to)
+static inline void key_read(__unused const struct ubifs_info *c,
+			    const void *from, union ubifs_key *to)
 {
 	const union ubifs_key *f = from;
 
@@ -429,7 +378,7 @@ static inline void key_read(const struct ubifs_info *c, const void *from,
  * @from: the key to transform
  * @to: the key to store the result
  */
-static inline void key_write(const struct ubifs_info *c,
+static inline void key_write(__unused const struct ubifs_info *c,
 			     const union ubifs_key *from, void *to)
 {
 	union ubifs_key *t = to;
@@ -445,7 +394,7 @@ static inline void key_write(const struct ubifs_info *c,
  * @from: the key to transform
  * @to: the key to store the result
  */
-static inline void key_write_idx(const struct ubifs_info *c,
+static inline void key_write_idx(__unused const struct ubifs_info *c,
 				 const union ubifs_key *from, void *to)
 {
 	union ubifs_key *t = to;
@@ -460,7 +409,7 @@ static inline void key_write_idx(const struct ubifs_info *c,
  * @from: the key to copy from
  * @to: the key to copy to
  */
-static inline void key_copy(const struct ubifs_info *c,
+static inline void key_copy(__unused const struct ubifs_info *c,
 			    const union ubifs_key *from, union ubifs_key *to)
 {
 	to->u64[0] = from->u64[0];
@@ -475,7 +424,7 @@ static inline void key_copy(const struct ubifs_info *c,
  * This function compares 2 keys and returns %-1 if @key1 is less than
  * @key2, %0 if the keys are equivalent and %1 if @key1 is greater than @key2.
  */
-static inline int keys_cmp(const struct ubifs_info *c,
+static inline int keys_cmp(__unused const struct ubifs_info *c,
 			   const union ubifs_key *key1,
 			   const union ubifs_key *key2)
 {
@@ -500,7 +449,7 @@ static inline int keys_cmp(const struct ubifs_info *c,
  * This function compares 2 keys and returns %1 if @key1 is equal to @key2 and
  * %0 if not.
  */
-static inline int keys_eq(const struct ubifs_info *c,
+static inline int keys_eq(__unused const struct ubifs_info *c,
 			  const union ubifs_key *key1,
 			  const union ubifs_key *key2)
 {
