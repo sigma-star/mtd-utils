@@ -1,0 +1,65 @@
+#!/bin/sh
+# Copyright (c), 2024, Huawei Technologies Co, Ltd.
+# Author: Zhihao Cheng <chengzhihao1@huawei.com>
+#
+# Test Description:
+# Run all testcases under 'tests' directory
+
+function print_line()
+{
+	echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+	echo ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+}
+
+TESTBINDIR=@TESTBINDIR@
+
+print_line
+$TESTBINDIR/authentication_refuse.sh
+if [[ $? != 0 ]]; then
+	echo "authentication_refuse failed"
+	exit 1
+fi
+print_line
+$TESTBINDIR/powercut_fsck_mount.sh
+if [[ $? != 0 ]]; then
+	echo "powercut_fsck_mount failed"
+	exit 1
+fi
+print_line
+$TESTBINDIR/cycle_corrupted_fsck_fault_inject.sh
+if [[ $? != 0 ]]; then
+	echo "cycle_corrupted_fsck_fault_inject failed"
+	exit 1
+fi
+print_line
+$TESTBINDIR/fsck_bad_image.sh
+if [[ $? != 0 ]]; then
+	echo "fsck_bad_image failed"
+	exit 1
+fi
+print_line
+$TESTBINDIR/random_corrupted_fsck.sh
+if [[ $? != 0 ]]; then
+	echo "random_corrupted_fsck failed"
+	exit 1
+fi
+print_line
+$TESTBINDIR/cycle_powercut_mount_fsck.sh
+if [[ $? != 0 ]]; then
+	echo "cycle_powercut_mount_fsck failed"
+	exit 1
+fi
+print_line
+$TESTBINDIR/cycle_mount_fsck_check.sh
+if [[ $? != 0 ]]; then
+	echo "cycle_mount_fsck_check failed"
+	exit 1
+fi
+print_line
+$TESTBINDIR/build_fs_from_dir.sh
+if [[ $? != 0 ]]; then
+	echo "build_fs_from_dir failed"
+	exit 1
+fi
+
+exit 0
