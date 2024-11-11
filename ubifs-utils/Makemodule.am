@@ -24,6 +24,7 @@ common_SOURCES = \
 	ubifs-utils/common/hashtable/hashtable_itr.c \
 	ubifs-utils/common/devtable.h \
 	ubifs-utils/common/devtable.c \
+	ubifs-utils/common/hexdump.c \
 	ubifs-utils/common/ubifs.h \
 	ubifs-utils/common/key.h \
 	ubifs-utils/common/lpt.h \

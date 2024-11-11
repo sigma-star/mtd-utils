@@ -26,6 +26,12 @@ enum { MKFS_PROGRAM_TYPE = 0 };
 
 enum { ERR_LEVEL = 1, WARN_LEVEL, INFO_LEVEL, DEBUG_LEVEL };
 
+enum {
+	DUMP_PREFIX_NONE,
+	DUMP_PREFIX_ADDRESS,
+	DUMP_PREFIX_OFFSET
+};
+
 #define pr_debug(fmt, ...) do { if (info_.debug_level >= DEBUG_LEVEL)	\
 	printf("<DEBUG> %s[%d] (%s): %s: " fmt, PROGRAM_NAME, getpid(),	\
 	       info_.dev_name, __FUNCTION__, ##__VA_ARGS__);		\
