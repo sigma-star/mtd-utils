@@ -432,6 +432,33 @@ void handle_error(const struct ubifs_info *c, int reason_set)
 		exit_code |= FSCK_ERROR;
 }
 
+static int commit_fix_modifications(struct ubifs_info *c)
+{
+	int err;
+
+	if (exit_code & FSCK_NONDESTRUCT) {
+		log_out(c, "Commit problem fixing modifications");
+
+		/*
+		 * Force UBIFS to do commit by setting @c->mounting if changes
+		 * happen on disk. Committing is required once before allocating
+		 * new space(subsequent steps may need), because building lpt
+		 * could mark LEB(which holds stale data nodes) as unused, if
+		 * the LEB is overwritten by new data, old data won't be found
+		 * in next fsck run(assume that first fsck run is interrupted by
+		 * the powercut), which could affect the correctness of LEB
+		 * properties after replaying journal in the second fsck run.
+		 */
+		c->mounting = 1;
+	}
+	err = ubifs_run_commit(c);
+
+	if (exit_code & FSCK_NONDESTRUCT)
+		c->mounting = 0;
+
+	return err;
+}
+
 /*
  * do_fsck - Check & repair the filesystem.
  */
@@ -479,9 +506,16 @@ static int do_fsck(void)
 	err = check_and_correct_space(c);
 	kfree(FSCK(c)->used_lebs);
 	destroy_file_tree(c, &FSCK(c)->scanned_files);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto free_disconnected_files_2;
+	}
+
+	err = commit_fix_modifications(c);
 	if (err)
 		exit_code |= FSCK_ERROR;
 
+free_disconnected_files_2:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
 	return err;
 
@@ -532,6 +566,7 @@ int main(int argc, char *argv[])
 	 * Step 10: Check and correct files
 	 * Step 11: Check whether the TNC is empty
 	 * Step 12: Check and correct the space statistics
+	 * Step 13: Commit problem fixing modifications
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {
