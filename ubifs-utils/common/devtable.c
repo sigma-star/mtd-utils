@@ -148,10 +148,10 @@ static int interpret_table_entry(const char *line)
 		   &start, &increment, &count) < 0)
 		return sys_errmsg("sscanf failed");
 
-	dbg_msg(3, "name %s, type %c, mode %o, uid %u, gid %u, major %u, "
-		"minor %u, start %u, inc %u, cnt %u",
-		buf, type, mode, uid, gid, major, minor, start,
-		increment, count);
+	pr_debug("name %s, type %c, mode %o, uid %u, gid %u, major %u, "
+		 "minor %u, start %u, inc %u, cnt %u\n",
+		 buf, type, mode, uid, gid, major, minor, start,
+		 increment, count);
 
 	len = strnlen(buf, 1024);
 	if (len == 0)
@@ -204,7 +204,7 @@ static int interpret_table_entry(const char *line)
 	 */
 	ph_elt = hashtable_search(path_htbl, path);
 	if (!ph_elt) {
-		dbg_msg(3, "inserting '%s' into path hash table", path);
+		pr_debug("inserting '%s' into path hash table\n", path);
 		ph_elt = malloc(sizeof(struct path_htbl_element));
 		if (!ph_elt) {
 			errmsg("cannot allocate %zd bytes of memory",
@@ -252,8 +252,8 @@ static int interpret_table_entry(const char *line)
 		nh_elt->gid = gid;
 		nh_elt->dev = makedev(major, minor);
 
-		dbg_msg(3, "inserting '%s' into name hash table (major %d, minor %d)",
-			name, major(nh_elt->dev), minor(nh_elt->dev));
+		pr_debug("inserting '%s' into name hash table (major %d, minor %d)\n",
+			 name, major(nh_elt->dev), minor(nh_elt->dev));
 
 		if (hashtable_search(ph_elt->name_htbl, name)) {
 			errmsg("'%s' is referred twice", buf);
@@ -291,8 +291,8 @@ static int interpret_table_entry(const char *line)
 			sprintf(nm, "%s%d", name, i);
 			nh_elt->name = nm;
 
-			dbg_msg(3, "inserting '%s' into name hash table (major %d, minor %d)",
-			        nm, major(nh_elt->dev), minor(nh_elt->dev));
+			pr_debug("inserting '%s' into name hash table (major %d, minor %d)\n",
+				 nm, major(nh_elt->dev), minor(nh_elt->dev));
 
 			if (hashtable_search(ph_elt->name_htbl, nm)) {
 				errmsg("'%s' is referred twice", buf);
@@ -336,7 +336,7 @@ int parse_devtable(const char *tbl_file)
 	struct stat st;
 	size_t len;
 
-	dbg_msg(1, "parsing device table file '%s'", tbl_file);
+	pr_debug("parsing device table file '%s'\n", tbl_file);
 
 	path_htbl = create_hashtable(128, &r5_hash, &is_equivalent);
 	if (!path_htbl)
@@ -386,7 +386,7 @@ int parse_devtable(const char *tbl_file)
 		line = NULL;
 	}
 
-	dbg_msg(1, "finished parsing");
+	pr_debug("finished parsing\n");
 	fclose(f);
 	return 0;
 
@@ -460,8 +460,8 @@ int override_attributes(struct stat *st, struct path_htbl_element *ph_elt,
 			       "different", strcmp(ph_elt->path, "/") ? ph_elt->path : "",
 			       nh_elt->name);
 
-	dbg_msg(3, "set UID %d, GID %d, mode %o for %s/%s as device table says",
-		nh_elt->uid, nh_elt->gid, nh_elt->mode, ph_elt->path, nh_elt->name);
+	pr_debug("set UID %d, GID %d, mode %o for %s/%s as device table says\n",
+		 nh_elt->uid, nh_elt->gid, nh_elt->mode, ph_elt->path, nh_elt->name);
 
 	st->st_uid = nh_elt->uid;
 	st->st_gid = nh_elt->gid;

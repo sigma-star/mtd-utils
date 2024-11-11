@@ -132,9 +132,11 @@ AS_IF([test "x$enable_ubihealthd" = "xyes"], [
 	need_getrandom="yes"
 ])
 
+AC_ARG_VAR([DUMP_STACK_LD], [linker flags for rdynamic])
 AS_IF([test "x$with_ubifs" = "xyes"], [
 	need_uuid="yes"
 	need_getrandom="yes"
+	DUMP_STACK_LD="-rdynamic"
 ])
 
 AS_IF([test "x$with_zlib" != "xno"], [

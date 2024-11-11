@@ -337,7 +337,7 @@ static void pack_lsave(struct ubifs_info *c, void *buf, int *lsave)
  */
 static void set_ltab(struct ubifs_info *c, int lnum, int free, int dirty)
 {
-	dbg_msg(3, "LEB %d free %d dirty %d to %d %d",
+	pr_debug("LEB %d free %d dirty %d to %d %d\n",
 		lnum, c->ltab[lnum - c->lpt_first].free,
 		c->ltab[lnum - c->lpt_first].dirty, free, dirty);
 	c->ltab[lnum - c->lpt_first].free = free;
@@ -566,26 +566,26 @@ int create_lpt(struct ubifs_info *c)
 	c->nhead_lnum = lnum;
 	c->nhead_offs = ALIGN(len, c->min_io_size);
 
-	dbg_msg(1, "lpt_sz:         %lld", c->lpt_sz);
-	dbg_msg(1, "space_bits:     %d", c->space_bits);
-	dbg_msg(1, "lpt_lnum_bits:  %d", c->lpt_lnum_bits);
-	dbg_msg(1, "lpt_offs_bits:  %d", c->lpt_offs_bits);
-	dbg_msg(1, "lpt_spc_bits:   %d", c->lpt_spc_bits);
-	dbg_msg(1, "pcnt_bits:      %d", c->pcnt_bits);
-	dbg_msg(1, "lnum_bits:      %d", c->lnum_bits);
-	dbg_msg(1, "pnode_sz:       %d", c->pnode_sz);
-	dbg_msg(1, "nnode_sz:       %d", c->nnode_sz);
-	dbg_msg(1, "ltab_sz:        %d", c->ltab_sz);
-	dbg_msg(1, "lsave_sz:       %d", c->lsave_sz);
-	dbg_msg(1, "lsave_cnt:      %d", c->lsave_cnt);
-	dbg_msg(1, "lpt_hght:       %d", c->lpt_hght);
-	dbg_msg(1, "big_lpt:        %d", c->big_lpt);
-	dbg_msg(1, "LPT root is at  %d:%d", c->lpt_lnum, c->lpt_offs);
-	dbg_msg(1, "LPT head is at  %d:%d", c->nhead_lnum, c->nhead_offs);
-	dbg_msg(1, "LPT ltab is at  %d:%d", c->ltab_lnum, c->ltab_offs);
+	pr_debug("lpt_sz:         %lld\n", c->lpt_sz);
+	pr_debug("space_bits:     %d\n", c->space_bits);
+	pr_debug("lpt_lnum_bits:  %d\n", c->lpt_lnum_bits);
+	pr_debug("lpt_offs_bits:  %d\n", c->lpt_offs_bits);
+	pr_debug("lpt_spc_bits:   %d\n", c->lpt_spc_bits);
+	pr_debug("pcnt_bits:      %d\n", c->pcnt_bits);
+	pr_debug("lnum_bits:      %d\n", c->lnum_bits);
+	pr_debug("pnode_sz:       %d\n", c->pnode_sz);
+	pr_debug("nnode_sz:       %d\n", c->nnode_sz);
+	pr_debug("ltab_sz:        %d\n", c->ltab_sz);
+	pr_debug("lsave_sz:       %d\n", c->lsave_sz);
+	pr_debug("lsave_cnt:      %d\n", c->lsave_cnt);
+	pr_debug("lpt_hght:       %d\n", c->lpt_hght);
+	pr_debug("big_lpt:        %d\n", c->big_lpt);
+	pr_debug("LPT root is at  %d:%d\n", c->lpt_lnum, c->lpt_offs);
+	pr_debug("LPT head is at  %d:%d\n", c->nhead_lnum, c->nhead_offs);
+	pr_debug("LPT ltab is at  %d:%d\n", c->ltab_lnum, c->ltab_offs);
 	if (c->big_lpt)
-		dbg_msg(1, "LPT lsave is at %d:%d",
-		        c->lsave_lnum, c->lsave_offs);
+		pr_debug("LPT lsave is at %d:%d\n",
+			 c->lsave_lnum, c->lsave_offs);
 out:
 	free(lsave);
 	free(buf);

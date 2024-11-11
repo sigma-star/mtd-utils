@@ -249,8 +249,8 @@ static const char *helptext =
 "-y, --yes                assume the answer is \"yes\" for all questions\n"
 "-v, --verbose            verbose operation\n"
 "-V, --version            display version information\n"
-"-g, --debug=LEVEL        display debug information (0 - none, 1 - statistics,\n"
-"                         2 - files, 3 - more details)\n"
+"-g, --debug=LEVEL        display printing information (0 - none, 1 - error message, \n"
+"                         2 - warning message[default], 3 - notice message, 4 - debug message)\n"
 "-a, --set-inum-attr      create user.image-inode-number extended attribute on files\n"
 "                         added to the image. The attribute will contain the inode\n"
 "                         number the file has in the generated image.\n"
@@ -632,7 +632,7 @@ static int get_options(int argc, char**argv)
 		case 'g':
 			c->debug_level = strtol(optarg, &endp, 0);
 			if (*endp != '\0' || endp == optarg ||
-			    c->debug_level < 0 || c->debug_level > 3)
+			    c->debug_level < 0 || c->debug_level > DEBUG_LEVEL)
 				return errmsg("bad debugging level '%s'",
 					       optarg);
 			break;
@@ -943,7 +943,7 @@ int write_leb(struct ubifs_info *c, int lnum, int len, void *buf)
 {
 	off_t pos = (off_t)lnum * c->leb_size;
 
-	dbg_msg(3, "LEB %d len %d", lnum, len);
+	pr_debug("LEB %d len %d\n", lnum, len);
 	memset(buf + len, 0xff, c->leb_size - len);
 	if (c->libubi)
 		if (ubi_leb_change_start(c->libubi, c->dev_fd, lnum, c->leb_size))
@@ -980,7 +980,7 @@ static int do_pad(void *buf, int len)
 
 	memset(buf + len, 0xff, alen - len);
 	pad_len = wlen - alen;
-	dbg_msg(3, "len %d pad_len %d", len, pad_len);
+	pr_debug("len %d pad_len %d\n", len, pad_len);
 	buf += alen;
 	if (pad_len >= (int)UBIFS_PAD_NODE_SZ) {
 		struct ubifs_ch *ch = buf;
@@ -1068,8 +1068,7 @@ static void set_lprops(int lnum, int offs, int flags)
 
 	free = c->leb_size - ALIGN(offs, a);
 	dirty = c->leb_size - free - ALIGN(offs, 8);
-	dbg_msg(3, "LEB %d free %d dirty %d flags %d", lnum, free, dirty,
-		flags);
+	pr_debug("LEB %d free %d dirty %d flags %d\n", lnum, free, dirty, flags);
 	if (i < c->main_lebs) {
 		c->lpt[i].free = free;
 		c->lpt[i].dirty = dirty;
@@ -1104,7 +1103,7 @@ static int add_to_index(union ubifs_key *key, char *name, int name_len,
 {
 	struct idx_entry *e;
 
-	dbg_msg(3, "LEB %d offs %d len %d", lnum, offs, len);
+	pr_debug("LEB %d offs %d len %d\n", lnum, offs, len);
 	e = xmalloc(sizeof(struct idx_entry));
 	e->next = NULL;
 	e->prev = idx_list_last;
@@ -1434,19 +1433,19 @@ static int inode_add_selinux_xattr(struct ubifs_ino_node *host_ino,
 	if (selabel_lookup(sehnd, &secontext, sepath, st->st_mode) < 0) {
 		/* Failed to lookup context, assume unlabeled */
 		secontext = strdup("system_u:object_r:unlabeled_t:s0");
-		dbg_msg(2, "missing context: %s\t%s\t%d\n", secontext, sepath,
-				st->st_mode);
+		pr_debug("missing context: %s\t%s\t%d\n", secontext, sepath,
+			 st->st_mode);
 	}
 
-	dbg_msg(2, "appling selinux context on sepath=%s, secontext=%s\n",
-			sepath, secontext);
+	pr_debug("appling selinux context on sepath=%s, secontext=%s\n",
+		 sepath, secontext);
 	free(sepath);
 	con_size = strlen(secontext) + 1;
 	name = strdup(XATTR_NAME_SELINUX);
 
 	ret = add_xattr(host_ino, st, inum, name, secontext, con_size);
 	if (ret < 0)
-		dbg_msg(2, "add_xattr failed %d\n", ret);
+		pr_debug("add_xattr failed %d\n", ret);
 	return ret;
 }
 
@@ -1714,8 +1713,8 @@ static int add_dent_node(ino_t dir_inum, const char *name, ino_t inum,
 	char *kname;
 	int len;
 
-	dbg_msg(3, "%s ino %lu type %u dir ino %lu", name, (unsigned long)inum,
-		(unsigned int)type, (unsigned long)dir_inum);
+	pr_debug("%s ino %lu type %u dir ino %lu\n", name, (unsigned long)inum,
+		 (unsigned int)type, (unsigned long)dir_inum);
 	memset(dent, 0, UBIFS_DENT_NODE_SZ);
 
 	dname.name = (void *)name;
@@ -1916,7 +1915,7 @@ static int add_non_dir(const char *path_name, ino_t *inum, unsigned int nlink,
 {
 	int fd, flags = 0;
 
-	dbg_msg(2, "%s", path_name);
+	pr_debug("%s\n", path_name);
 
 	if (S_ISREG(st->st_mode)) {
 		fd = open(path_name, O_RDONLY);
@@ -2017,7 +2016,7 @@ static int add_directory(const char *dir_name, ino_t dir_inum, struct stat *st,
 	unsigned char type;
 	unsigned long long dir_creat_sqnum = ++c->max_sqnum;
 
-	dbg_msg(2, "%s", dir_name);
+	pr_debug("%s\n", dir_name);
 	if (existing) {
 		dir = opendir(dir_name);
 		if (dir == NULL)
@@ -2237,7 +2236,7 @@ static int add_multi_linked_files(void)
 		unsigned char type = 0;
 
 		for (im = hash_table[i]; im; im = im->next) {
-			dbg_msg(2, "%s", im->path_name);
+			pr_debug("%s\n", im->path_name);
 			err = add_non_dir(im->path_name, &im->use_inum,
 					  im->use_nlink, &type, &im->st, NULL);
 			if (err)
@@ -2342,8 +2341,8 @@ static int add_idx_node(void *node, int child_cnt)
 
 	c->old_idx_sz += ALIGN(len, 8);
 
-	dbg_msg(3, "at %d:%d len %d index size %llu", lnum, offs, len,
-		c->old_idx_sz);
+	pr_debug("at %d:%d len %d index size %llu\n", lnum, offs, len,
+		 c->old_idx_sz);
 
 	/* The last index node written will be the root */
 	c->zroot.lnum = lnum;
@@ -2365,7 +2364,7 @@ static int write_index(void)
 	int child_cnt = 0, j, level, blnum, boffs, blen, blast_len, err;
 	uint8_t *hashes;
 
-	dbg_msg(1, "leaf node count: %zd", idx_cnt);
+	pr_debug("leaf node count: %zd\n", idx_cnt);
 
 	/* Reset the head for the index */
 	head_flags = LPROPS_INDEX;
@@ -2515,13 +2514,13 @@ static int write_index(void)
 	free(idx_ptr);
 	free(idx);
 
-	dbg_msg(1, "zroot is at %d:%d len %d", c->zroot.lnum, c->zroot.offs,
-		c->zroot.len);
+	pr_debug("zroot is at %d:%d len %d\n", c->zroot.lnum, c->zroot.offs,
+		 c->zroot.len);
 
 	/* Set the index head */
 	c->ihead_lnum = head_lnum;
 	c->ihead_offs = ALIGN(head_offs, c->min_io_size);
-	dbg_msg(1, "ihead is at %d:%d", c->ihead_lnum, c->ihead_offs);
+	pr_debug("ihead is at %d:%d\n", c->ihead_lnum, c->ihead_offs);
 
 	/* Flush the last index LEB */
 	err = flush_nodes();
@@ -2567,13 +2566,13 @@ static int finalize_leb_cnt(void)
 		printf("\tindex lebs:   %d\n", c->lst.idx_lebs);
 		printf("\tleb_cnt:      %d\n", c->leb_cnt);
 	}
-	dbg_msg(1, "total_free:  %llu", c->lst.total_free);
-	dbg_msg(1, "total_dirty: %llu", c->lst.total_dirty);
-	dbg_msg(1, "total_used:  %llu", c->lst.total_used);
-	dbg_msg(1, "total_dead:  %llu", c->lst.total_dead);
-	dbg_msg(1, "total_dark:  %llu", c->lst.total_dark);
-	dbg_msg(1, "index size:  %llu", c->old_idx_sz);
-	dbg_msg(1, "empty_lebs:  %d", c->lst.empty_lebs);
+	pr_debug("total_free:  %llu\n", c->lst.total_free);
+	pr_debug("total_dirty: %llu\n", c->lst.total_dirty);
+	pr_debug("total_used:  %llu\n", c->lst.total_used);
+	pr_debug("total_dead:  %llu\n", c->lst.total_dead);
+	pr_debug("total_dark:  %llu\n", c->lst.total_dark);
+	pr_debug("index size:  %llu\n", c->old_idx_sz);
+	pr_debug("empty_lebs:  %d\n", c->lst.empty_lebs);
 	return 0;
 }
 
@@ -2822,7 +2821,7 @@ static int init(void)
 
 	c->dead_wm = ALIGN(MIN_WRITE_SZ, c->min_io_size);
 	c->dark_wm = ALIGN(UBIFS_MAX_NODE_SZ, c->min_io_size);
-	dbg_msg(1, "dead_wm %d  dark_wm %d", c->dead_wm, c->dark_wm);
+	pr_debug("dead_wm %d  dark_wm %d\n", c->dead_wm, c->dark_wm);
 
 	leb_buf = xmalloc(c->leb_size);
 	node_buf = xmalloc(NODE_BUFFER_SIZE);
@@ -2954,6 +2953,7 @@ int main(int argc, char *argv[])
 
 	info_.program_name = MKFS_PROGRAM_NAME;
 	info_.program_type = MKFS_PROGRAM_TYPE;
+	info_.debug_level = WARN_LEVEL;
 
 	if (crypto_init())
 		return -1;
