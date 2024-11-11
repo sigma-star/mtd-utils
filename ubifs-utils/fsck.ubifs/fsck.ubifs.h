@@ -46,7 +46,7 @@ enum { SB_CORRUPTED = 0, MST_CORRUPTED, LOG_CORRUPTED, BUD_CORRUPTED,
        FILE_ROOT_HAS_DENT, DENTRY_IS_UNREACHABLE, FILE_IS_INCONSISTENT,
        EMPTY_TNC, LPT_CORRUPTED, NNODE_INCORRECT, PNODE_INCORRECT,
        LP_INCORRECT, SPACE_STAT_INCORRECT, LTAB_INCORRECT, INCORRECT_IDX_SZ,
-       ROOT_DIR_NOT_FOUND };
+       ROOT_DIR_NOT_FOUND, DISCONNECTED_FILE_CANNOT_BE_RECOVERED };
 
 enum { HAS_DATA_CORRUPTED = 1, HAS_TNC_CORRUPTED = 2 };
 
@@ -387,5 +387,6 @@ int check_and_correct_index_size(struct ubifs_info *c);
 
 /* handle_disconnected.c */
 int check_and_create_lost_found(struct ubifs_info *c);
+int handle_disonnected_files(struct ubifs_info *c);
 
 #endif

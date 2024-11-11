@@ -69,6 +69,7 @@ static const struct fsck_problem problem_table[] = {
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Inconsistent properties for lprops table"},	// LTAB_INCORRECT
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Incorrect index size"},	// INCORRECT_IDX_SZ
 	{PROBLEM_FIXABLE | PROBLEM_MUST_FIX, "Root dir is lost"},	// ROOT_DIR_NOT_FOUND
+	{PROBLEM_FIXABLE | PROBLEM_DROP_DATA, "Disconnected file cannot be recovered"},	// DISCONNECTED_FILE_CANNOT_BE_RECOVERED
 };
 
 static const char *get_question(const struct fsck_problem *problem,
@@ -96,6 +97,7 @@ static const char *get_question(const struct fsck_problem *problem,
 	case FILE_HAS_NO_ENCRYPT:
 	case FILE_ROOT_HAS_DENT:
 	case DENTRY_IS_UNREACHABLE:
+	case DISCONNECTED_FILE_CANNOT_BE_RECOVERED:
 		return "Delete it?";
 	case FILE_HAS_INCONSIST_TYPE:
 	case FILE_HAS_TOO_MANY_DENT:
@@ -290,6 +292,14 @@ static void print_problem(const struct ubifs_info *c,
 
 		log_out(c, "problem: %s, index size is %llu, should be %llu",
 			problem->desc, c->calc_idx_sz, *calc_sz);
+		break;
+	}
+	case DISCONNECTED_FILE_CANNOT_BE_RECOVERED:
+	{
+		const struct scanned_file *file = (const struct scanned_file *)priv;
+
+		log_out(c, "problem: %s, ino %lu, size %llu", problem->desc,
+			file->inum, file->ino.size);
 		break;
 	}
 	default:

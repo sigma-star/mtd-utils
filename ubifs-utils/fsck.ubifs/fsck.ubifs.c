@@ -541,6 +541,13 @@ static int do_fsck(void)
 		goto free_disconnected_files_2;
 	}
 
+	log_out(c, "Handle disconnected files");
+	err = handle_disonnected_files(c);
+	if (err) {
+		exit_code |= FSCK_ERROR;
+		goto free_disconnected_files_2;
+	}
+
 free_disconnected_files_2:
 	destroy_file_list(c, &FSCK(c)->disconnected_files);
 	return err;
@@ -596,6 +603,7 @@ int main(int argc, char *argv[])
 	 * Step 14: Check and correct the index size
 	 * Step 15: Check and create root dir
 	 * Step 16: Check and create lost+found
+	 * Step 17: Handle disconnected files
 	 */
 	err = do_fsck();
 	if (err && FSCK(c)->try_rebuild) {
