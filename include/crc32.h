@@ -10,4 +10,9 @@
 /* Return a 32-bit CRC of the contents of the buffer */
 extern uint32_t mtd_crc32(uint32_t val, const void *ss, int len);
 
+static inline uint32_t crc32(uint32_t val, const void *ss, int len)
+{
+	return mtd_crc32(val, ss, len);
+}
+
 #endif /* __CRC32_H__ */
