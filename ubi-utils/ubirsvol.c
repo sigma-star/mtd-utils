@@ -231,7 +231,7 @@ int main(int argc, char * const argv[])
 	}
 
 	if (args.lebs != -1)
-		args.bytes = vol_info.leb_size * args.lebs;
+		args.bytes = (long long)vol_info.leb_size * args.lebs;
 
 	err = ubi_rsvol(libubi, args.node, args.vol_id, args.bytes);
 	if (err) {
