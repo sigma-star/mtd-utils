@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
 	if (eb_cnt == 0)
 		eb_cnt = (mtd.size / mtd.eb_size) - eb_start;
 
-	if (eb_start == 0 && mtd.size == eb_cnt * mtd.eb_size)
+	if (eb_start == 0 && mtd.size == (long long)eb_cnt * mtd.eb_size)
 		erase_chip = true;
 
 	/* If MTD device may have bad eraseblocks,
