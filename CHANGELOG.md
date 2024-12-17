@@ -4,6 +4,26 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [Unreleased]
+### Added
+ - fsck.ubifs: Add fsck utility for ubifs
+ - ubifs-utils: Support Address-Sanitizier debug
+ - nand-utils: nanddump: Add support for testing continuous reads
+ - mtd-tests: nandbiterrs: Add support for testing continuous reads
+ - mtd-tests: flash_speed: Benchmark continuous reads
+
+### Fixed
+ - Various integer handling errors (potential overflows, divide by zero)
+ - mkfs.jffs2: fix segfault when parsing dev table
+ - nand-utils: nanddump: Explicitely use the page size when relevant
+ - misc-utils: add missing error handling for 'bam' allocation in ftl_check.c
+
+### Changed
+ - mkfs.ubifs: re-sync with the kernel code
+ - mkfs.ubifs: move most of the code into a libubifs library
+ - Import a more recent version of libiniparser
+ - mtd-tests: flash_speed: cleanup/refactor
+
 ## [2.2.1] - 2024-09-25
 ### Fixed
  - fectest: Fix time formatting with _TIME_BITS=64 on 32-bit system
