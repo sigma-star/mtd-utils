@@ -121,6 +121,10 @@ static void check_partition(int fd)
 	/* Create basic block allocation table for control blocks */
 	nbam = (mtd.erasesize >> hdr.BlockSize);
 	bam = malloc(nbam * sizeof(u_int));
+	if (!bam) {
+		perror("malloc failed");
+		return;
+	}
 
 	for (i = 0; i < le16_to_cpu(hdr.NumEraseUnits); i++) {
 		if (lseek(fd, (i << hdr.EraseUnitSize), SEEK_SET) == -1) {
