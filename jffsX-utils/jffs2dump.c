@@ -772,6 +772,13 @@ int main(int argc, char **argv)
 		exit(EXIT_FAILURE);
 	}
 
+	if (datsize < 0 || oobsize < 0 || datsize > imglen || (long)datsize + oobsize < 0) {
+		fprintf(stderr, "Error: invalid datsize/oobsize.\n");
+		free(data);
+		close (fd);
+		exit(EXIT_FAILURE);
+	}
+
 	if (datsize && oobsize) {
 		int  idx = 0;
 		long len = imglen;
@@ -783,7 +790,7 @@ int main(int argc, char **argv)
 			read_nocheck (fd, oob, oobsize);
 			idx += datsize;
 			imglen -= oobsize;
-			len -= datsize + oobsize;
+			len -= (long)datsize + oobsize;
 		}
 
 	} else {
