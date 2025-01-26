@@ -1,14 +1,13 @@
 Common Library
 
-* crc16.h and crc16.c were copied from the linux kernel.
-* crc32.h and crc32.c were copied from mtd-utils and amended.
+* crc16.h and crc16.c were copied from the linux kernel(https://elixir.bootlin.com/linux/v5.10.232/source/lib/crc16.c).
 * defs.h is a bunch of definitions to smooth things over.
 * hashtable/* was downloaded from http://www.cl.cam.ac.uk/~cwc22/hashtable/
 * atomic.h was downloaded from https://the-linux-channel.the-toffee-project.org/index.php?page=6-tutorials-linux-user-space-atomic-operations
-* bitops.h and bitops.c were copied from the linux kernel.
-* compiler_attributes.h was copied from the linux kernel.
-* linux_types.h was copied from the linux kernel.
-* linux_err.h was copied from the linux kernel.
-* hexdump.c was copied from the linux kernel.
-* kmem.h and kmem.c were partial copied from xfsprogs-dev (https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git/)
-* sort.h and sort.c were copied from the linux kernel.
+* bitops.h and bitops.c were copied from the linux kernel(https://elixir.bootlin.com/linux/v5.10.232/source/lib/find_bit.c).
+* compiler_attributes.h was copied from the linux kernel(https://elixir.bootlin.com/linux/v5.10.232/source/include/linux/compiler_attributes.h).
+* linux_types.h was copied from the linux kernel(https://elixir.bootlin.com/linux/v5.10.232/source/include/linux/types.h overflow.h fscrypt.h).
+* linux_err.h was copied from the linux kernel(https://elixir.bootlin.com/linux/v5.10.232/source/include/linux/err.h).
+* hexdump.c was copied from the linux kernel(https://elixir.bootlin.com/linux/v5.10.232/source/lib/hexdump.c).
+* kmem.h and kmem.c were partial copied from xfsprogs-dev(https://git.kernel.org/pub/scm/fs/xfs/xfsprogs-dev.git/).
+* sort.h and sort.c were copied from the linux kernel(https://elixir.bootlin.com/linux/v5.10.232/source/lib/sort.c).
