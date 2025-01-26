@@ -102,6 +102,7 @@ static void process_options(int argc, char * const argv[])
 {
 	int error = 0;
 	bool oob_default = true;
+	char *dumpfile_tmp = NULL;
 
 	for (;;) {
 		int option_index = 0;
@@ -165,8 +166,8 @@ static void process_options(int argc, char * const argv[])
 				start_addr = simple_strtoll(optarg, &error);
 				break;
 			case 'f':
-				free(dumpfile);
-				dumpfile = xstrdup(optarg);
+				free(dumpfile_tmp);
+				dumpfile = dumpfile_tmp = xstrdup(optarg);
 				break;
 			case 'l':
 				length = simple_strtoll(optarg, &error);
