@@ -28,6 +28,8 @@
 #include <unistd.h>
 #include <string.h>
 
+int do_pwr_dn(int fd, int cycleCnt);
+
 /*
   This is the routine that forms and
   sends the "ok to pwr me down" message
