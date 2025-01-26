@@ -221,7 +221,7 @@ int main (int argc,char *argv[])
 	struct mtd_info_user mtd;
 	struct erase_info_user erase;
 	struct stat filestat;
-	unsigned char *src,*dest,*wrlast_buf;
+	unsigned char *src, *dest, *wrlast_buf = NULL;
 	unsigned long long wrlast_len = 0;
 	int error = 0;
 
