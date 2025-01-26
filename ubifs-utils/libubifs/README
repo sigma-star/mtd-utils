@@ -1,4 +1,4 @@
-UBIFS Library (Imported from linux kernel 6.8-rc2 41bccc98fb7931d63)
+UBIFS Library (Imported from linux kernel 6.13-rc7 aa22f4da2a46)
 
 * ubifs.h is a selection of definitions from fs/ubifs/ubifs.h from the linux kernel.
 * key.h is copied from fs/ubifs/key.h from the linux kernel.

@@ -80,7 +80,7 @@ static int valuable(struct ubifs_info *c, const struct ubifs_lprops *lprops)
  * @c: the UBIFS file-system description object
  * @lprops: LEB properties to scan
  * @in_tree: whether the LEB properties are in main memory
- * @data: information passed to and from the caller of the scan
+ * @arg: information passed to and from the caller of the scan
  *
  * This function returns a code that indicates whether the scan should continue
  * (%LPT_SCAN_CONTINUE), whether the LEB properties should be added to the tree
@@ -89,8 +89,9 @@ static int valuable(struct ubifs_info *c, const struct ubifs_lprops *lprops)
  */
 static int scan_for_dirty_cb(struct ubifs_info *c,
 			     const struct ubifs_lprops *lprops, int in_tree,
-			     struct scan_data *data)
+			     void *arg)
 {
+	struct scan_data *data = arg;
 	int ret = LPT_SCAN_CONTINUE;
 
 	/* Exclude LEBs that are currently in use */
@@ -173,8 +174,7 @@ static const struct ubifs_lprops *scan_for_dirty(struct ubifs_info *c,
 	data.pick_free = pick_free;
 	data.lnum = -1;
 	data.exclude_index = exclude_index;
-	err = ubifs_lpt_scan_nolock(c, -1, c->lscan_lnum,
-				    (ubifs_lpt_scan_callback)scan_for_dirty_cb,
+	err = ubifs_lpt_scan_nolock(c, -1, c->lscan_lnum, scan_for_dirty_cb,
 				    &data);
 	if (err)
 		return ERR_PTR(err);
@@ -347,7 +347,7 @@ out:
  * @c: the UBIFS file-system description object
  * @lprops: LEB properties to scan
  * @in_tree: whether the LEB properties are in main memory
- * @data: information passed to and from the caller of the scan
+ * @arg: information passed to and from the caller of the scan
  *
  * This function returns a code that indicates whether the scan should continue
  * (%LPT_SCAN_CONTINUE), whether the LEB properties should be added to the tree
@@ -356,8 +356,9 @@ out:
  */
 static int scan_for_free_cb(struct ubifs_info *c,
 			    const struct ubifs_lprops *lprops, int in_tree,
-			    struct scan_data *data)
+			    void *arg)
 {
+	struct scan_data *data = arg;
 	int ret = LPT_SCAN_CONTINUE;
 
 	/* Exclude LEBs that are currently in use */
@@ -453,7 +454,7 @@ const struct ubifs_lprops *do_find_free_space(struct ubifs_info *c,
 	data.pick_free = pick_free;
 	data.lnum = -1;
 	err = ubifs_lpt_scan_nolock(c, -1, c->lscan_lnum,
-				    (ubifs_lpt_scan_callback)scan_for_free_cb,
+				    scan_for_free_cb,
 				    &data);
 	if (err)
 		return ERR_PTR(err);
@@ -587,7 +588,7 @@ out:
  * @c: the UBIFS file-system description object
  * @lprops: LEB properties to scan
  * @in_tree: whether the LEB properties are in main memory
- * @data: information passed to and from the caller of the scan
+ * @arg: information passed to and from the caller of the scan
  *
  * This function returns a code that indicates whether the scan should continue
  * (%LPT_SCAN_CONTINUE), whether the LEB properties should be added to the tree
@@ -596,8 +597,9 @@ out:
  */
 static int scan_for_idx_cb(struct ubifs_info *c,
 			   const struct ubifs_lprops *lprops, int in_tree,
-			   struct scan_data *data)
+			   void *arg)
 {
+	struct scan_data *data = arg;
 	int ret = LPT_SCAN_CONTINUE;
 
 	/* Exclude LEBs that are currently in use */
@@ -632,8 +634,7 @@ static const struct ubifs_lprops *scan_for_leb_for_idx(struct ubifs_info *c)
 	int err;
 
 	data.lnum = -1;
-	err = ubifs_lpt_scan_nolock(c, -1, c->lscan_lnum,
-				    (ubifs_lpt_scan_callback)scan_for_idx_cb,
+	err = ubifs_lpt_scan_nolock(c, -1, c->lscan_lnum, scan_for_idx_cb,
 				    &data);
 	if (err)
 		return ERR_PTR(err);
@@ -733,11 +734,10 @@ out:
 	return err;
 }
 
-static int cmp_dirty_idx(const struct ubifs_lprops **a,
-			 const struct ubifs_lprops **b)
+static int cmp_dirty_idx(const void *a, const void *b)
 {
-	const struct ubifs_lprops *lpa = *a;
-	const struct ubifs_lprops *lpb = *b;
+	const struct ubifs_lprops *lpa = *(const struct ubifs_lprops **)a;
+	const struct ubifs_lprops *lpb = *(const struct ubifs_lprops **)b;
 
 	return lpa->dirty + lpa->free - lpb->dirty - lpb->free;
 }
@@ -761,7 +761,7 @@ int ubifs_save_dirty_idx_lnums(struct ubifs_info *c)
 	       sizeof(void *) * c->dirty_idx.cnt);
 	/* Sort it so that the dirtiest is now at the end */
 	sort(c->dirty_idx.arr, c->dirty_idx.cnt, sizeof(void *),
-	     (int (*)(const void *, const void *))cmp_dirty_idx, NULL);
+	     cmp_dirty_idx, NULL);
 	dbg_find("found %d dirty index LEBs", c->dirty_idx.cnt);
 	if (c->dirty_idx.cnt)
 		dbg_find("dirtiest index LEB is %d with dirty %d and free %d",
@@ -780,7 +780,7 @@ int ubifs_save_dirty_idx_lnums(struct ubifs_info *c)
  * @c: the UBIFS file-system description object
  * @lprops: LEB properties to scan
  * @in_tree: whether the LEB properties are in main memory
- * @data: information passed to and from the caller of the scan
+ * @arg: information passed to and from the caller of the scan
  *
  * This function returns a code that indicates whether the scan should continue
  * (%LPT_SCAN_CONTINUE), whether the LEB properties should be added to the tree
@@ -789,8 +789,9 @@ int ubifs_save_dirty_idx_lnums(struct ubifs_info *c)
  */
 static int scan_dirty_idx_cb(struct ubifs_info *c,
 			   const struct ubifs_lprops *lprops, int in_tree,
-			   struct scan_data *data)
+			   void *arg)
 {
+	struct scan_data *data = arg;
 	int ret = LPT_SCAN_CONTINUE;
 
 	/* Exclude LEBs that are currently in use */
@@ -849,8 +850,7 @@ static int find_dirty_idx_leb(struct ubifs_info *c)
 	if (c->pnodes_have >= c->pnode_cnt)
 		/* All pnodes are in memory, so skip scan */
 		return -ENOSPC;
-	err = ubifs_lpt_scan_nolock(c, -1, c->lscan_lnum,
-				    (ubifs_lpt_scan_callback)scan_dirty_idx_cb,
+	err = ubifs_lpt_scan_nolock(c, -1, c->lscan_lnum, scan_dirty_idx_cb,
 				    &data);
 	if (err)
 		return err;
