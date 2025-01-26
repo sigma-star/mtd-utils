@@ -204,7 +204,7 @@ static void print_region_map(const struct mtd_dev_info *mtd, int fd,
 
 	for (i = 0; i < reginfo->numblocks; ++i) {
 		start = reginfo->offset + (unsigned long long)i * reginfo->erasesize;
-		printf(" %*i: %08lx ", width, i, start);
+		printf(" %*i: %08llx ", width, i, start);
 
 		if (ret_locked != -1) {
 			ret_locked = mtd_is_locked(mtd, fd, i);
