@@ -694,6 +694,9 @@ static struct jffs2_raw_dirent *resolvepath0(char *o, size_t size, uint32_t ino,
 
 	pp = path = xstrdup(p);
 
+	if (path == NULL)
+		return NULL;
+
 	if (*path == '/') {
 		path++;
 		ino = 1;
