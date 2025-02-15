@@ -4,7 +4,7 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
-## [Unreleased]
+## [2.3.0] - 2025-02-15
 ### Added
  - fsck.ubifs: Add fsck utility for ubifs
  - ubifs-utils: Support Address-Sanitizier debug
@@ -17,6 +17,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
  - mkfs.jffs2: fix segfault when parsing dev table
  - nand-utils: nanddump: Explicitely use the page size when relevant
  - misc-utils: add missing error handling for 'bam' allocation in ftl_check.c
+ - mtdinfo: type mis-match in printf format string
+ - nanddump: const cast warning
+ - flashcp: uninitialized variable
+ - jffs2reader: potential null pointer dereference
+ - tests: checkfs: Add previous prototype for do_pwr_dn()
 
 ### Changed
  - mkfs.ubifs: re-sync with the kernel code
