@@ -46,6 +46,7 @@
  * all the nodes.
  */
 
+#include <sys/stat.h>
 #include "bitops.h"
 #include "kmem.h"
 #include "ubifs.h"
