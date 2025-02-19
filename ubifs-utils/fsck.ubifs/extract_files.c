@@ -10,6 +10,8 @@
 #include <getopt.h>
 #include <sys/stat.h>
 
+#include <linux/limits.h>
+
 #include "linux_err.h"
 #include "bitops.h"
 #include "kmem.h"
