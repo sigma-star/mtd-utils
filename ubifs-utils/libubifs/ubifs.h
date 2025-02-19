@@ -11,6 +11,7 @@
 #ifndef __UBIFS_H__
 #define __UBIFS_H__
 
+#include <fcntl.h>
 #include <string.h>
 
 #include "linux_types.h"
