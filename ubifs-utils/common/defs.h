@@ -13,8 +13,11 @@
 #include <errno.h>
 #include <time.h>
 #include <assert.h>
+#if HAVE_EXECINFO_H
 #include <execinfo.h>
-
+#else
+#include "libmissing.h"
+#endif
 #include "ubifs.h"
 
 /* common.h requires the PROGRAM_NAME macro */
