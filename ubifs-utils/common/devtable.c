@@ -392,6 +392,7 @@ int parse_devtable(const char *tbl_file)
 
 out_close:
 	fclose(f);
+	free(line);
 	free_devtable_info();
 	return -1;
 }
