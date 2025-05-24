@@ -57,8 +57,10 @@ static const char optionsstr[] =
 "-N, --name=<volume name>   volume name to resize\n"
 "-s, --size=<bytes>         volume size volume size in bytes, kilobytes (KiB)\n"
 "                           or megabytes (MiB)\n"
+"                           zero size means use all available free bytes\n"
 "-S, --lebs=<LEBs count>    alternative way to give volume size in logical\n"
 "                           eraseblocks\n"
+"                           zero size means use all available free LEBs\n"
 "-h, -?, --help             print help message\n"
 "-V, --version              print program version";
 
@@ -114,13 +116,13 @@ static int parse_opt(int argc, char * const argv[])
 		switch (key) {
 		case 's':
 			args.bytes = util_get_bytes(optarg);
-			if (args.bytes <= 0)
+			if (args.bytes < 0)
 				return errmsg("bad volume size: \"%s\"", optarg);
 			break;
 
 		case 'S':
 			args.lebs = simple_strtoull(optarg, &error);
-			if (error || args.lebs <= 0)
+			if (error || args.lebs < 0)
 				return errmsg("bad LEB count: \"%s\"", optarg);
 			break;
 
@@ -232,6 +234,9 @@ int main(int argc, char * const argv[])
 
 	if (args.lebs != -1)
 		args.bytes = (long long)vol_info.leb_size * args.lebs;
+
+	if (args.lebs == 0 || args.bytes == 0)
+		args.bytes = vol_info.rsvd_bytes + dev_info.avail_bytes;
 
 	err = ubi_rsvol(libubi, args.node, args.vol_id, args.bytes);
 	if (err) {
