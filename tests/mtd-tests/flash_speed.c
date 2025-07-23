@@ -190,7 +190,7 @@ static int read_eraseblock(int ebnum)
 {
 	int err = mtd_read(&mtd, fd, ebnum, 0, iobuf, mtd.eb_size);
 	if (err)
-		fprintf(stderr, "Error writing block %d!\n", ebnum);
+		fprintf(stderr, "Error reading block %d!\n", ebnum);
 	return err;
 }
 
