@@ -260,6 +260,10 @@ int main(int argc, char **argv)
 			}
 			nblocks[i] = totblocks - block;
 		}
+		if (nblocks[i] > totblocks || block > totblocks - nblocks[i]) {
+			printf("Requested partition size exceeds available device space.\n");
+			return 1;
+		}
 		ip->virtualUnits = cpu_to_le32(nblocks[i]);
 		block += nblocks[i];
 		ip->lastUnit = cpu_to_le32(block-1);
