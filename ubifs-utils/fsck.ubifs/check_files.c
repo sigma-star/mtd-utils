@@ -57,12 +57,13 @@ static int construct_file(struct ubifs_info *c, union ubifs_key *key,
 	struct rb_root *tree = &FSCK(c)->scanned_files;
 	struct scanned_node *sn = NULL;
 	struct ubifs_ch *ch = (struct ubifs_ch *)node;
+	struct scanned_ino_node ino_node;
+	struct scanned_dent_node dent_node;
+	struct scanned_data_node data_node;
 
 	switch (ch->node_type) {
 	case UBIFS_INO_NODE:
 	{
-		struct scanned_ino_node ino_node;
-
 		if (!parse_ino_node(c, lnum, offs, node, key, &ino_node)) {
 			if (fix_problem(c, INVALID_INO_NODE, NULL))
 				return add_invalid_node(c, key, lnum, offs, iter);
@@ -74,8 +75,6 @@ static int construct_file(struct ubifs_info *c, union ubifs_key *key,
 	case UBIFS_DENT_NODE:
 	case UBIFS_XENT_NODE:
 	{
-		struct scanned_dent_node dent_node;
-
 		if (!parse_dent_node(c, lnum, offs, node, key, &dent_node)) {
 			if (fix_problem(c, INVALID_DENT_NODE, NULL))
 				return add_invalid_node(c, key, lnum, offs, iter);
@@ -86,8 +85,6 @@ static int construct_file(struct ubifs_info *c, union ubifs_key *key,
 	}
 	case UBIFS_DATA_NODE:
 	{
-		struct scanned_data_node data_node;
-
 		if (!parse_data_node(c, lnum, offs, node, key, &data_node)) {
 			if (fix_problem(c, INVALID_DATA_NODE, NULL))
 				return add_invalid_node(c, key, lnum, offs, iter);
