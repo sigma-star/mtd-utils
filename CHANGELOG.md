@@ -4,6 +4,25 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
+## [2.3.1] - 2026-04-13
+### Added
+ - ubirsvol: resize using all available free space if size is specified as 0
+
+### Fixed
+ - ubifs-utils: link libmissing.a in case execinfo.h isn't present
+ - ubifs-utils: common: fix memory leak in devtable.c
+ - Broken check for GCC compiler versions
+ - ubifs-utils: missing header file includes
+ - ubifs-utils: tests: missing files in release tarball
+ - mtd-tests: flash_speed: really skip destructive tests
+ - mtd-tests: flash_speed: wrong error message in read_eraseblock()
+ - serve_image: fix _POSIX_C_SOURCE define
+ - ubiattach: fix wording in usage example
+ - fsck.ubifs: don't use pointers that reference out-of-scope variables
+ - fsck.ubifs: fix platform dependant `ino_t` and `loff_t` formatting
+ - docfdisk.c: fix potential arithmetic overflows in partition size
+ - jittertest: reject overlong file names
+
 ## [2.3.0] - 2025-02-15
 ### Added
  - fsck.ubifs: Add fsck utility for ubifs
