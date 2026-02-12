@@ -92,9 +92,9 @@ static const char usage[] =
 "           and create UBI device number 3 (ubi3)\n"
 "Example 4: " PROGRAM_NAME " -m 1 -b 25 - attach /dev/mtd1 to UBI and reserve\n"
 "           25*C/1024 eraseblocks for bad block handling, where C is the flash\n"
-"           is total flash chip eraseblocks count, that is flash chip size in\n"
-"           eraseblocks (including bad eraseblocks). E.g., if the flash chip\n"
-"           has 4096 PEBs, 100 will be reserved.";
+"           chip total eraseblocks count, that is flash chip size in eraseblocks\n"
+"           (including bad eraseblocks). E.g., if the flash chip has 4096 PEBs,\n"
+"           100 will be reserved.";
 
 static const struct option long_options[] = {
 	{ .name = "devn",            .has_arg = 1, .flag = NULL, .val = 'd' },
