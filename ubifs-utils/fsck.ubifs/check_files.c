@@ -98,8 +98,8 @@ static int construct_file(struct ubifs_info *c, union ubifs_key *key,
 	}
 
 	dbg_fsck("construct file(%lu) for %s node, TNC location %d:%d, in %s",
-		 inum, ubifs_get_key_name(key_type(c, key)), sn->lnum, sn->offs,
-		 c->dev_name);
+		 (unsigned long)inum, ubifs_get_key_name(key_type(c, key)),
+		 sn->lnum, sn->offs, c->dev_name);
 	return insert_or_update_file(c, tree, sn, key_type(c, key), inum);
 }
 
@@ -341,7 +341,8 @@ void update_files_size(struct ubifs_info *c)
 			if (file && file->ino.header.exist &&
 			    file->ino.size < e->d_size) {
 				dbg_fsck("update file(%lu) size %llu->%llu, in %s",
-					 e->inum, file->ino.size,
+					 (unsigned long)e->inum,
+					 file->ino.size,
 					 (unsigned long long)e->d_size,
 					 c->dev_name);
 				file->ino.size = e->d_size;

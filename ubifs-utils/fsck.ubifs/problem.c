@@ -147,7 +147,7 @@ static void print_problem(const struct ubifs_info *c,
 	{
 		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
 
-		log_out(c, "problem: %s, ino %lu", problem->desc, ifp->file->inum);
+		log_out(c, "problem: %s, ino %lu", problem->desc, (unsigned long)ifp->file->inum);
 		break;
 	}
 	case FILE_HAS_INCONSIST_TYPE:
@@ -156,7 +156,7 @@ static void print_problem(const struct ubifs_info *c,
 		const struct scanned_dent_node *dent_node = (const struct scanned_dent_node *)ifp->priv;
 
 		log_out(c, "problem: %s, ino %lu, inode type %s%s, dentry %s has type %s%s",
-			problem->desc, ifp->file->inum,
+			problem->desc, (unsigned long)ifp->file->inum,
 			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
 			ifp->file->ino.is_xattr ? "(xattr)" : "",
 			c->encrypted && !ifp->file->ino.is_xattr ? "<encrypted>" : dent_node->name,
@@ -171,7 +171,7 @@ static void print_problem(const struct ubifs_info *c,
 		const struct scanned_dent_node *dent_node = (const struct scanned_dent_node *)ifp->priv;
 
 		log_out(c, "problem: %s, ino %lu, type %s%s, dentry %s",
-			problem->desc, ifp->file->inum,
+			problem->desc, (unsigned long)ifp->file->inum,
 			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
 			ifp->file->ino.is_xattr ? "(xattr)" : "",
 			c->encrypted && !ifp->file->ino.is_xattr ? "<encrypted>" : dent_node->name);
@@ -183,7 +183,7 @@ static void print_problem(const struct ubifs_info *c,
 		const struct scanned_data_node *data_node = (const struct scanned_data_node *)ifp->priv;
 
 		log_out(c, "problem: %s, ino %lu, type %s%s, data block %u",
-			problem->desc, ifp->file->inum,
+			problem->desc, (unsigned long)ifp->file->inum,
 			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
 			ifp->file->ino.is_xattr ? "(xattr)" : "",
 			key_block(c, &data_node->key));
@@ -198,7 +198,7 @@ static void print_problem(const struct ubifs_info *c,
 		const struct invalid_file_problem *ifp = (const struct invalid_file_problem *)priv;
 
 		log_out(c, "problem: %s, ino %lu type %s%s", problem->desc,
-			ifp->file->inum,
+			(unsigned long)ifp->file->inum,
 			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
 			ifp->file->ino.is_xattr ? "(xattr)" : "");
 		break;
@@ -209,9 +209,9 @@ static void print_problem(const struct ubifs_info *c,
 		const struct scanned_file *host = (const struct scanned_file *)ifp->priv;
 
 		log_out(c, "problem: %s, ino %lu type %s%s, host ino %lu type %s%s",
-			problem->desc, ifp->file->inum,
+			problem->desc, (unsigned long)ifp->file->inum,
 			ubifs_get_type_name(ubifs_get_dent_type(ifp->file->ino.mode)),
-			ifp->file->ino.is_xattr ? "(xattr)" : "", host->inum,
+			ifp->file->ino.is_xattr ? "(xattr)" : "", (unsigned long)host->inum,
 			ubifs_get_type_name(ubifs_get_dent_type(host->ino.mode)),
 			host->ino.is_xattr ? "(xattr)" : "");
 		break;
@@ -222,7 +222,7 @@ static void print_problem(const struct ubifs_info *c,
 		const struct scanned_dent_node *dent_node = (const struct scanned_dent_node *)ifp->priv;
 
 		log_out(c, "problem: %s, ino %lu, unreachable dentry %s, type %s%s",
-			problem->desc, ifp->file->inum,
+			problem->desc, (unsigned long)ifp->file->inum,
 			c->encrypted && !ifp->file->ino.is_xattr ? "<encrypted>" : dent_node->name,
 			ubifs_get_type_name(dent_node->type),
 			key_type(c, &dent_node->key) == UBIFS_XENT_KEY ? "(xattr)" : "");
@@ -235,7 +235,7 @@ static void print_problem(const struct ubifs_info *c,
 
 		log_out(c, "problem: %s, ino %lu type %s, nlink %u xcnt %u xsz %u xnms %u size %llu, "
 			"should be nlink %u xcnt %u xsz %u xnms %u size %llu",
-			problem->desc, file->inum,
+			problem->desc, (unsigned long)file->inum,
 			file->ino.is_xattr ? "xattr" : ubifs_get_type_name(ubifs_get_dent_type(file->ino.mode)),
 			file->ino.nlink, file->ino.xcnt, file->ino.xsz,
 			file->ino.xnms, file->ino.size,
@@ -299,7 +299,7 @@ static void print_problem(const struct ubifs_info *c,
 		const struct scanned_file *file = (const struct scanned_file *)priv;
 
 		log_out(c, "problem: %s, ino %lu, size %llu", problem->desc,
-			file->inum, file->ino.size);
+			(unsigned long)file->inum, file->ino.size);
 		break;
 	}
 	default:

@@ -249,7 +249,7 @@ int ubifs_mkdir(struct ubifs_info *c, struct ubifs_inode *dir_ui,
 	 * directory inode.
 	 */
 	dbg_gen("dent '%s', mode %#hx in dir ino %lu",
-		fname_name(nm), mode, dir->inum);
+		fname_name(nm), mode, (unsigned long)dir->inum);
 
 	/* New dir is not allowed to be created under an encrypted directory. */
 	ubifs_assert(c, !(dir_ui->flags & UBIFS_CRYPT_FL));
@@ -315,7 +315,7 @@ int ubifs_link_recovery(struct ubifs_info *c, struct ubifs_inode *dir_ui,
 	 * changing the parent inode.
 	 */
 	dbg_gen("dent '%s' to ino %lu (nlink %d) in dir ino %lu",
-		fname_name(nm), inode->inum, inode->nlink, dir->inum);
+		fname_name(nm), (unsigned long)inode->inum, inode->nlink, (unsigned long)dir->inum);
 
 	/* New dir is not allowed to be created under an encrypted directory. */
 	ubifs_assert(c, !(dir_ui->flags & UBIFS_CRYPT_FL));

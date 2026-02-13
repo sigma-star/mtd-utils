@@ -697,7 +697,7 @@ static void extract_dentry_tree(struct ubifs_info *c)
 		file = list_entry(unreachable.next, struct scanned_file, list);
 
 		dbg_fsck("remove unreachable file %lu, in %s",
-			 file->inum, c->dev_name);
+			 (unsigned long)file->inum, c->dev_name);
 		list_del(&file->list);
 		destroy_file_content(c, file);
 		rb_erase(&file->rb, tree);
@@ -1097,7 +1097,7 @@ static int record_file_used_lebs(struct ubifs_info *c,
 	struct scanned_data_node *data_node;
 
 	dbg_fsck("recovered file(inum:%lu name:%s type:%s), in %s",
-		 file->inum, get_file_name(c, file),
+		 (unsigned long)file->inum, get_file_name(c, file),
 		 file->ino.is_xattr ? "xattr" :
 		 ubifs_get_type_name(ubifs_get_dent_type(file->ino.mode)),
 		 c->dev_name);

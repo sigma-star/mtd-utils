@@ -117,7 +117,7 @@ static int handle_disonnected_file(struct ubifs_info *c,
 			struct ubifs_inode *target_ui;
 
 			err = snprintf(file_name, sizeof(file_name),
-				       "INO_%lu_%u", file->inum, index);
+				       "INO_%lu_%u", (unsigned long)file->inum, index);
 			if (err < 0)
 				goto free_ui;
 			fname_name(&nm) = file_name;
@@ -138,7 +138,7 @@ static int handle_disonnected_file(struct ubifs_info *c,
 			kfree(ui);
 			kfree(lost_found_ui);
 			log_out(c, "Too many duplicated names(%u) in lost+found for inum %lu",
-				index, file->inum);
+				index, (unsigned long)file->inum);
 			goto delete_file;
 		}
 
@@ -150,7 +150,7 @@ static int handle_disonnected_file(struct ubifs_info *c,
 			goto delete_file;
 		}
 		dbg_fsck("recover disconnected file %lu, in %s",
-			 file->inum, c->dev_name);
+			 (unsigned long)file->inum, c->dev_name);
 
 free_ui:
 		kfree(ui);
