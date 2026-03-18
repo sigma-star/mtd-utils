@@ -42,6 +42,9 @@ test_SCRIPTS =
 test_DATA =
 
 TESTS =
+TEST_EXTENSIONS = .sh
+SH_LOG_COMPILER = $(SHELL)
+AM_TESTS_ENVIRONMENT = TESTBINDIR='$(abs_top_builddir)'; export TESTBINDIR;
 EXTRA_DIST = COPYING CHANGELOG.md README.txt
 
 include lib/Makemodule.am

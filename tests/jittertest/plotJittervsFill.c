@@ -75,6 +75,21 @@ static int Debug = 0; /* Debug level. Each "-d" on the cmd line increases the le
 
 #define MIN_JITTER_THRESHOLD 1 /* ms minimum jitter threshold */
 
+static void SetLogFileName(
+    const char *pFileName)          /* ptr to desired input file name   */
+{
+    size_t fileNameLen;             /* file name length (bytes)         */
+
+    fileNameLen = strlen(pFileName);
+    if (fileNameLen > sizeof(LogFile) - 1) {
+        printf("File name %s exceeds maximum length %d.\n",
+               pFileName, (int)(sizeof(LogFile) - 1));
+        exit(0);
+    }
+
+    strcpy(LogFile, pFileName);
+}
+
 static void PrintHelpInfo(void)
 {
     printf("Usage: plotJittervsFill [options] -f [--file] <input log file name> -t [--jitter_threshold] <jitter threshold in ms>\n");
@@ -122,7 +137,7 @@ static void HandleCmdLineArgs(
                 /* Set the name of the output file. */
                 ++argNum;
                 if (argNum < argc) {
-                    strncpy(LogFile, argv[argNum], sizeof(LogFile));
+                    SetLogFileName(argv[argNum]);
                 }
                 else {
                     printf("*** Input file name not specified. ***\n");

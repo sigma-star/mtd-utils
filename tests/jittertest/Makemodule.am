@@ -6,6 +6,8 @@ plotJittervsFill_CPPFLAGS = $(AM_CPPFLAGS)
 
 test_PROGRAMS += JitterTest plotJittervsFill
 
-test_SCRIPTS += tests/jittertest/filljffs2.sh
+test_SCRIPTS += tests/jittertest/filljffs2.sh tests/jittertest/filename_bounds.sh
+TESTS += tests/jittertest/filename_bounds.sh
 
-EXTRA_DIST += tests/jittertest/README tests/jittertest/filljffs2.sh
+EXTRA_DIST += tests/jittertest/README tests/jittertest/filljffs2.sh \
+	tests/jittertest/filename_bounds.sh.in

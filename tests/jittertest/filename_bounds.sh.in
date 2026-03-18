@@ -1,0 +1,115 @@
+#!/bin/sh
+
+TESTBINDIR=${TESTBINDIR-@TESTBINDIR@}
+
+tmpdir=
+jt_pid=
+watchdog_pid=
+
+fatal()
+{
+	echo "Error: $1" 1>&2
+	exit 1
+}
+
+cleanup()
+{
+	if [ -n "$watchdog_pid" ]; then
+		kill "$watchdog_pid" >/dev/null 2>&1 || :
+		wait "$watchdog_pid" 2>/dev/null || :
+	fi
+
+	if [ -n "$jt_pid" ]; then
+		kill "$jt_pid" >/dev/null 2>&1 || :
+		wait "$jt_pid" 2>/dev/null || :
+	fi
+
+	if [ -n "$tmpdir" ]; then
+		rm -rf "$tmpdir"
+	fi
+}
+
+trap 'status=$?; trap - EXIT; cleanup; exit $status' EXIT
+trap 'exit 1' HUP INT QUIT TERM
+
+make_name()
+{
+	char="$1"
+	length="$2"
+	name=
+	i=0
+
+	while [ "$i" -lt "$length" ]; do
+		name="${name}${char}"
+		i=$((i + 1))
+	done
+
+	printf '%s' "$name"
+}
+
+tmpdir=$(mktemp -d "${TMPDIR:-/tmp}/mtd-utils-jittertest.XXXXXX") ||
+	fatal "mktemp failed"
+cd "$tmpdir" || fatal "cannot change to temp dir"
+
+plot_valid=$(make_name a 249)
+: > "$plot_valid" || fatal "cannot create valid plot input"
+"$TESTBINDIR/plotJittervsFill" -f "$plot_valid" >plot-valid.out 2>plot-valid.err ||
+	fatal "plotJittervsFill rejected a 249-byte file name"
+if grep -q "exceeds maximum length" plot-valid.out plot-valid.err; then
+	fatal "plotJittervsFill reported a max-length error for a 249-byte file name"
+fi
+
+plot_invalid=$(make_name b 250)
+"$TESTBINDIR/plotJittervsFill" -f "$plot_invalid" >plot-invalid.out 2>plot-invalid.err || :
+if ! grep -q "exceeds maximum length" plot-invalid.out plot-invalid.err; then
+	fatal "plotJittervsFill did not reject a 250-byte file name"
+fi
+if grep -q "Unable to open input log file" plot-invalid.out plot-invalid.err; then
+	fatal "plotJittervsFill reached fopen() for an overlong file name"
+fi
+
+jt_read_valid=$(make_name r 32)
+"$TESTBINDIR/JitterTest" -c /dev/null -f out.dat -r "$jt_read_valid" >jt-valid.out 2>jt-valid.err &
+jt_pid=$!
+(
+	sleep 10
+	kill -TERM "$jt_pid" >/dev/null 2>&1 || :
+	sleep 1
+	kill -KILL "$jt_pid" >/dev/null 2>&1 || :
+) &
+watchdog_pid=$!
+sleep 1
+kill -INT "$jt_pid" >/dev/null 2>&1 || fatal "cannot stop JitterTest"
+wait "$jt_pid" || fatal "JitterTest failed with a 32-byte read file name"
+jt_pid=
+kill "$watchdog_pid" >/dev/null 2>&1 || :
+wait "$watchdog_pid" 2>/dev/null || :
+watchdog_pid=
+if ! grep -q "Press Ctrl+C to exit the program." jt-valid.out; then
+	fatal "JitterTest did not start normally with a 32-byte read file name"
+fi
+if ! grep -q "JitterTest exiting." jt-valid.out; then
+	fatal "JitterTest did not exit cleanly after SIGINT"
+fi
+
+jt_read_invalid=$(make_name s 33)
+"$TESTBINDIR/JitterTest" -c /dev/null -f out.dat -r "$jt_read_invalid" \
+	>jt-read-invalid.out 2>jt-read-invalid.err || :
+if ! grep -q "exceeds maximum length" jt-read-invalid.out jt-read-invalid.err; then
+	fatal "JitterTest did not reject a 33-byte read file name"
+fi
+if grep -q "Press Ctrl+C to exit the program." jt-read-invalid.out jt-read-invalid.err; then
+	fatal "JitterTest started despite an overlong read file name"
+fi
+
+jt_console_invalid=$(make_name c 33)
+"$TESTBINDIR/JitterTest" -c "$jt_console_invalid" -f out.dat \
+	>jt-console-invalid.out 2>jt-console-invalid.err || :
+if ! grep -q "exceeds maximum length" jt-console-invalid.out jt-console-invalid.err; then
+	fatal "JitterTest did not reject a 33-byte console file name"
+fi
+if grep -q "Press Ctrl+C to exit the program." jt-console-invalid.out jt-console-invalid.err; then
+	fatal "JitterTest started despite an overlong console file name"
+fi
+
+echo "SUCCESS"

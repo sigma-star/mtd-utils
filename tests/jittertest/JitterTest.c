@@ -205,6 +205,7 @@ static int RunAsRTTask = FALSE; /* default action unless priority is
 
 /********************* Local Function Prototypes **********************/
 void HandleCmdLineArgs(int argc, char *argv[]);
+static void SaveFileName(char *pDest, size_t destSize, const char *pFileName);
 void SetFileName(char * pFileName);
 void SetInterruptPeriod(char * pASCIIInterruptPeriodMilliSec);
 void SetSchedulerPriority(char * pASCIISchedulerPriority);
@@ -830,9 +831,14 @@ void HandleCmdLineArgs(
                      (strcmp(argv[argNum],"-r")       == STRINGS_EQUAL)) {
                 /* Set the file to read*/
                 ++argNum;
-
-                strncpy(ReadFile, argv[argNum], sizeof(ReadFile));
-                DoRead = TRUE;
+                if (argNum < argc) {
+                    SaveFileName(ReadFile, sizeof(ReadFile), argv[argNum]);
+                    DoRead = TRUE;
+                }
+                else {
+                    printf("*** Read file name not specified. ***\n");
+                    exit(0);
+                }
             }
 
             else if ((strcmp(argv[argNum],"--write_bytes") ==
@@ -858,9 +864,13 @@ void HandleCmdLineArgs(
                      (strcmp(argv[argNum],"-c")       == STRINGS_EQUAL)) {
 	      /* Set the file to log console log on. */
 	      ++argNum;
-
-	      strncpy(LogFile, argv[argNum], sizeof(LogFile) - 1);
-	      LogFile[sizeof(LogFile) - 1] = '\0';
+	      if (argNum < argc) {
+	          SaveFileName(LogFile, sizeof(LogFile), argv[argNum]);
+	      }
+	      else {
+	          printf("*** Console log file name not specified. ***\n");
+	          exit(0);
+	      }
             }
 
             else if ((strcmp(argv[argNum],"--grab_kprofile") ==
@@ -913,6 +923,29 @@ void HandleCmdLineArgs(
 
 
 /***********************************************************************
+ *                              SaveFileName
+ *  This function validates and saves a file name.
+ *  output: N/A
+ ***********************************************************************/
+static void SaveFileName(
+    char *pDest,                    /* ptr to destination buffer        */
+    size_t destSize,                /* destination buffer size          */
+    const char *pFileName)          /* ptr to desired file name         */
+{
+    size_t fileNameLen;             /* file name length (bytes)         */
+
+    fileNameLen = strlen(pFileName);
+    if (fileNameLen > destSize - 1) {
+        printf("File name %s exceeds maximum length %d.\n",
+               pFileName, (int)(destSize - 1));
+        exit(0);
+    }
+
+    strcpy(pDest, pFileName);
+}
+
+
+/***********************************************************************
  *                                SetFileName
  *  This function sets the output file name.
  *  output: N/A
@@ -920,20 +953,7 @@ void HandleCmdLineArgs(
 void SetFileName(
     char * pFileName)               /* ptr to desired output file name  */
 {
-    size_t fileNameLen;             /* file name length (bytes)         */
-
-    /* Check file name length. */
-    fileNameLen = strlen(pFileName);
-    if (fileNameLen > (size_t) MAX_FILE_NAME_LEN) {
-        printf("File name %s exceeds maximum length %d.\n",
-               pFileName, MAX_FILE_NAME_LEN);
-        exit(0);
-    }
-
-    /* File name length is OK so save the file name. */
-    strcpy(OutFileName, pFileName);
-
-    return;
+    SaveFileName(OutFileName, sizeof(OutFileName), pFileName);
 }
 
 
