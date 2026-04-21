@@ -26,7 +26,6 @@
 #include <string.h>
 #include <fcntl.h>
 #include <errno.h>
-#include <features.h>
 #include <inttypes.h>
 #include <unistd.h>
 #include <sys/sysmacros.h>
