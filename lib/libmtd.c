@@ -902,7 +902,7 @@ static int mtd_valid_erase_block(const struct mtd_dev_info *mtd, int eb)
 }
 
 static int mtd_xlock(const struct mtd_dev_info *mtd, int fd, int eb,
-		     int blocks, int req, const char *sreq)
+		     int blocks, unsigned long req, const char *sreq)
 {
 	int ret;
 	struct erase_info_user ei;
