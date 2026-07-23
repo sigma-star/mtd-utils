@@ -769,6 +769,7 @@ int ubi_attach(libubi_t desc, const char *node, struct ubi_attach_request *req)
 	r.vid_hdr_offset = req->vid_hdr_offset;
 	r.disable_fm = req->disable_fm ? 1 : 0;
 	r.need_resv_pool = req->need_resv_pool ? 1 : 0;
+	r.wl_threshold = req->wl_threshold;
 
 	if (req->max_beb_per1024) {
 		/*

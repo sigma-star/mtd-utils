@@ -44,6 +44,7 @@ struct args {
 	int max_beb_per1024;
 	bool disable_fm;
 	bool need_resv_pool;
+	int wl_threshold;
 };
 
 static struct args args = {
@@ -55,6 +56,7 @@ static struct args args = {
 	.max_beb_per1024 = 0,
 	.disable_fm = false,
 	.need_resv_pool = false,
+	.wl_threshold = 0,
 };
 
 static const char doc[] = PROGRAM_NAME " version " VERSION
@@ -76,6 +78,9 @@ static const char optionsstr[] =
 "-r, --reserve-pool    Slow down the frequency of updating fastmap by reserving\n"
 "                      pebs for filling pool/wl_pool, which can prolong flash\n"
 "                      service life.\n"
+"-w, --wl-threshold    Set the wear-leveling threshold for this UBI device.\n"
+"                      If 0, the kernel default value is used.\n"
+"                      Accepted range is 2-65536.\n"
 "-h, --help            print help message\n"
 "-V, --version         print program version";
 
@@ -85,6 +90,7 @@ static const char usage[] =
 "\t[--mtdn=<MTD device number>] [--devn=<UBI device number>]\n"
 "\t[--dev-path=<path to device>] [-f] [--disable-fastmap] [-r] [--reserve-pool]\n"
 "\t[--max-beb-per1024=<maximum bad block number per 1024 blocks>]\n"
+"\t[--wl-threshold=<wear-leveling threshold>]\n"
 "UBI control device defaults to " DEFAULT_CTRL_DEV " if not supplied.\n"
 "Example 1: " PROGRAM_NAME " -p /dev/mtd0 - attach /dev/mtd0 to UBI\n"
 "Example 2: " PROGRAM_NAME " -m 0 - attach MTD device 0 (mtd0) to UBI\n"
@@ -104,6 +110,7 @@ static const struct option long_options[] = {
 	{ .name = "max-beb-per1024", .has_arg = 1, .flag = NULL, .val = 'b' },
 	{ .name = "disable-fastmap", .has_arg = 0, .flag = NULL, .val = 'f' },
 	{ .name = "reserve-pool",    .has_arg = 0, .flag = NULL, .val = 'r' },
+	{ .name = "wl-threshold",    .has_arg = 1, .flag = NULL, .val = 'w' },
 	{ .name = "help",            .has_arg = 0, .flag = NULL, .val = 'h' },
 	{ .name = "version",         .has_arg = 0, .flag = NULL, .val = 'V' },
 	{ NULL, 0, NULL, 0},
@@ -114,7 +121,7 @@ static int parse_opt(int argc, char * const argv[])
 	while (1) {
 		int key, error = 0;
 
-		key = getopt_long(argc, argv, "p:m:d:O:b:frhV", long_options, NULL);
+		key = getopt_long(argc, argv, "p:m:d:O:b:frw:hV", long_options, NULL);
 		if (key == -1)
 			break;
 
@@ -161,6 +168,20 @@ static int parse_opt(int argc, char * const argv[])
 		case 'r':
 			args.need_resv_pool = true;
 			break;
+
+		case 'w':
+		{
+			unsigned long tmp = simple_strtoul(optarg, &error);
+
+			if (error || (tmp && (tmp < 2 || tmp > 65536)))
+				return errmsg("bad wear-leveling threshold: \"%s\" (2-65536)",
+					optarg);
+			if (tmp == 0)
+				warnmsg("wear-leveling threshold use the default kernel value");
+			args.wl_threshold = tmp;
+
+			break;
+		}
 
 		case 'h':
 			printf("%s\n\n", doc);
@@ -234,6 +255,7 @@ int main(int argc, char * const argv[])
 	req.max_beb_per1024 = args.max_beb_per1024;
 	req.disable_fm = args.disable_fm;
 	req.need_resv_pool = args.need_resv_pool;
+	req.wl_threshold = args.wl_threshold;
 
 	err = ubi_attach(libubi, args.node, &req);
 	if (err < 0) {

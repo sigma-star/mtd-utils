@@ -284,7 +284,8 @@ struct ubi_attach_req {
 	int16_t max_beb_per1024;
 	int8_t	disable_fm;
 	int8_t  need_resv_pool;
-	int8_t  padding[8];
+	int32_t wl_threshold;
+	int8_t  padding[4];
 };
 
 /*

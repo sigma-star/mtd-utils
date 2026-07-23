@@ -56,6 +56,7 @@ typedef void * libubi_t;
  * @max_beb_per1024: Maximum expected bad eraseblocks per 1024 eraseblocks
  * @disable_fm: whether disable fastmap
  * @need_resv_pool: whether reserve free pebs for filling pool/wl_pool
+ * @wl_threshold: wear-leveling threshold (0 means use kernel default)
  */
 struct ubi_attach_request
 {
@@ -66,6 +67,7 @@ struct ubi_attach_request
 	int max_beb_per1024;
 	bool disable_fm;
 	bool need_resv_pool;
+	int wl_threshold;
 };
 
 /**
